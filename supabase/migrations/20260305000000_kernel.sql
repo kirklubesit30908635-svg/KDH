@@ -591,3 +591,92 @@ $$;
 GRANT USAGE ON SCHEMA api TO authenticated;
 GRANT EXECUTE ON FUNCTION api.append_event(uuid, text, text, jsonb, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION api.emit_receipt(uuid, uuid, text, text, jsonb) TO authenticated;
+
+-- ---------------------------------------------------------------
+-- 7e. RLS on core identity, registry, and ingest tables
+-- ---------------------------------------------------------------
+-- tenants, workspaces, departments have REVOKE ALL in place and
+-- no authenticated read path in the current kernel. RLS confirms
+-- default-deny without requiring any policy.
+ALTER TABLE tenants      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workspaces   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE departments  ENABLE ROW LEVEL SECURITY;
+
+-- operators: current_operator_id() does SELECT FROM operators
+-- filtered by auth_uid. That function is not SECURITY DEFINER, so
+-- it runs as the session user. With RLS enabled and no policy,
+-- the SELECT returns nothing → current_operator_id() returns NULL
+-- → is_member() always returns false → all RLS policies on events
+-- and receipts block every row. A self-read policy is required.
+ALTER TABLE operators ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY operators_select_self ON operators
+  FOR SELECT TO authenticated
+  USING (auth_uid = auth.uid());
+
+-- memberships: is_member() does SELECT FROM memberships filtered
+-- by operator_id = current_operator_id(). Same reasoning applies.
+-- An operator may read only the membership rows that belong to them.
+ALTER TABLE memberships ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY memberships_select_own ON memberships
+  FOR SELECT TO authenticated
+  USING (operator_id = current_operator_id());
+
+-- event_types and receipt_types carry GRANT SELECT TO authenticated
+-- (Section 7c). Enabling RLS without a permissive SELECT policy
+-- makes that grant unreachable — same ACL-before-RLS rule that
+-- required grants on events and receipts. These are static
+-- catalogues so USING (true) is correct.
+ALTER TABLE event_types ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY event_types_select_all ON event_types
+  FOR SELECT TO authenticated
+  USING (true);
+
+ALTER TABLE receipt_types ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY receipt_types_select_all ON receipt_types
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- raw_events and trusted_events: REVOKE ALL in place, no
+-- authenticated read path. RLS confirms default-deny.
+ALTER TABLE raw_events     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE trusted_events ENABLE ROW LEVEL SECURITY;
+
+-- ---------------------------------------------------------------
+-- 7f. Revoke PUBLIC EXECUTE from all internal functions
+-- ---------------------------------------------------------------
+-- PostgreSQL grants EXECUTE to PUBLIC on every new function by
+-- default. These internal functions must not be directly callable
+-- by anon or authenticated.
+
+-- Trigger functions: the database engine fires triggers regardless
+-- of EXECUTE privilege on the function. REVOKE is safe; no
+-- re-grant is required.
+REVOKE EXECUTE ON FUNCTION _deny_mutation()          FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION _events_before_insert()   FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION _receipts_before_insert() FROM PUBLIC;
+
+-- sha256_hex is called only from within trigger functions which
+-- run as postgres (superuser) when invoked via the SECURITY
+-- DEFINER RPCs. Superusers bypass EXECUTE ACL checks. No re-grant.
+REVOKE EXECUTE ON FUNCTION sha256_hex(text) FROM PUBLIC;
+
+-- assert_member is called only from api.append_event and
+-- api.emit_receipt, both SECURITY DEFINER functions that run as
+-- postgres. No authenticated direct call path exists. No re-grant.
+REVOKE EXECUTE ON FUNCTION assert_member(uuid) FROM PUBLIC;
+
+-- current_operator_id and is_member are evaluated inside RLS
+-- USING clauses on events and receipts. RLS policy expressions
+-- run in the context of the session user (authenticated), so
+-- authenticated must retain EXECUTE on both. REVOKE removes the
+-- blanket PUBLIC grant; the targeted GRANT restores exactly what
+-- is needed and nothing more.
+REVOKE EXECUTE ON FUNCTION current_operator_id() FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION current_operator_id() TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION is_member(uuid) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION is_member(uuid) TO authenticated;
