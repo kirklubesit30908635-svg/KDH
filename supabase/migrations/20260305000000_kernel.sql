@@ -210,7 +210,7 @@ CREATE TABLE events (
 
 -- Partial unique index: idempotency_key must be unique when provided.
 CREATE UNIQUE INDEX events_idempotency_key_uidx
-  ON events (idempotency_key)
+  ON events (workspace_id, idempotency_key)
   WHERE idempotency_key IS NOT NULL;
 
 -- Assigns seq, prev_hash, and hash; enforces idempotency.
@@ -223,7 +223,9 @@ BEGIN
   -- Idempotency: if the key is already recorded, silently suppress the insert.
   IF NEW.idempotency_key IS NOT NULL
      AND EXISTS (
-       SELECT 1 FROM events WHERE idempotency_key = NEW.idempotency_key
+       SELECT 1 FROM events
+        WHERE idempotency_key = NEW.idempotency_key
+          AND workspace_id    = NEW.workspace_id
      )
   THEN
     RETURN NULL;
@@ -448,6 +450,13 @@ REVOKE ALL ON TABLE trusted_events FROM anon, authenticated;
 GRANT SELECT ON TABLE event_types   TO authenticated;
 GRANT SELECT ON TABLE receipt_types TO authenticated;
 
+-- RLS read policies require table-level SELECT privilege to be evaluated.
+-- Without these grants Postgres denies at the ACL layer before RLS runs,
+-- making events_select_member and receipts_select_member dead code.
+-- No write path is opened: INSERT/UPDATE/DELETE remain revoked.
+GRANT SELECT ON TABLE events   TO authenticated;
+GRANT SELECT ON TABLE receipts TO authenticated;
+
 -- ---------------------------------------------------------------
 -- 7d. api schema — SECURITY DEFINER write surface
 -- ---------------------------------------------------------------
@@ -485,7 +494,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_type_id  int;
@@ -520,7 +529,8 @@ BEGIN
     SELECT id, events.seq, events.hash
       INTO v_event_id, v_seq, v_hash
       FROM events
-     WHERE idempotency_key = p_idempotency_key;
+     WHERE idempotency_key = p_idempotency_key
+       AND workspace_id    = p_workspace_id;
   END IF;
 
   RETURN QUERY SELECT v_event_id, v_seq, v_hash;
@@ -546,7 +556,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_type_id    int;
