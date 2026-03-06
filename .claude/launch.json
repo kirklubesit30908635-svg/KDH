@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Supabase Local (autokirk-kernel)",
+      "runtimeExecutable": "supabase",
+      "runtimeArgs": ["start"],
+      "port": 54321
+    }
+  ]
+}
