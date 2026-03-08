@@ -5,7 +5,7 @@ const faces = [
     code: "FACE 003",
     title: "Dealership Enforcement",
     desc: "Next Actions · Reassurance Search · Daily Check-In",
-    href: "/tucker",
+    href: "/command",
     status: "Operational",
     cta: "Enter Face",
   },
@@ -64,8 +64,9 @@ export default function Home() {
 
         <section className="mt-12 grid gap-6 md:grid-cols-2">
           {faces.map((f) => (
-            <Link key={f.title} href={f.href} className="block">
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur hover:border-[#caa84a]/40 transition">
+            f.disabled ? (
+              <div key={f.title} className="block cursor-not-allowed opacity-60">
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
                 <div className="flex items-center justify-between">
                   <div className="text-xs tracking-[0.18em] text-zinc-400">
                     {f.code}
@@ -83,18 +84,37 @@ export default function Home() {
                 </div>
 
                 <div
-                  className={[
-                    "mt-6 inline-flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold",
-                    f.disabled
-                      ? "bg-zinc-800 text-zinc-500"
-                      : "bg-[#caa84a] text-black hover:bg-[#d7b65a]",
-                  ].join(" ")}
+                  className="mt-6 inline-flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold bg-zinc-800 text-zinc-500"
                 >
                   <span>{f.cta}</span>
                   <span>→</span>
                 </div>
               </div>
+            </div>
+            ) : (
+            <Link key={f.title} href={f.href} className="block">
+              <div className="rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur hover:border-[#caa84a]/40 transition">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs tracking-[0.18em] text-zinc-400">
+                    {f.code}
+                  </div>
+                  <div className="text-[11px] tracking-[0.14em] text-zinc-500">
+                    {f.status}
+                  </div>
+                </div>
+                <div className="mt-4 text-xl font-semibold text-zinc-100">
+                  {f.title}
+                </div>
+                <div className="mt-2 text-sm leading-relaxed text-zinc-400">
+                  {f.desc}
+                </div>
+                <div className="mt-6 inline-flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold bg-[#caa84a] text-black hover:bg-[#d7b65a]">
+                  <span>{f.cta}</span>
+                  <span>→</span>
+                </div>
+              </div>
             </Link>
+            )
           ))}
         </section>
 
