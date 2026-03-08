@@ -1,4 +1,18 @@
 -- ================================================================
+-- DEPRECATED — OUT-OF-BAND LEGACY SCRIPT
+-- Status: Quarantined. Do NOT apply to any kernel-connected database.
+--
+-- This script references ak_kernel, a legacy product-branded schema
+-- that does not exist in the current kernel migration chain.
+--
+-- The dealership vertical requires a full redesign to integrate with
+-- the frozen kernel vocabulary (core, ledger, api, ingest, registry).
+-- That work is tracked separately as the dealership vertical project.
+--
+-- This file is retained for historical reference only.
+-- ================================================================
+
+-- ================================================================
 -- fix_dealership_fn.sql
 -- Creates dealership.proposals, dealership.approvals,
 -- dealership.executions, dealership.rpc_execute_proposal,
