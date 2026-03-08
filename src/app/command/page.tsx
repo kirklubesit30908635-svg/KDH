@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NextActionRow, SeverityGroup } from "@/lib/ui-models";
 import { fmtDue, fmtFace, safeStr } from "@/lib/ui-fmt";
-import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import {
   AkShell,
   AkPanel,
@@ -43,18 +42,17 @@ export default function CommandPage() {
     setLoading(true);
     setErr(null);
 
-    const supabase = supabaseBrowser();
-    const { data, error } = await supabase
-      .schema("core")
-      .from("v_next_actions")
-      .select("*")
-      .order("due_at", { ascending: true, nullsFirst: false });
-
-    if (error) {
-      setErr(`Command load failed: ${error.message}`);
+    try {
+      const res = await fetch("/api/command/feed");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      const json = await res.json();
+      setRows((json.rows ?? []) as NextActionRow[]);
+    } catch (e) {
+      setErr(`Command load failed: ${e instanceof Error ? e.message : String(e)}`);
       setRows([]);
-    } else {
-      setRows((data ?? []) as NextActionRow[]);
     }
 
     setLoading(false);

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReceiptRow } from "@/lib/ui-models";
 import { fmtFace, safeStr } from "@/lib/ui-fmt";
-import { createClient } from "@/lib/supabase/supabaseBrowser";
 import { AkBadge, AkInput, AkPanel, AkSectionHeader, AkShell } from "@/components/ak/ak-ui";
 
 export default function ReceiptsPage() {
@@ -36,21 +35,19 @@ export default function ReceiptsPage() {
       setLoading(true);
       setErr(null);
 
-      const supabase = createClient();
-
-      const { data, error } = await supabase
-        .schema("core")
-        .from("v_receipts")
-        .select("*")
-        .order("sealed_at", { ascending: false });
-
-      if (!alive) return;
-
-      if (error) {
-        setErr(`Receipts load failed: ${error.message}`);
+      try {
+        const res = await fetch("/api/receipts/feed");
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error ?? `HTTP ${res.status}`);
+        }
+        const json = await res.json();
+        if (!alive) return;
+        setRows((json.rows ?? []) as ReceiptRow[]);
+      } catch (e) {
+        if (!alive) return;
+        setErr(`Receipts load failed: ${e instanceof Error ? e.message : String(e)}`);
         setRows([]);
-      } else {
-        setRows((data ?? []) as ReceiptRow[]);
       }
 
       setLoading(false);
