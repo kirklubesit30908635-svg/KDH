@@ -9,6 +9,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Read ?redirect= param so magic link returns to the originally requested page
+  const redirect =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("redirect") ?? "/command"
+      : "/command";
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -18,7 +24,7 @@ export default function LoginPage() {
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/command`,
+        emailRedirectTo: `${window.location.origin}${redirect}`,
       },
     });
 

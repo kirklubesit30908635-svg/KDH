@@ -1,13 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-export async function GET() {
-  try {
-    const env = {
-      NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ? "set" : "missing",
-      SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? "set" : "missing",
-    };
+export const runtime = "nodejs";
 
+export async function GET(req: NextRequest) {
+  const adminKey = req.headers.get("x-ak-admin-key");
+  if (!adminKey || adminKey !== process.env.AK_ADMIN_KEY) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
     const { data, error } = await supabaseAdmin
       .from("tenants")
       .select("id, status, stripe_customer_id, stripe_subscription_id")
@@ -15,18 +17,15 @@ export async function GET() {
 
     if (error) {
       console.error("[debug/tenants] supabase error:", error);
-      return NextResponse.json({ env, supabase_error: error }, { status: 500 });
+      return NextResponse.json({ supabase_error: error }, { status: 500 });
     }
 
-    return NextResponse.json({ env, tenants: data });
+    return NextResponse.json({ tenants: data });
   } catch (err) {
     console.error("[debug/tenants] unhandled:", err);
     return NextResponse.json(
-      { err: String((err as any)?.message ?? err), stack: (err as any)?.stack ?? null },
+      { err: String((err as any)?.message ?? err) },
       { status: 500 }
     );
   }
 }
-
-export const runtime = 'nodejs';
-

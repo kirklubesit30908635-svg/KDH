@@ -1,25 +1,32 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NextActionRow, SeverityGroup } from "@/lib/ui-models";
 import { fmtDue, fmtFace, safeStr } from "@/lib/ui-fmt";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import {
+  AkShell,
+  AkPanel,
+  AkBadge,
+  AkButton,
+  AkSectionHeader,
+} from "@/components/ak/ak-ui";
 
 type Grouped = Record<SeverityGroup, NextActionRow[]>;
 
-const GROUPS: { key: SeverityGroup; label: string }[] = [
-  { key: "critical", label: "Critical" },
-  { key: "at_risk", label: "At Risk" },
-  { key: "due_today", label: "Due Today" },
-  { key: "queue", label: "Queue" },
+const GROUPS: { key: SeverityGroup; label: string; tone: "danger" | "gold" | "muted" }[] = [
+  { key: "critical", label: "Critical", tone: "danger" },
+  { key: "at_risk", label: "At Risk", tone: "gold" },
+  { key: "due_today", label: "Due Today", tone: "gold" },
+  { key: "queue", label: "Queue", tone: "muted" },
 ];
 
 function groupRows(rows: NextActionRow[]): Grouped {
   return {
-    critical: rows.filter(r => r.severity === "critical"),
-    at_risk: rows.filter(r => r.severity === "at_risk"),
-    due_today: rows.filter(r => r.severity === "due_today"),
-    queue: rows.filter(r => r.severity === "queue"),
+    critical: rows.filter((r) => r.severity === "critical"),
+    at_risk: rows.filter((r) => r.severity === "at_risk"),
+    due_today: rows.filter((r) => r.severity === "due_today"),
+    queue: rows.filter((r) => r.severity === "queue"),
   };
 }
 
@@ -27,137 +34,204 @@ export default function CommandPage() {
   const [rows, setRows] = useState<NextActionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [sealingId, setSealingId] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState<NextActionRow | null>(null);
 
   const grouped = useMemo(() => groupRows(rows), [rows]);
 
-  useEffect(() => {
-    let alive = true;
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
 
-    async function run() {
-      setLoading(true);
-      setErr(null);
+    const supabase = supabaseBrowser();
+    const { data, error } = await supabase
+      .schema("core")
+      .from("v_next_actions")
+      .select("*")
+      .order("due_at", { ascending: true, nullsFirst: false });
 
-      const supabase = supabaseBrowser();
-
-      const { data, error } = await supabase
-        .schema("core")
-        .from("v_next_actions")
-        .select("*")
-        .order("due_at", { ascending: true, nullsFirst: false });
-
-      if (!alive) return;
-
-      if (error) {
-        setErr(`Command load failed: ${error.message}`);
-        setRows([]);
-      } else {
-        setRows((data ?? []) as NextActionRow[]);
-      }
-
-      setLoading(false);
+    if (error) {
+      setErr(`Command load failed: ${error.message}`);
+      setRows([]);
+    } else {
+      setRows((data ?? []) as NextActionRow[]);
     }
 
-    run();
-
-    return () => {
-      alive = false;
-    };
+    setLoading(false);
   }, []);
 
-  return (
-    <main style={{ maxWidth: 860, margin: "0 auto", padding: 16 }}>
-      <header style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Command</h1>
-        <p style={{ margin: "6px 0 0 0", opacity: 0.75 }}>
-          Truth surface: <code>core.v_next_actions</code>
-        </p>
-      </header>
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-      {loading && <div>Loading…</div>}
+  async function handleSeal(obligationId: string) {
+    setSealingId(obligationId);
+    try {
+      const res = await fetch("/api/command/seal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ obligation_id: obligationId }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(`Seal failed: ${json.error ?? "Unknown error"}`);
+      } else {
+        setRows((prev) => prev.filter((r) => r.obligation_id !== obligationId));
+      }
+    } catch (e) {
+      alert(`Seal failed: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSealingId(null);
+    }
+  }
+
+  return (
+    <AkShell
+      title="Command"
+      subtitle="Truth surface: core.v_next_actions — open obligations requiring operator action."
+    >
+      {loading && (
+        <div className="text-sm text-zinc-500">Loading…</div>
+      )}
 
       {!loading && err && (
-        <div style={{ border: "1px solid rgba(255,255,255,0.15)", padding: 12, borderRadius: 10 }}>
-          <div style={{ fontWeight: 700, marginBottom: 6 }}>Error</div>
-          <div style={{ opacity: 0.85 }}>{err}</div>
-          <div style={{ marginTop: 10, opacity: 0.75 }}>
+        <AkPanel className="p-6">
+          <div className="text-sm font-bold text-red-400 mb-2">Error</div>
+          <div className="text-sm text-zinc-300">{err}</div>
+          <div className="mt-3 text-xs text-zinc-500">
             Confirm the view exists and is granted for your current auth role.
           </div>
+        </AkPanel>
+      )}
+
+      {!loading && !err && (
+        <div className="space-y-8">
+          {GROUPS.map((g) => (
+            <section key={g.key}>
+              <AkSectionHeader label={g.label} count={grouped[g.key].length} />
+
+              <div className="mt-4 grid gap-4">
+                {grouped[g.key].map((row) => (
+                  <AkPanel key={row.obligation_id} className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <AkBadge tone={g.tone}>{g.label.toUpperCase()}</AkBadge>
+                          <AkBadge tone="muted">{fmtFace(row.face)}</AkBadge>
+                          {row.is_breach && <AkBadge tone="danger">BREACH</AkBadge>}
+                        </div>
+
+                        <div className="text-base font-bold text-zinc-100">
+                          {safeStr(row.title)}
+                        </div>
+
+                        {row.why && (
+                          <div className="mt-1 text-sm text-zinc-400">{row.why}</div>
+                        )}
+
+                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
+                          {row.due_at && <span>Due: {fmtDue(row.due_at)}</span>}
+                          {row.economic_ref_id && (
+                            <span>
+                              Ref: {safeStr(row.economic_ref_type)}{" "}
+                              {safeStr(row.economic_ref_id)}
+                            </span>
+                          )}
+                          {row.age_hours != null && (
+                            <span>Age: {Math.round(row.age_hours)}h</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex gap-3">
+                      <AkButton
+                        tone="gold"
+                        disabled={sealingId === row.obligation_id}
+                        onClick={() => handleSeal(row.obligation_id)}
+                      >
+                        {sealingId === row.obligation_id ? "Sealing…" : "Seal Closure"}
+                      </AkButton>
+
+                      <AkButton
+                        tone="muted"
+                        onClick={() => setInspecting(row)}
+                      >
+                        Inspect
+                      </AkButton>
+                    </div>
+                  </AkPanel>
+                ))}
+
+                {grouped[g.key].length === 0 && (
+                  <div className="text-sm text-zinc-600">No items.</div>
+                )}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
-      {!loading && !err && GROUPS.map(g => (
-        <section key={g.key} style={{ marginTop: 18 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>{g.label}</h2>
-            <div style={{ opacity: 0.7 }}>{grouped[g.key].length}</div>
-          </div>
-
-          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-            {grouped[g.key].map(row => (
-              <div
-                key={row.obligation_id}
-                style={{
-                  border: "1px solid rgba(255,255,255,0.14)",
-                  borderRadius: 14,
-                  padding: 12,
-                }}
-              >
-                <div style={{ fontSize: 16, fontWeight: 700 }}>
-                  {safeStr(row.title)}
-                </div>
-
-                <div style={{ marginTop: 6, opacity: 0.8, fontSize: 13 }}>
-                  {row.why ? row.why : "—"}
-                </div>
-
-                <div style={{ marginTop: 10, display: "flex", gap: 10, flexWrap: "wrap", opacity: 0.8, fontSize: 12 }}>
-                  <span>Face: {fmtFace(row.face)}</span>
-                  {row.due_at ? <span>Due: {fmtDue(row.due_at)}</span> : <span>Due: —</span>}
-                  {row.economic_ref_id ? (
-                    <span>Ref: {safeStr(row.economic_ref_type)} {safeStr(row.economic_ref_id)}</span>
-                  ) : (
-                    <span>Ref: —</span>
-                  )}
-                </div>
-
-                <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                  <button
-                    disabled
-                    title="Seal Closure is disabled until the closure RPC contract is pinned."
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "transparent",
-                      opacity: 0.6,
-                      cursor: "not-allowed",
-                    }}
-                  >
-                    Seal Closure
-                  </button>
-
-                  <button
-                    onClick={() => alert(`Inspect (read-only)\n\nobligation_id: ${row.obligation_id}`)}
-                    style={{
-                      padding: "8px 10px",
-                      borderRadius: 10,
-                      border: "1px solid rgba(255,255,255,0.18)",
-                      background: "transparent",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Inspect
-                  </button>
-                </div>
+      {/* Inspect Drawer */}
+      {inspecting && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setInspecting(null)}
+          />
+          <div className="relative w-full max-w-md bg-[#0a0a0a] border-l border-[#2a2516] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-bold text-[#d6b24a]">Inspect Obligation</h2>
+                <button
+                  onClick={() => setInspecting(null)}
+                  className="text-zinc-500 hover:text-zinc-300 text-xl leading-none"
+                >
+                  &times;
+                </button>
               </div>
-            ))}
 
-            {grouped[g.key].length === 0 && (
-              <div style={{ opacity: 0.7, fontSize: 13 }}>No items.</div>
-            )}
+              <div className="space-y-4 text-sm">
+                {([
+                  ["Obligation ID", inspecting.obligation_id],
+                  ["Title", inspecting.title],
+                  ["Why", inspecting.why],
+                  ["Face", fmtFace(inspecting.face)],
+                  ["Severity", inspecting.severity],
+                  ["Due At", fmtDue(inspecting.due_at) ?? "—"],
+                  ["Created At", inspecting.created_at ?? "—"],
+                  ["Age (hours)", inspecting.age_hours != null ? String(Math.round(inspecting.age_hours)) : "—"],
+                  ["Breach", inspecting.is_breach ? "YES" : "No"],
+                  ["Economic Ref Type", inspecting.economic_ref_type ?? "—"],
+                  ["Economic Ref ID", inspecting.economic_ref_id ?? "—"],
+                ] as [string, string | null][]).map(([label, value]) => (
+                  <div key={label}>
+                    <div className="text-xs font-bold tracking-wider text-zinc-500 mb-1">
+                      {label.toUpperCase()}
+                    </div>
+                    <div className="text-zinc-200 break-all">
+                      {value || "—"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8">
+                <AkButton
+                  tone="gold"
+                  disabled={sealingId === inspecting.obligation_id}
+                  onClick={() => {
+                    handleSeal(inspecting.obligation_id);
+                    setInspecting(null);
+                  }}
+                >
+                  Seal This Obligation
+                </AkButton>
+              </div>
+            </div>
           </div>
-        </section>
-      ))}
-    </main>
+        </div>
+      )}
+    </AkShell>
   );
 }
