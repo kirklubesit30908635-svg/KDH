@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
       const oblInput = stripeEventToObligation(
         event.type,
-        (event.data?.object ?? {}) as Record<string, unknown>
+        (event.data?.object as unknown as Record<string, unknown>) ?? {}
       );
       oblInput.source_event_id = eventId;
 
