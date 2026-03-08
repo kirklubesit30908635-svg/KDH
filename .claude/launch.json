@@ -9,9 +9,10 @@
     },
     {
       "name": "Next.js Dev (autokirk-kernel)",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
-      "port": 3000
+      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
+      "runtimeArgs": ["C:/Users/chase kirk/autokirk-kernel/node_modules/next/dist/bin/next", "dev", "--turbopack"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
