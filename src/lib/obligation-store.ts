@@ -10,6 +10,7 @@ export interface ObligationInput {
   economic_ref_id?: string | null;
   source_event_id?: string | null;
   workspace_id?: string | null;
+  idempotency_key?: string | null;
 }
 
 export interface ReceiptInput {
@@ -37,6 +38,7 @@ export interface Obligation {
   economic_ref_type: string | null;
   economic_ref_id: string | null;
   source_event_id: string | null;
+  idempotency_key: string | null;
 }
 
 export interface Receipt {
@@ -52,22 +54,35 @@ export interface Receipt {
 }
 
 export async function createObligation(input: ObligationInput): Promise<Obligation> {
-  const { data, error } = await supabaseAdmin
-    .schema("core")
-    .from("obligations")
-    .insert({
-      title:             input.title,
-      why:               input.why ?? null,
-      face:              input.face ?? "unknown",
-      severity:          input.severity ?? "queue",
-      due_at:            input.due_at ?? null,
-      economic_ref_type: input.economic_ref_type ?? null,
-      economic_ref_id:   input.economic_ref_id ?? null,
-      source_event_id:   input.source_event_id ?? null,
-      workspace_id:      input.workspace_id ?? null,
-    })
-    .select()
-    .single();
+  const row = {
+    title:             input.title,
+    why:               input.why ?? null,
+    face:              input.face ?? "unknown",
+    severity:          input.severity ?? "queue",
+    due_at:            input.due_at ?? null,
+    economic_ref_type: input.economic_ref_type ?? null,
+    economic_ref_id:   input.economic_ref_id ?? null,
+    source_event_id:   input.source_event_id ?? null,
+    workspace_id:      input.workspace_id ?? null,
+    idempotency_key:   input.idempotency_key ?? null,
+  };
+
+  // If idempotency_key is set, upsert (return existing on conflict)
+  const query = input.idempotency_key
+    ? supabaseAdmin
+        .schema("core")
+        .from("obligations")
+        .upsert(row, { onConflict: "idempotency_key", ignoreDuplicates: true })
+        .select()
+        .single()
+    : supabaseAdmin
+        .schema("core")
+        .from("obligations")
+        .insert(row)
+        .select()
+        .single();
+
+  const { data, error } = await query;
 
   if (error) throw new Error(`createObligation failed: ${error.message}`);
   return data as Obligation;

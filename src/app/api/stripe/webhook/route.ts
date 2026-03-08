@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
         (event.data?.object as unknown as Record<string, unknown>) ?? {}
       );
       oblInput.source_event_id = eventId;
+      oblInput.idempotency_key = event.id; // stripe_event_id — prevents duplicates on retry
 
       const obligation = await createObligation(oblInput);
       obligationId = obligation.id;
