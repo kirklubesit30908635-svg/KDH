@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { createObligation, createReceipt } from "@/lib/obligation-store";
+import { stripeEventToObligation } from "@/lib/stripe-obligations";
 
 export const runtime = "nodejs";
 
@@ -71,8 +73,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // --- Business layer: generate obligation + receipt ---
+    let obligationId: string | null = null;
+    let businessReceiptId: string | null = null;
+
+    try {
+      const ingestResult = Array.isArray(data) ? data[0] : data;
+      const eventId = ingestResult?.event_id ?? null;
+
+      const oblInput = stripeEventToObligation(
+        event.type,
+        (event.data?.object ?? {}) as Record<string, unknown>
+      );
+      oblInput.source_event_id = eventId;
+
+      const obligation = await createObligation(oblInput);
+      obligationId = obligation.id;
+
+      const receipt = await createReceipt({
+        obligation_id:     obligation.id,
+        sealed_by:         "system:stripe-webhook",
+        face:              obligation.face,
+        economic_ref_type: obligation.economic_ref_type,
+        economic_ref_id:   obligation.economic_ref_id,
+        ledger_event_id:   eventId,
+        payload: {
+          stripe_event_id: event.id,
+          stripe_type:     event.type,
+          ingested:        true,
+        },
+      });
+      businessReceiptId = receipt.id;
+    } catch (oblErr: any) {
+      // Log but don't fail — ledger ingest already succeeded
+      console.error("[stripe-webhook] obligation/receipt creation failed:", oblErr?.message ?? oblErr);
+    }
+
     return NextResponse.json(
-      { ok: true, received: { id: event.id, type: event.type }, result: data },
+      {
+        ok: true,
+        received: { id: event.id, type: event.type },
+        result: data,
+        obligation_id: obligationId,
+        business_receipt_id: businessReceiptId,
+      },
       { status: 200 }
     );
   } catch (err: any) {
