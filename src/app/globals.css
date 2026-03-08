@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -64,7 +66,3 @@ a {
   .osm-mobile-nav { display: none !important; }
   .osm-mobile-drawer { display: none !important; }
 }
-
-:root { --bg: #0c1220; --sidebar: #101827; --border: rgba(255,255,255,0.07); --teal: #2dd4bf; --teal-dim: rgba(45,212,191,0.12); --teal-border: rgba(45,212,191,0.22); --text: #e2e8f0; --muted: #64748b; --amber: #f59e0b; } .osm-sidebar { scrollbar-width: none; } .osm-sidebar::-webkit-scrollbar { display: none; } @media (max-width: 767px) { .osm-desktop-sidebar { display: none !important; } .osm-mobile-body { padding-bottom: 80px !important; } } @media (min-width: 768px) { .osm-mobile-topbar-btn { display: none !important; } .osm-mobile-nav { display: none !important; } .osm-mobile-drawer { display: none !important; } }
-
-:root { --bg: #0c1220; --sidebar: #101827; --border: rgba(255,255,255,0.07); --teal: #2dd4bf; --teal-dim: rgba(45,212,191,0.12); --teal-border: rgba(45,212,191,0.22); --text: #e2e8f0; --muted: #64748b; --amber: #f59e0b; } .osm-sidebar { scrollbar-width: none; } .osm-sidebar::-webkit-scrollbar { display: none; } @media (max-width: 767px) { .osm-desktop-sidebar { display: none !important; } .osm-mobile-body { padding-bottom: 80px !important; } } @media (min-width: 768px) { .osm-mobile-topbar-btn { display: none !important; } .osm-mobile-nav { display: none !important; } .osm-mobile-drawer { display: none !important; } }
