@@ -46,13 +46,13 @@ export default function LoginPage() {
       <div className="relative w-full max-w-sm">
         <div className="mb-8">
           <p className="text-[#caa84a] text-xs tracking-[0.24em] mb-3">
-            AUTOKIRK OPERATOR CONSOLE
+            OLD SALT MARINE
           </p>
           <h1 className="text-3xl font-semibold text-zinc-100">
-            Operator Access
+            Sales Access
           </h1>
           <p className="mt-2 text-sm text-zinc-400">
-            Enter your email to receive a magic link. No password required.
+            Enter your email to receive a sign-in link.
           </p>
         </div>
 
@@ -104,7 +104,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-zinc-600">
-          Authority lives in the Core. UI is routing only.
+          Old Salt Marine Sales Console
         </p>
       </div>
     </main>

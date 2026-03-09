@@ -23,15 +23,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const action = body.action ?? "seal"; // "seal" | "quote"
+    const payload =
+      action === "quote"
+        ? { action: "mark_quote_sent", sealed_at: new Date().toISOString() }
+        : { sealed: true };
+
     const { obligation, receipt } = await sealObligation(
       obligationId,
-      user.email ?? user.id
+      user.email ?? user.id,
+      payload
     );
 
     return NextResponse.json({
       ok: true,
       obligation_id: obligation.id,
       receipt_id: receipt.id,
+      action,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

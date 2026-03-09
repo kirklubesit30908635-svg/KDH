@@ -14,7 +14,7 @@ export function AkShell(props: { title: string; subtitle?: string; children: Rea
 
       <div className="relative mx-auto w-full max-w-6xl px-6 py-10">
         <div className="text-xs font-extrabold tracking-[0.32em] text-[#d6b24a]/90">
-          AUTO KIRK • OPERATOR CONSOLE
+          OLD SALT MARINE
         </div>
 
         <div className="mt-5">
