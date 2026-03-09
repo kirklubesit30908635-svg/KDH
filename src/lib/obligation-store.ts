@@ -123,10 +123,12 @@ export async function sealObligation(
       sealed_by: sealedBy,
     })
     .eq("id", obligationId)
+    .neq("status", "sealed")
     .select()
     .single();
 
   if (oblErr) throw new Error(`sealObligation failed: ${oblErr.message}`);
+  if (!obl) throw new Error(`sealObligation: obligation ${obligationId} not found or already sealed`);
 
   const obligation = obl as Obligation;
 

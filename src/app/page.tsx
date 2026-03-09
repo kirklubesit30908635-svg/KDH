@@ -7,6 +7,7 @@ const faces = [
     desc: "Next Actions · Reassurance Search · Daily Check-In",
     href: "/command",
     status: "Operational",
+    statusDot: "green" as const,
     cta: "Enter Face",
   },
   {
@@ -15,113 +16,170 @@ const faces = [
     desc: "Stripe intake → obligations → closure → receipts",
     href: "/billing-ops",
     status: "Execution Runner Paused",
+    statusDot: "amber" as const,
     cta: "Enter Face",
     disabled: true,
   },
   {
-    code: "FACE",
+    code: "FACE 004",
     title: "Advertising Enforcement",
     desc: "Spend → Lead → Follow-Up → Sale → Margin → Renewal Gate",
     href: "/advertising",
     status: "Operational",
+    statusDot: "green" as const,
     cta: "Enter Face",
   },
   {
-    code: "OPERATOR ACCESS",
-    title: "Authenticate",
-    desc: "Supabase magic-link access",
-    href: "/login",
-    status: "Access Controlled",
-    cta: "Authenticate",
+    code: "PROOF LAYER",
+    title: "Receipts",
+    desc: "Institutional proof — every sealed obligation leaves a receipt.",
+    href: "/receipts",
+    status: "Append-Only",
+    statusDot: "gold" as const,
+    cta: "View Receipts",
   },
 ];
+
+const statusDotCls = {
+  green: "bg-emerald-400",
+  amber: "bg-amber-400",
+  gold: "bg-[#d6b24a]",
+  blue: "bg-blue-400",
+};
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-black text-zinc-100">
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-indigo-700/10 blur-3xl" />
-        <div className="absolute top-40 left-10 h-[420px] w-[420px] rounded-full bg-purple-600/10 blur-3xl" />
-        <div className="absolute bottom-10 right-10 h-[520px] w-[520px] rounded-full bg-blue-600/10 blur-3xl" />
+      {/* atmosphere */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[#6b4e12]/12 blur-3xl" />
+        <div className="absolute top-60 -left-20 h-[500px] w-[500px] rounded-full bg-indigo-600/8 blur-3xl" />
+        <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-purple-600/8 blur-3xl" />
       </div>
 
       <div className="relative mx-auto max-w-6xl px-6 py-16">
-        <header className="text-[#caa84a] text-xs tracking-[0.24em]">
+        {/* header */}
+        <div className="text-xs font-extrabold tracking-[0.32em] text-[#d6b24a]/80">
           AUTOKIRK OPERATOR CONSOLE
-        </header>
+        </div>
 
-        <section className="mt-8 max-w-3xl">
-          <h1 className="text-5xl font-semibold leading-[1.05] text-[#caa84a]">
+        {/* hero */}
+        <div className="mt-8 max-w-2xl">
+          <h1 className="text-6xl font-extrabold leading-[1.02] text-[#d6b24a] drop-shadow-[0_0_40px_rgba(214,178,74,0.15)]">
             Surface Simplicity.
             <br />
             Core Ruthlessness.
           </h1>
           <p className="mt-5 text-base leading-relaxed text-zinc-400">
-            This UI does not govern. It routes you into governed execution. If it
-            isn’t written here, it didn’t happen.
+            This UI does not govern. It routes you into governed execution.{" "}
+            <span className="text-zinc-300 font-semibold">
+              If it isn't written here, it didn't happen.
+            </span>
           </p>
-        </section>
+        </div>
 
-        <section className="mt-12 grid gap-6 md:grid-cols-2">
-          {faces.map((f) => (
+        {/* rule */}
+        <div className="mt-10 h-px bg-gradient-to-r from-[#d6b24a]/20 via-[#d6b24a]/5 to-transparent" />
+
+        {/* face grid */}
+        <div className="mt-10 grid gap-5 md:grid-cols-2">
+          {faces.map((f) =>
             f.disabled ? (
-              <div key={f.title} className="block cursor-not-allowed opacity-60">
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs tracking-[0.18em] text-zinc-400">
-                    {f.code}
-                  </div>
-                  <div className="text-[11px] tracking-[0.14em] text-zinc-500">
-                    {f.status}
-                  </div>
-                </div>
-
-                <div className="mt-4 text-xl font-semibold text-zinc-100">
-                  {f.title}
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  {f.desc}
-                </div>
-
-                <div
-                  className="mt-6 inline-flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold bg-zinc-800 text-zinc-500"
-                >
-                  <span>{f.cta}</span>
-                  <span>→</span>
-                </div>
+              <div key={f.title} className="cursor-not-allowed opacity-50">
+                <FaceCard f={f} />
               </div>
-            </div>
             ) : (
-            <Link key={f.title} href={f.href} className="block">
-              <div className="rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur hover:border-[#caa84a]/40 transition">
-                <div className="flex items-center justify-between">
-                  <div className="text-xs tracking-[0.18em] text-zinc-400">
-                    {f.code}
-                  </div>
-                  <div className="text-[11px] tracking-[0.14em] text-zinc-500">
-                    {f.status}
-                  </div>
-                </div>
-                <div className="mt-4 text-xl font-semibold text-zinc-100">
-                  {f.title}
-                </div>
-                <div className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  {f.desc}
-                </div>
-                <div className="mt-6 inline-flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-semibold bg-[#caa84a] text-black hover:bg-[#d7b65a]">
-                  <span>{f.cta}</span>
-                  <span>→</span>
-                </div>
-              </div>
-            </Link>
+              <Link key={f.title} href={f.href} className="group block">
+                <FaceCard f={f} interactive />
+              </Link>
             )
-          ))}
-        </section>
+          )}
+        </div>
 
-        <footer className="mt-12 text-xs tracking-wide text-zinc-500">
+        {/* login strip */}
+        <div className="mt-8 flex items-center justify-between rounded-2xl border border-[#2a2516] bg-[#070707]/80 px-6 py-4 backdrop-blur-sm">
+          <div>
+            <div className="text-xs font-extrabold tracking-[0.22em] text-zinc-500">
+              OPERATOR ACCESS
+            </div>
+            <div className="mt-1 text-sm font-semibold text-zinc-200">
+              Supabase magic-link — access controlled
+            </div>
+          </div>
+          <Link
+            href="/login"
+            className="rounded-xl bg-[#d6b24a] px-5 py-2.5 text-sm font-extrabold text-black hover:brightness-105 transition"
+          >
+            Authenticate →
+          </Link>
+        </div>
+
+        <footer className="mt-10 text-xs tracking-wide text-zinc-600">
           Authority lives in the Core. UI is routing only.
         </footer>
       </div>
     </main>
+  );
+}
+
+function FaceCard({
+  f,
+  interactive,
+}: {
+  f: (typeof faces)[0];
+  interactive?: boolean;
+}) {
+  return (
+    <div
+      className={[
+        "rounded-2xl border border-[#2a2516] bg-[#070707]/90 p-6 backdrop-blur-sm",
+        "shadow-[0_0_0_1px_rgba(214,178,74,0.06),0_18px_60px_rgba(0,0,0,0.5)]",
+        interactive
+          ? "transition-all duration-200 group-hover:border-[#d6b24a]/30 group-hover:shadow-[0_0_0_1px_rgba(214,178,74,0.14),0_24px_80px_rgba(0,0,0,0.6)]"
+          : "",
+      ].join(" ")}
+    >
+      {/* top row */}
+      <div className="flex items-center justify-between gap-3">
+        <span className="rounded-full border border-[#3a2f12] bg-[#0d0a03] px-2.5 py-1 text-[10px] font-extrabold tracking-widest text-[#d6b24a]">
+          {f.code}
+        </span>
+        <div className="flex items-center gap-2">
+          <div
+            className={[
+              "h-1.5 w-1.5 rounded-full",
+              statusDotCls[f.statusDot],
+            ].join(" ")}
+          />
+          <span className="text-[11px] tracking-[0.14em] text-zinc-500">
+            {f.status}
+          </span>
+        </div>
+      </div>
+
+      {/* title + desc */}
+      <div className="mt-5">
+        <div className="text-xl font-extrabold text-zinc-100 leading-snug">
+          {f.title}
+        </div>
+        <div className="mt-2 text-sm leading-relaxed text-zinc-400">{f.desc}</div>
+      </div>
+
+      {/* rule */}
+      <div className="my-5 h-px bg-[#2a2516]" />
+
+      {/* CTA */}
+      <div
+        className={[
+          "flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-extrabold transition",
+          interactive
+            ? "bg-[#d6b24a] text-black group-hover:brightness-105"
+            : "bg-zinc-800 text-zinc-500",
+        ].join(" ")}
+      >
+        <span>{f.cta}</span>
+        <span>→</span>
+      </div>
+    </div>
   );
 }
