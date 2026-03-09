@@ -54,7 +54,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data, error: ingestErr } = await supabaseAdmin
+    // Ledger ingest — soft failure (api schema may not exist on all deployments)
+    let ingestEventId: string | null = null;
+    const { data: ingestData, error: ingestErr } = await supabaseAdmin
       .schema("api")
       .rpc("ingest_stripe_event", {
         p_provider_account_id: providerAccountId,
@@ -67,10 +69,10 @@ export async function POST(req: NextRequest) {
       });
 
     if (ingestErr) {
-      return NextResponse.json(
-        { env, received: { id: event.id, type: event.type }, ingest_error: ingestErr },
-        { status: 500 }
-      );
+      console.warn("[stripe-webhook] ledger ingest skipped:", ingestErr.message);
+    } else {
+      const ingestResult = Array.isArray(ingestData) ? ingestData[0] : ingestData;
+      ingestEventId = ingestResult?.event_id ?? null;
     }
 
     // --- Business layer: generate obligation + receipt ---
@@ -78,8 +80,7 @@ export async function POST(req: NextRequest) {
     let businessReceiptId: string | null = null;
 
     try {
-      const ingestResult = Array.isArray(data) ? data[0] : data;
-      const eventId = ingestResult?.event_id ?? null;
+      const eventId = ingestEventId;
 
       const oblInput = stripeEventToObligation(
         event.type,
@@ -114,7 +115,7 @@ export async function POST(req: NextRequest) {
       {
         ok: true,
         received: { id: event.id, type: event.type },
-        result: data,
+        ingest_event_id: ingestEventId,
         obligation_id: obligationId,
         business_receipt_id: businessReceiptId,
       },

@@ -14,32 +14,29 @@ export async function GET() {
   }
 
   try {
-    // Structural counts — base table (no projection view for aggregate counts)
     const [openRes, sealedRes, receiptsRes, stripeRes] = await Promise.all([
       supabaseAdmin
         .schema("core")
         .from("obligations")
         .select("id", { count: "exact", head: true })
-        .eq("face", "dealership")
+        .eq("face", "billing")
         .eq("status", "open"),
 
       supabaseAdmin
         .schema("core")
         .from("obligations")
         .select("id", { count: "exact", head: true })
-        .eq("face", "dealership")
+        .eq("face", "billing")
         .eq("status", "sealed"),
 
-      // Projection surface for operator-facing reads
       supabaseAdmin
         .schema("core")
         .from("v_receipts")
         .select("*")
-        .eq("face", "dealership")
+        .eq("face", "billing")
         .order("sealed_at", { ascending: false })
         .limit(10),
 
-      // Internal metric
       supabaseAdmin
         .schema("ingest")
         .from("stripe_events")

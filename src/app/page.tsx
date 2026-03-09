@@ -15,10 +15,9 @@ const faces = [
     title: "Billing Enforcement",
     desc: "Stripe intake → obligations → closure → receipts",
     href: "/billing-ops",
-    status: "Execution Runner Paused",
-    statusDot: "amber" as const,
+    status: "Operational",
+    statusDot: "green" as const,
     cta: "Enter Face",
-    disabled: true,
   },
   {
     code: "FACE 004",
@@ -39,6 +38,16 @@ const faces = [
     cta: "View Receipts",
   },
 ];
+
+const intelligence = {
+  code: "SYSTEM INTELLIGENCE",
+  title: "Integrity",
+  desc: "Integrity Score · Closure Rate · Breach Rate · Revenue Leakage — the single number that cannot lie.",
+  href: "/integrity",
+  status: "Live",
+  statusDot: "gold" as const,
+  cta: "View Integrity Score",
+};
 
 const statusDotCls = {
   green: "bg-emerald-400",
@@ -81,19 +90,23 @@ export default function Home() {
         {/* rule */}
         <div className="mt-10 h-px bg-gradient-to-r from-[#d6b24a]/20 via-[#d6b24a]/5 to-transparent" />
 
+        {/* Integrity — full-width anchor */}
+        <div className="mt-10">
+          <div className="text-[10px] font-extrabold tracking-[0.28em] text-zinc-600 mb-3">
+            SYSTEM INTELLIGENCE
+          </div>
+          <Link href={intelligence.href} className="group block">
+            <FaceCard f={intelligence} interactive fullWidth />
+          </Link>
+        </div>
+
         {/* face grid */}
-        <div className="mt-10 grid gap-5 md:grid-cols-2">
-          {faces.map((f) =>
-            f.disabled ? (
-              <div key={f.title} className="cursor-not-allowed opacity-50">
-                <FaceCard f={f} />
-              </div>
-            ) : (
-              <Link key={f.title} href={f.href} className="group block">
-                <FaceCard f={f} interactive />
-              </Link>
-            )
-          )}
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          {faces.map((f) => (
+            <Link key={f.title} href={f.href} className="group block">
+              <FaceCard f={f} interactive />
+            </Link>
+          ))}
         </div>
 
         {/* login strip */}
@@ -125,16 +138,22 @@ export default function Home() {
 function FaceCard({
   f,
   interactive,
+  fullWidth,
 }: {
-  f: (typeof faces)[0];
+  f: (typeof faces)[0] | typeof intelligence;
   interactive?: boolean;
+  fullWidth?: boolean;
 }) {
   return (
     <div
       className={[
-        "rounded-2xl border border-[#2a2516] bg-[#070707]/90 p-6 backdrop-blur-sm",
-        "shadow-[0_0_0_1px_rgba(214,178,74,0.06),0_18px_60px_rgba(0,0,0,0.5)]",
-        interactive
+        "rounded-2xl border bg-[#070707]/90 backdrop-blur-sm",
+        fullWidth
+          ? "border-[#3a2f12] p-6 shadow-[0_0_0_1px_rgba(214,178,74,0.12),0_18px_60px_rgba(0,0,0,0.5)]"
+          : "border-[#2a2516] p-6 shadow-[0_0_0_1px_rgba(214,178,74,0.06),0_18px_60px_rgba(0,0,0,0.5)]",
+        interactive && fullWidth
+          ? "transition-all duration-200 group-hover:border-[#d6b24a]/50 group-hover:shadow-[0_0_0_1px_rgba(214,178,74,0.22),0_0_60px_rgba(214,178,74,0.06),0_24px_80px_rgba(0,0,0,0.6)]"
+          : interactive
           ? "transition-all duration-200 group-hover:border-[#d6b24a]/30 group-hover:shadow-[0_0_0_1px_rgba(214,178,74,0.14),0_24px_80px_rgba(0,0,0,0.6)]"
           : "",
       ].join(" ")}

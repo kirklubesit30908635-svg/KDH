@@ -15,7 +15,7 @@ export function stripeEventToObligation(
       return {
         title: `Record payment: ${obj.number ?? obj.id ?? "unknown"}`,
         why: `Invoice ${obj.number ?? "unknown"} paid${obj.amount_paid ? ` ($${(Number(obj.amount_paid) / 100).toFixed(2)})` : ""}`,
-        face: "dealership",
+        face: "billing",
         severity: "queue",
         economic_ref_type: "invoice",
         economic_ref_id: String(obj.id ?? ""),
@@ -25,7 +25,7 @@ export function stripeEventToObligation(
       return {
         title: `Resolve failed payment: ${obj.number ?? obj.id ?? "unknown"}`,
         why: `Payment failed for invoice ${obj.number ?? "unknown"}`,
-        face: "dealership",
+        face: "billing",
         severity: "critical",
         economic_ref_type: "invoice",
         economic_ref_id: String(obj.id ?? ""),
@@ -36,7 +36,7 @@ export function stripeEventToObligation(
       return {
         title: "Onboard new subscriber",
         why: `New subscription created for customer ${obj.customer ?? "unknown"}`,
-        face: "dealership",
+        face: "billing",
         severity: "due_today",
         economic_ref_type: "customer",
         economic_ref_id: String(obj.customer ?? ""),
@@ -47,7 +47,7 @@ export function stripeEventToObligation(
       return {
         title: "Process subscription cancellation",
         why: `Subscription cancelled for customer ${obj.customer ?? "unknown"}`,
-        face: "dealership",
+        face: "billing",
         severity: "at_risk",
         economic_ref_type: "customer",
         economic_ref_id: String(obj.customer ?? ""),
@@ -58,7 +58,7 @@ export function stripeEventToObligation(
       return {
         title: "Respond to dispute",
         why: `Charge dispute filed: ${obj.reason ?? "unknown reason"}`,
-        face: "dealership",
+        face: "billing",
         severity: "critical",
         economic_ref_type: "invoice",
         economic_ref_id: String(obj.charge ?? obj.id ?? ""),
@@ -69,7 +69,7 @@ export function stripeEventToObligation(
       return {
         title: `Record refund: ${obj.id ?? "unknown"}`,
         why: `Charge ${obj.id ?? "unknown"} refunded${obj.amount_refunded ? ` ($${(Number(obj.amount_refunded) / 100).toFixed(2)})` : ""}`,
-        face: "dealership",
+        face: "billing",
         severity: "queue",
         economic_ref_type: "invoice",
         economic_ref_id: String(obj.id ?? ""),
@@ -79,7 +79,7 @@ export function stripeEventToObligation(
       return {
         title: `Process Stripe event: ${stripeType}`,
         why: `Stripe event ${stripeType} received`,
-        face: "unknown",
+        face: "billing",
         severity: "queue",
         economic_ref_type: "unknown",
         economic_ref_id: String(obj.id ?? ""),

@@ -67,25 +67,28 @@ export async function createObligation(input: ObligationInput): Promise<Obligati
     idempotency_key:   input.idempotency_key ?? null,
   };
 
-  // If idempotency_key is set, upsert (return existing on conflict)
-  const query = input.idempotency_key
-    ? supabaseAdmin
-        .schema("core")
-        .from("obligations")
-        .upsert(row, { onConflict: "idempotency_key", ignoreDuplicates: true })
-        .select()
-        .single()
-    : supabaseAdmin
-        .schema("core")
-        .from("obligations")
-        .insert(row)
-        .select()
-        .single();
+  // Try insert first; on duplicate idempotency_key (23505) fetch the existing row
+  const { data, error } = await supabaseAdmin
+    .schema("core")
+    .from("obligations")
+    .insert(row)
+    .select()
+    .single();
 
-  const { data, error } = await query;
+  if (!error) return data as Obligation;
 
-  if (error) throw new Error(`createObligation failed: ${error.message}`);
-  return data as Obligation;
+  // Duplicate idempotency_key — return the existing obligation
+  if (input.idempotency_key && (error.code === "23505" || error.code === "42P10")) {
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .schema("core")
+      .from("obligations")
+      .select()
+      .eq("idempotency_key", input.idempotency_key)
+      .single();
+    if (!fetchErr && existing) return existing as Obligation;
+  }
+
+  throw new Error(`createObligation failed: ${error.message}`);
 }
 
 export async function createReceipt(input: ReceiptInput): Promise<Receipt> {
