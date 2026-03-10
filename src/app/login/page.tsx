@@ -1,51 +1,106 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/supabaseBrowser";
 
 export default function LoginPage() {
+  const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const supabase = supabaseBrowser();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError("Invalid login credentials");
-    } else {
-      window.location.href = "/command";
+
+    try {
+      const supabase = supabaseBrowser();
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError(error.message || "Invalid login credentials");
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
+  }
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#0a0a0a", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ backgroundColor: "#111", border: "1px solid #222", borderRadius: "8px", padding: "40px", width: "100%", maxWidth: "380px" }}>
-        <div style={{ marginBottom: "28px" }}>
-          <p style={{ color: "#666", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "6px" }}>AutoKirk Systems</p>
-          <h1 style={{ color: "#fff", fontSize: "22px", fontWeight: "600", margin: 0 }}>Operator Sign-in</h1>
-          <p style={{ color: "#555", fontSize: "13px", marginTop: "6px" }}>Kernel access requires authentication.</p>
-        </div>
-        <form onSubmit={handleLogin}>
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", color: "#888", fontSize: "11px", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "6px" }}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" style={{ width: "100%", backgroundColor: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "10px 12px", color: "#fff", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+    <main className="min-h-screen flex items-center justify-center px-6">
+      <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-950 p-8 shadow-xl">
+        <h1 className="text-2xl font-semibold text-white">Login</h1>
+        <p className="mt-2 text-sm text-zinc-400">
+          Sign in to access the AutoKirk console.
+        </p>
+
+        <form onSubmit={handleLogin} className="mt-6 space-y-4">
+          <div>
+            <label
+              htmlFor="email"
+              className="mb-2 block text-sm font-medium text-zinc-200"
+            >
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none transition focus:border-zinc-600"
+              required
+            />
           </div>
-          <div style={{ marginBottom: "20px" }}>
-            <label style={{ display: "block", color: "#888", fontSize: "11px", letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: "6px" }}>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" style={{ width: "100%", backgroundColor: "#0d0d0d", border: "1px solid #2a2a2a", borderRadius: "4px", padding: "10px 12px", color: "#fff", fontSize: "14px", outline: "none", boxSizing: "border-box" }} />
+
+          <div>
+            <label
+              htmlFor="password"
+              className="mb-2 block text-sm font-medium text-zinc-200"
+            >
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white outline-none transition focus:border-zinc-600"
+              required
+            />
           </div>
-          {error && <p style={{ color: "#e05252", fontSize: "12px", marginBottom: "16px" }}>{error}</p>}
-          <button type="submit" disabled={loading} style={{ width: "100%", backgroundColor: "#1a56db", color: "#fff", border: "none", borderRadius: "4px", padding: "11px", fontSize: "14px", fontWeight: "500", cursor: loading ? "not-allowed" : "pointer", opacity: loading ? 0.7 : 1 }}>
+
+          {error ? (
+            <div className="rounded-xl border border-red-900 bg-red-950 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-white px-4 py-3 font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
             {loading ? "Signing in..." : "Sign in"}
           </button>
         </form>
       </div>
-    </div>
+    </main>
   );
 }
