@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabaseBrowser";
+import { supabaseBrowser } from "@/lib/supabase/supabaseBrowser";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -13,7 +13,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const supabase = createClient();
+    const supabase = supabaseBrowser();
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setError("Invalid login credentials");
