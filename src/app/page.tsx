@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import Link from "next/link";
 
 const faces = [
@@ -201,4 +202,10 @@ function FaceCard({
       </div>
     </div>
   );
+=======
+import { redirect } from "next/navigation";
+
+export default function Home() {
+  redirect("/command");
+>>>>>>> origin/claude/launch-osm-salesman-We0vX
 }

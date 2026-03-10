@@ -14,6 +14,7 @@ export interface NextActionRow {
   is_breach: boolean | null;
   economic_ref_type: EconomicRefType | string | null;
   economic_ref_id: string | null;
+  location: string | null;
 }
 
 export interface ReceiptRow {
