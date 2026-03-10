@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
+import { createBrowserSupabaseClient } from "@/lib/supabase/createBrowserSupabaseClient()";
 
 export default function LoginPage() {
   const router = useRouter();
