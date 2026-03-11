@@ -1,6 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -8,7 +7,9 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get("next") ?? "/command";
 
   if (code) {
-    const cookieStore = await cookies();
+    // Build the redirect response first so we can set cookies on it
+    const redirectTo = new URL(next, origin);
+    const response = NextResponse.redirect(redirectTo);
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,11 +17,12 @@ export async function GET(request: NextRequest) {
       {
         cookies: {
           getAll() {
-            return cookieStore.getAll();
+            return request.cookies.getAll();
           },
           setAll(cookiesToSet) {
+            // Write auth session cookies directly onto the outgoing response
             cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options);
+              response.cookies.set(name, value, options);
             });
           },
         },
@@ -30,11 +32,10 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      // Redirect to /command (or wherever next points)
-      return NextResponse.redirect(`${origin}${next}`);
+      return response; // session cookies are baked in, redirect to /command
     }
   }
 
-  // Something went wrong — send to login with error flag
-  return NextResponse.redirect(`${origin}/login?error=auth_failed`);
+  // Code missing or exchange failed
+  return NextResponse.redirect(new URL("/login?error=auth_failed", origin));
 }
