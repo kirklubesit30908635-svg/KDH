@@ -18,7 +18,7 @@ export default function LoginPage() {
 
     const { error: otpErr } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: "https://www.autokirk.com/command" },
+      options: { emailRedirectTo: "https://www.autokirk.com/auth/callback" },
     });
 
     setLoading(false);
