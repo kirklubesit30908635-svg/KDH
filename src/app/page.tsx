@@ -58,7 +58,7 @@ export default function AutoKirkHomepage() {
   const connectors = [
     { name: "Stripe", state: "Connected", note: "Payments, payout-adjacent events, economic anchors" },
     { name: "Operator Console", state: "Live", note: "Action, closure, and exception handling surfaces" },
-    { name: "Operational System", state: "Connected", note: "Customer‑specific workflow system feeding operational events" },
+    { name: "Operational System", state: "Connected", note: "Customer-specific workflow system feeding operational events" },
     { name: "Founder Control", state: "Active", note: "Integrity, receipts, command surfaces, billing ops" },
   ];
 
@@ -107,6 +107,45 @@ export default function AutoKirkHomepage() {
     { label: "Action worked", body: "An operator or system process resolves the required work and submits closure evidence." },
     { label: "Receipt emitted", body: "The kernel seals the result into an append-only proof artifact tied to the obligation." },
     { label: "Integrity updated", body: "Leadership sees the operating truth shift immediately across the live control surface." },
+  ];
+
+  const graphNodes = [
+    {
+      title: "Event",
+      value: recentReceipt?.event ?? "stripe.payment_succeeded",
+      detail: "Source activity enters the governed kernel.",
+    },
+    {
+      title: "Requirement",
+      value: recentReceipt?.requirement ?? "verify_service_closure",
+      detail: "The system derives what must happen next.",
+    },
+    {
+      title: "Receipt",
+      value: recentReceipt?.id ?? "rcpt_live_pending",
+      detail: "Verified proof is sealed as a constitutional artifact.",
+    },
+  ];
+
+  const activityFeed = [
+    {
+      time: "14:02",
+      event: "stripe.payment_succeeded",
+      detail: "Revenue event captured for workspace economic anchor inv_1048",
+      outcome: "Requirement issued",
+    },
+    {
+      time: "14:04",
+      event: "operator.closure_submitted",
+      detail: "Closure proof submitted with checklist and operator identity",
+      outcome: "Receipt emitted",
+    },
+    {
+      time: "14:05",
+      event: "kernel.integrity_updated",
+      detail: "Governance signals recomputed after verified closure",
+      outcome: "Integrity +0.4",
+    },
   ];
 
   const routes = [
@@ -214,6 +253,29 @@ export default function AutoKirkHomepage() {
                     <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-300">Healthy / actionable</div>
                   </div>
                   <div className="mt-5 grid gap-4">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-white/60">Recent kernel activity</div>
+                          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">Live system feed</div>
+                        </div>
+                        <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-300">Running</div>
+                      </div>
+                      <div className="mt-4 space-y-3">
+                        {activityFeed.map((item, index) => (
+                          <motion.div key={`${item.time}-${item.event}`} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.25, delay: index * 0.05 }} className="rounded-2xl border border-white/8 bg-neutral-950/80 px-4 py-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-xs text-white/40">{item.time}</div>
+                                <div className="mt-1 text-sm font-medium text-white">{item.event}</div>
+                                <div className="mt-1 text-xs leading-5 text-white/50">{item.detail}</div>
+                              </div>
+                              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/65">{item.outcome}</div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </div>
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-white/60">Closure Rate</span>
@@ -248,13 +310,42 @@ export default function AutoKirkHomepage() {
                       </div>
                     </div>
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="text-sm text-white/60">Recent verified receipt</div>
-                      <div className="mt-3 flex items-center justify-between gap-4 rounded-2xl border border-white/8 bg-neutral-950/80 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
                         <div>
-                          <div className="text-sm font-medium text-white">{recentReceipt?.title ?? "Recent receipt will appear here"}</div>
-                          <div className="mt-1 text-xs text-white/45">{recentReceipt ? `${recentReceipt.operator ?? "operator"} · ${recentReceipt.timestamp ?? "timestamp"}` : "Waiting for sealed proof from the live system"}</div>
+                          <div className="text-sm text-white/60">Verified receipt artifact</div>
+                          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">Constitutional proof object</div>
                         </div>
-                        <div className="inline-flex items-center gap-1 text-xs text-emerald-300"><CheckCircle2 className="h-4 w-4" />Verified</div>
+                        <div className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/60">Immutable</div>
+                      </div>
+                      <div className="mt-3 rounded-2xl border border-white/8 bg-neutral-950/80 px-4 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.16em] text-white/38">Receipt ID</div>
+                            <div className="mt-1 font-mono text-sm text-white">{recentReceipt?.id ?? "rcpt_live_pending"}</div>
+                          </div>
+                          <div className="inline-flex items-center gap-1 text-xs text-emerald-300"><CheckCircle2 className="h-4 w-4" />Verified</div>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Event</div>
+                            <div className="mt-1 text-sm text-white">{recentReceipt?.event ?? "stripe.payment_succeeded"}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Requirement</div>
+                            <div className="mt-1 text-sm text-white">{recentReceipt?.requirement ?? "verify_service_closure"}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Operator</div>
+                            <div className="mt-1 text-sm text-white">{recentReceipt?.operator ?? "operator"}</div>
+                          </div>
+                          <div>
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Sealed</div>
+                            <div className="mt-1 text-sm text-white">{recentReceipt?.timestamp ?? "waiting for live receipt"}</div>
+                          </div>
+                        </div>
+                        <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-white/58">
+                          {recentReceipt?.proof ?? "Proof artifact is emitted by the kernel after verified closure and tied to the governed obligation."}
+                        </div>
                       </div>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3">
@@ -266,6 +357,75 @@ export default function AutoKirkHomepage() {
                 </div>
               </div>
             </motion.div>
+          </div>
+        </section>
+
+        {/* LIVE SYSTEM GRAPH */}
+        <section className="border-y border-white/10 bg-neutral-950">
+          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+              <div>
+                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Live system graph</div>
+                <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+                  Watch the relationship between event, requirement, and receipt.
+                </h2>
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">
+                  AutoKirk should feel like governed infrastructure. This graph makes the system legible by showing how a live event becomes required work and then a sealed proof artifact.
+                </p>
+              </div>
+              <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/20">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-white/38">Governed object graph</div>
+                    <div className="mt-2 text-lg font-semibold text-white">Kernel relationship view</div>
+                  </div>
+                  <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">Live model</div>
+                </div>
+                <div className="mt-8 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-center">
+                  {graphNodes.map((node, index) => (
+                    <React.Fragment key={node.title}>
+                      <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.35, delay: index * 0.08 }} className="rounded-[1.6rem] border border-white/10 bg-neutral-950/80 p-5">
+                        <div className="text-xs uppercase tracking-[0.18em] text-white/38">{node.title}</div>
+                        <div className="mt-3 break-all font-mono text-sm text-white">{node.value}</div>
+                        <p className="mt-3 text-sm leading-6 text-white/58">{node.detail}</p>
+                      </motion.div>
+                      {index < graphNodes.length - 1 && (
+                        <div className="flex items-center justify-center text-white/35">
+                          <ArrowRight className="h-5 w-5" />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </div>
+                <div className="mt-6 rounded-2xl border border-white/8 bg-neutral-950/70 px-4 py-4 text-sm text-white/60">
+                  Integrity impact: <span className="text-white">{integrity !== null ? `${integrity}` : "--"}</span> &middot; The receipt closes the loop and changes the trust state of the business.
+                </div>
+              </div>
+            </div>
+            <div className="mt-16 grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
+              <div>
+                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Why it feels like infrastructure</div>
+                <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">AutoKirk shows the machine, not just the message.</h2>
+                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">Infrastructure products earn trust by exposing state transitions, artifacts, and system health. AutoKirk should feel like a living operational ledger attached to a real business.</p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Activity</div>
+                  <div className="mt-3 text-lg font-semibold text-white">Live kernel feed</div>
+                  <p className="mt-3 text-sm leading-6 text-white/60">Expose real state transitions so visitors see events becoming governed outcomes.</p>
+                </div>
+                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Artifact</div>
+                  <div className="mt-3 text-lg font-semibold text-white">Receipt object</div>
+                  <p className="mt-3 text-sm leading-6 text-white/60">Show the immutable proof artifact, not just the fact that work was completed.</p>
+                </div>
+                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
+                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Signal</div>
+                  <div className="mt-3 text-lg font-semibold text-white">Integrity state</div>
+                  <p className="mt-3 text-sm leading-6 text-white/60">Let the operating health signal explain how trust changes as the loop closes.</p>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -393,6 +553,31 @@ export default function AutoKirkHomepage() {
               <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">Integrity is the single number that shows if your business is actually operating correctly.</h2>
               <p className="mt-6 text-lg leading-8 text-white/68">Instead of reading fragmented metrics, leadership sees one operating truth signal derived from closures, breaches, event coverage, response speed, and proof arrival.</p>
             </div>
+            <div className="mt-10 rounded-[2rem] border border-white/10 bg-neutral-950/70 p-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Integrity composition</div>
+                  <div className="mt-2 text-3xl font-semibold text-white">Integrity is derived from deterministic governance signals.</div>
+                </div>
+                <div className="text-sm text-white/55">This is not a vanity score. It is a weighted operating signal tied to verified system behavior.</div>
+              </div>
+              <div className="mt-8 space-y-4">
+                {integritySignals.map(([title, weight]) => {
+                  const pct = parseInt(weight, 10);
+                  return (
+                    <div key={`bar-${title}`}>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/68">{title}</span>
+                        <span className="text-white/48">{weight}</span>
+                      </div>
+                      <div className="mt-2 h-2 rounded-full bg-white/10">
+                        <div className="h-2 rounded-full bg-white" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
             <div className="mt-12 grid gap-5 lg:grid-cols-5">
               {integritySignals.map(([title, weight, desc]) => (
                 <div key={title} className="rounded-[1.8rem] border border-white/10 bg-neutral-950/70 p-6">
@@ -504,6 +689,26 @@ export default function AutoKirkHomepage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 3 MINUTE DEMO */}
+        <section className="border-y border-white/10 bg-neutral-950">
+          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
+            <div className="max-w-3xl">
+              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">3 minute system demonstration</div>
+              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">See AutoKirk prove operational truth in four screens.</h2>
+              <p className="mt-6 text-lg leading-8 text-white/68">The system is easiest to understand when you watch a real operational moment pass through the kernel. This is the exact flow founders and operators see when AutoKirk attaches to a running business.</p>
+            </div>
+            <div className="mt-14 grid gap-6 lg:grid-cols-4">
+              {[["1","Event enters","A real operational event enters the kernel — payment, service completion, or operator activity."],["2","Requirement issued","The system determines what proof or follow-through must occur before the outcome can be trusted."],["3","Closure submitted","An operator or automated system submits completion with evidence and identity."],["4","Receipt + integrity","The kernel verifies closure, emits a receipt artifact, and updates the integrity signal."]].map(([step, title, body]) => (
+                <div key={title} className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-6">
+                  <div className="text-sm uppercase tracking-[0.18em] text-white/40">Step {step}</div>
+                  <div className="mt-3 text-lg font-semibold text-white">{title}</div>
+                  <p className="mt-3 text-sm leading-6 text-white/60">{body}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
