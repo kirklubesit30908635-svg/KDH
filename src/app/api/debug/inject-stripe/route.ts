@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createObligation, createReceipt } from "@/lib/obligation-store";
 import { stripeEventToObligation } from "@/lib/stripe-obligations";
 
@@ -13,12 +13,7 @@ const ALLOWED_TYPES = [
   "charge.refunded",
 ];
 
-export async function POST(req: NextRequest) {
-  const adminKey = req.headers.get("x-ak-admin-key");
-  if (!adminKey || adminKey !== process.env.AK_ADMIN_KEY) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const stripeType: string = body.type ?? "invoice.paid";
 
