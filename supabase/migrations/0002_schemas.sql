@@ -32,6 +32,8 @@ $$;
 -- ---------------------------------------------------------------
 CREATE OR REPLACE FUNCTION ledger.sha256_hex(input text)
 RETURNS text
-LANGUAGE sql IMMUTABLE STRICT AS $$
+LANGUAGE sql IMMUTABLE STRICT
+SET search_path = pg_catalog, extensions
+AS $$
   SELECT encode(digest(input, 'sha256'), 'hex');
 $$;
