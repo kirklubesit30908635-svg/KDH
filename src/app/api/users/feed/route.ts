@@ -16,7 +16,7 @@ export async function GET() {
     const { data: operators, error: opErr } = await supabaseAdmin
       .schema("core")
       .from("operators")
-      .select("id, handle, auth_uid, created_at")
+      .select("id, handle, auth_uid, created_at, stripe_customer_id, stripe_subscription_id, subscription_status")
       .order("created_at", { ascending: true });
 
     if (opErr) {
@@ -61,6 +61,9 @@ export async function GET() {
       handle: op.handle,
       auth_uid: op.auth_uid,
       created_at: op.created_at,
+      stripe_customer_id: op.stripe_customer_id ?? null,
+      stripe_subscription_id: op.stripe_subscription_id ?? null,
+      subscription_status: op.subscription_status ?? "inactive",
       memberships: membershipsByOperator[op.id] ?? [],
     }));
 

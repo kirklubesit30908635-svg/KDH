@@ -71,14 +71,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  if (opRes.ok) {
-    const rows = await opRes.json() as { subscription_status: string }[];
-    const status = rows[0]?.subscription_status ?? "inactive";
-    if (status !== "active") {
-      return NextResponse.redirect(new URL("/subscribe", request.url));
-    }
+  if (!opRes.ok) {
+    return NextResponse.redirect(new URL("/subscribe", request.url));
   }
-  // If the fetch fails (cold start, env missing) — allow through rather than hard-block
+
+  const rows = await opRes.json() as { subscription_status: string }[];
+  const status = rows[0]?.subscription_status ?? "inactive";
+  if (status !== "active") {
+    return NextResponse.redirect(new URL("/subscribe", request.url));
+  }
 
   return response;
 }
