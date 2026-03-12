@@ -66,6 +66,7 @@ export async function GET() {
 
     return NextResponse.json({
       rows,
+      workspaces: (workspaces ?? []).map((w) => ({ id: w.id, name: w.name, slug: w.slug })),
       stats: {
         total_operators: rows.length,
         linked_operators: rows.filter((r) => r.auth_uid).length,
