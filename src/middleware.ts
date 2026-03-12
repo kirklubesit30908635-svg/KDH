@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -8,14 +9,13 @@ const FOUNDER_EMAIL = 'kirklubesit30908635@gmail.com'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only run on protected routes
   if (!PROTECTED.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
   const response = NextResponse.next()
 
-  const supabase = createServerClient(
+  const ssrClient = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -30,20 +30,22 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user } } = await ssrClient.auth.getUser()
 
-  // Not logged in → login
   if (!user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Founder bypass
   if (user.email === FOUNDER_EMAIL) {
     return response
   }
 
-  // Check subscription status
-  const { data: operator } = await supabase
+  const adminClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+
+  const { data: operator } = await adminClient
     .from('operators')
     .select('subscription_status')
     .eq('auth_uid', user.id)
