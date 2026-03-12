@@ -1,751 +1,106 @@
 'use client'
 
-import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { ArrowRight, ShieldCheck, Workflow, Receipt, Activity, PlugZap, LineChart, CheckCircle2, AlertCircle, Link2 } from "lucide-react";
+import Link from "next/link";
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0 },
-};
-
-export default function AutoKirkHomepage() {
-  const [integrity, setIntegrity] = useState<number | null>(null);
-  const [closureRate, setClosureRate] = useState<number | null>(null);
-  const [proofLag, setProofLag] = useState<string | null>(null);
-  const [openActions, setOpenActions] = useState<number | null>(null);
-  const [recentReceipt, setRecentReceipt] = useState<any | null>(null);
-
-  useEffect(() => {
-    async function loadSystemState() {
-      try {
-        const res = await fetch('/api/system-state');
-        if (!res.ok) return;
-        const data = await res.json();
-        setIntegrity(data.integrity);
-        setClosureRate(data.closure_rate);
-        setProofLag(data.proof_lag);
-        setOpenActions(data.open_actions);
-        setRecentReceipt(data.recent_receipt);
-      } catch (err) {
-        console.error('system state fetch failed', err);
-      }
-    }
-    loadSystemState();
-  }, []);
-
-  const architectureCards = [
-    {
-      eyebrow: "Event ledger",
-      title: "Operational reality becomes immutable.",
-      body: "Critical events are recorded as durable system truth so execution can be measured against what actually happened.",
-      icon: Activity,
-    },
-    {
-      eyebrow: "Requirement engine",
-      title: "Work that matters becomes enforceable.",
-      body: "The system derives required actions from live events, preventing important operational steps from disappearing into assumption.",
-      icon: Workflow,
-    },
-    {
-      eyebrow: "Receipt system",
-      title: "Completion leaves permanent proof.",
-      body: "Verified closures emit receipts that show what happened, who completed it, when it occurred, and whether proof satisfied the rule.",
-      icon: Receipt,
-    },
-  ];
-
-  const connectors = [
-    { name: "Stripe", state: "Connected", note: "Payments, payout-adjacent events, economic anchors" },
-    { name: "Operator Console", state: "Live", note: "Action, closure, and exception handling surfaces" },
-    { name: "Operational System", state: "Connected", note: "Customer-specific workflow system feeding operational events" },
-    { name: "Founder Control", state: "Active", note: "Integrity, receipts, command surfaces, billing ops" },
-  ];
-
-  const painPoints = [
-    "Work is verbally confirmed but never actually proven.",
-    "Revenue leaks through missing follow-through and late discovery.",
-    "Managers see lagging dashboards instead of live operational truth.",
-    "Teams clean up exceptions manually because systems cannot enforce reality.",
-  ];
-
-  const systemFlow = [
-    "Event captured", "Requirement issued", "Action required",
-    "Closure submitted", "Receipt emitted", "Integrity updated",
-  ];
-
-  const integritySignals = [
-    ["Closure Rate", "30%", "How often required work reaches verified completion."],
-    ["Breach Rate", "25%", "How often obligations fail, expire, or break."],
-    ["Event Coverage", "20%", "Whether the business is capturing the reality that matters."],
-    ["Requirement Latency", "15%", "How quickly important work is acknowledged and resolved."],
-    ["Proof Lag", "10%", "How long verification takes after execution is claimed."],
-  ];
-
-  const surfaceCards = [
-    { label: "Action", title: "What must happen next", body: "Operators see the exact work that requires proof before the business can safely move forward." },
-    { label: "Closure", title: "What was completed", body: "Teams submit completion with evidence so operational claims become verifiable rather than assumed." },
-    { label: "Receipt", title: "What the system can certify", body: "The kernel emits an immutable proof artifact once the requirement has been properly satisfied." },
-    { label: "Integrity", title: "What leadership should trust", body: "Founders see whether the business is operating correctly, not just whether work was reported as done." },
-  ];
-
-  const trustSignals = [
-    "Append-only operational proof",
-    "Deterministic enforcement kernel",
-    "Operator-simple action surfaces",
-    "Founder-grade control visibility",
-  ];
-
-  const comparison = {
-    without: ["Service performed", "Closure never submitted", "Payout processed anyway", "Revenue leakage discovered later"],
-    with: ["Event recorded", "Requirement issued", "Action surfaced", "Receipt verified", "Integrity preserved"],
-  };
-
-  const timeline = [
-    { label: "Event captured", body: "Stripe, operator, or customer system activity enters the kernel through governed intake." },
-    { label: "Requirement created", body: "The system determines what must happen before the business can trust the outcome." },
-    { label: "Action worked", body: "An operator or system process resolves the required work and submits closure evidence." },
-    { label: "Receipt emitted", body: "The kernel seals the result into an append-only proof artifact tied to the obligation." },
-    { label: "Integrity updated", body: "Leadership sees the operating truth shift immediately across the live control surface." },
-  ];
-
-  const graphNodes = [
-    {
-      title: "Event",
-      value: recentReceipt?.event ?? "stripe.payment_succeeded",
-      detail: "Source activity enters the governed kernel.",
-    },
-    {
-      title: "Requirement",
-      value: recentReceipt?.requirement ?? "verify_service_closure",
-      detail: "The system derives what must happen next.",
-    },
-    {
-      title: "Receipt",
-      value: recentReceipt?.id ?? "rcpt_live_pending",
-      detail: "Verified proof is sealed as a constitutional artifact.",
-    },
-  ];
-
-  const activityFeed = [
-    {
-      time: "14:02",
-      event: "stripe.payment_succeeded",
-      detail: "Revenue event captured for workspace economic anchor inv_1048",
-      outcome: "Requirement issued",
-    },
-    {
-      time: "14:04",
-      event: "operator.closure_submitted",
-      detail: "Closure proof submitted with checklist and operator identity",
-      outcome: "Receipt emitted",
-    },
-    {
-      time: "14:05",
-      event: "kernel.integrity_updated",
-      detail: "Governance signals recomputed after verified closure",
-      outcome: "Integrity +0.4",
-    },
-  ];
-
-  const routes = [
-    { name: "Integrity", href: "/integrity" },
-    { name: "Action", href: "/command" },
-    { name: "Billing Ops", href: "/billing-ops" },
-    { name: "Receipts", href: "/receipts" },
-    { name: "Login", href: "/login" },
-  ];
-
+export default function Home() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-neutral-950 text-white selection:bg-white selection:text-neutral-950">
-      <div className="absolute inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.14),transparent_40%)]" />
-      <div className="absolute left-1/2 top-[28rem] -z-10 h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-white/5 blur-3xl" />
+    <main className="min-h-screen bg-neutral-950 text-white flex flex-col">
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-neutral-950/75 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-          <a href="/" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/15 bg-white/5 text-sm font-semibold tracking-[0.22em] shadow-[0_12px_40px_rgba(255,255,255,0.08)]">
-              AK
-            </div>
-            <div>
-              <div className="text-sm font-semibold tracking-[0.26em] text-white/80">AUTOKIRK</div>
-              <div className="text-xs text-white/45">Revenue Integrity Operating Layer</div>
-            </div>
-          </a>
-          <nav className="hidden items-center gap-8 text-sm text-white/60 md:flex">
-            <a href="#why" className="transition hover:text-white">Why</a>
-            <a href="#system" className="transition hover:text-white">System</a>
-            <a href="#connect" className="transition hover:text-white">Connect</a>
-            <a href="#integrity" className="transition hover:text-white">Integrity</a>
-            <a href="#surfaces" className="transition hover:text-white">Surfaces</a>
-          </nav>
-          <div className="flex items-center gap-3">
-            <a href="/login" className="hidden rounded-2xl border border-white/15 px-4 py-2 text-sm text-white/80 transition hover:border-white/30 hover:bg-white/5 hover:text-white md:inline-flex">
-              Open System
-            </a>
-            <a href="#connect" className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 transition hover:scale-[1.02]">
-              Connect Operations
-            </a>
+      {/* Nav */}
+      <nav className="flex items-center justify-between px-8 py-5 border-b border-neutral-800">
+        <span className="text-sm font-semibold tracking-widest text-white uppercase">AutoKirk</span>
+        <Link
+          href="/login"
+          className="text-sm px-4 py-2 bg-white text-neutral-950 font-semibold rounded hover:bg-neutral-200 transition-colors"
+        >
+          Sign In
+        </Link>
+      </nav>
+
+      {/* Hero */}
+      <section className="flex flex-col items-center justify-center text-center px-6 py-28 flex-1">
+        <p className="text-xs font-semibold tracking-widest text-neutral-500 uppercase mb-4">
+          Revenue Integrity Operating System
+        </p>
+        <h1 className="text-4xl sm:text-5xl font-bold leading-tight max-w-2xl mb-6">
+          Every dollar earned. Every duty logged. No gaps.
+        </h1>
+        <p className="text-neutral-400 text-lg max-w-xl mb-10">
+          AutoKirk gives automotive dealers a real-time integrity layer — an immutable record of every service event, billing action, and customer obligation so nothing slips through the cracks.
+        </p>
+        <Link
+          href="/login"
+          className="px-6 py-3 bg-white text-neutral-950 font-semibold rounded hover:bg-neutral-200 transition-colors"
+        >
+          Get Access — $50/mo
+        </Link>
+      </section>
+
+      {/* Problems */}
+      <section className="border-t border-neutral-800 px-8 py-20 max-w-5xl mx-auto w-full">
+        <h2 className="text-xs font-semibold tracking-widest text-neutral-500 uppercase mb-10">
+          The problem AutoKirk solves
+        </h2>
+        <div className="grid sm:grid-cols-3 gap-8">
+          <div>
+            <p className="text-white font-semibold mb-2">Revenue leaks silently</p>
+            <p className="text-neutral-400 text-sm leading-relaxed">
+              Dealers lose thousands monthly to unbilled labor, skipped warranty claims, and service tickets that close without receipts. No one catches it until the month-end audit — if at all.
+            </p>
+          </div>
+          <div>
+            <p className="text-white font-semibold mb-2">Operations run on memory</p>
+            <p className="text-neutral-400 text-sm leading-relaxed">
+              Service advisors, technicians, and managers operate on tribal knowledge. When someone leaves or a shift changes, obligations disappear. There is no authoritative record of what was promised, started, or finished.
+            </p>
+          </div>
+          <div>
+            <p className="text-white font-semibold mb-2">Accountability has no proof</p>
+            <p className="text-neutral-400 text-sm leading-relaxed">
+              When a customer disputes a charge or a compliance audit arrives, there is no tamper-evident trail. Logs can be edited. Spreadsheets can be deleted. AutoKirk cannot be rewritten.
+            </p>
           </div>
         </div>
-      </header>
+      </section>
 
-      <main>
-        {/* HERO */}
-        <section className="relative overflow-hidden">
-          <div className="mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[1.04fr_0.96fr] lg:px-8 lg:py-28">
-            <motion.div className="relative z-10" initial="hidden" animate="visible" variants={fadeUp} transition={{ duration: 0.55 }}>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.22em] text-white/70">
-                Kernel-first operational enforcement
-              </div>
-              <h1 className="mt-7 max-w-5xl text-5xl font-semibold leading-[0.92] tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Know with proof that critical work actually happened.
-                <span className="mt-3 block text-white/58">
-                  AutoKirk connects live operations to verified execution, enforceable requirements, and measurable integrity.
-                </span>
-              </h1>
-              <p className="mt-8 max-w-2xl text-lg leading-8 text-white/72 sm:text-xl">
-                The system is already real and running. AutoKirk provides the connective layer that captures operational events, derives required work, verifies completion with receipts, and exposes integrity before revenue disappears into assumption.
-              </p>
-              <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-                <a href="#connect" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-neutral-950 shadow-[0_18px_60px_rgba(255,255,255,0.14)] transition hover:scale-[1.02]">
-                  Connect live operation <ArrowRight className="h-4 w-4" />
-                </a>
-                <a href="/login" className="inline-flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:bg-white/5">
-                  Open founder control
-                </a>
-              </div>
-              <div className="mt-6 flex flex-wrap gap-3">
-                {routes.map((route) => (
-                  <a key={route.href} href={route.href} className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs text-white/70 transition hover:border-white/20 hover:text-white">
-                    {route.name}
-                  </a>
-                ))}
-              </div>
-              <div className="mt-14 grid gap-4 md:grid-cols-3">
-                {architectureCards.map((item, index) => {
-                  const Icon = item.icon;
-                  return (
-                    <motion.div key={item.title} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.4 }} transition={{ duration: 0.4, delay: index * 0.07 }} className="rounded-[1.75rem] border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/25">
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs uppercase tracking-[0.2em] text-white/38">{item.eyebrow}</div>
-                        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70"><Icon className="h-4 w-4" /></div>
-                      </div>
-                      <div className="mt-3 text-lg font-semibold text-white">{item.title}</div>
-                      <p className="mt-3 text-sm leading-6 text-white/60">{item.body}</p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
+      {/* How it works */}
+      <section className="border-t border-neutral-800 px-8 py-20 max-w-5xl mx-auto w-full">
+        <h2 className="text-xs font-semibold tracking-widest text-neutral-500 uppercase mb-10">
+          How it works
+        </h2>
+        <div className="grid sm:grid-cols-4 gap-8">
+          {[
+            { step: "01", label: "Event recorded", body: "Every action — service open, repair complete, payment taken — is written as an immutable event." },
+            { step: "02", label: "Receipt issued", body: "Each event must close with a cryptographically chained receipt. Open events surface as alerts." },
+            { step: "03", label: "Integrity scored", body: "AutoKirk computes a live closure rate across all active workspaces. You always know where you stand." },
+            { step: "04", label: "Proof on demand", body: "Any event, any receipt, any operator action can be retrieved and verified at any time." },
+          ].map(({ step, label, body }) => (
+            <div key={step}>
+              <p className="text-neutral-600 text-xs font-mono mb-2">{step}</p>
+              <p className="text-white font-semibold mb-2">{label}</p>
+              <p className="text-neutral-400 text-sm leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-            <motion.div className="relative z-10" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.12 }}>
-              <div className="rounded-[2.25rem] border border-white/10 bg-white/[0.035] p-5 shadow-[0_24px_100px_rgba(0,0,0,0.5)]">
-                <div className="rounded-[1.75rem] border border-white/10 bg-neutral-900 p-5">
-                  <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.22em] text-white/45">Live operating signal</div>
-                      <div className="mt-2 text-4xl font-semibold tracking-tight">Integrity: {integrity ?? "--"}</div>
-                      <p className="mt-2 text-sm text-white/52">
-                        {integrity !== null ? "Live kernel-backed operating state loaded from the running system." : "Waiting for live kernel state from the running system."}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-sm text-emerald-300">Healthy / actionable</div>
-                  </div>
-                  <div className="mt-5 grid gap-4">
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-sm text-white/60">Recent kernel activity</div>
-                          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">Live system feed</div>
-                        </div>
-                        <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-300">Running</div>
-                      </div>
-                      <div className="mt-4 space-y-3">
-                        {activityFeed.map((item, index) => (
-                          <motion.div key={`${item.time}-${item.event}`} initial={{ opacity: 0, y: 8 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.25, delay: index * 0.05 }} className="rounded-2xl border border-white/8 bg-neutral-950/80 px-4 py-3">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="text-xs text-white/40">{item.time}</div>
-                                <div className="mt-1 text-sm font-medium text-white">{item.event}</div>
-                                <div className="mt-1 text-xs leading-5 text-white/50">{item.detail}</div>
-                              </div>
-                              <div className="rounded-xl border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/65">{item.outcome}</div>
-                            </div>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-white/60">Closure Rate</span>
-                        <span className="font-medium text-white">{closureRate !== null ? `${closureRate}%` : "--"}</span>
-                      </div>
-                      <div className="mt-3 h-2 rounded-full bg-white/10">
-                        <motion.div initial={{ width: 0 }} whileInView={{ width: closureRate !== null ? `${Math.max(0, Math.min(100, closureRate))}%` : "0%" }} viewport={{ once: true }} transition={{ duration: 0.9, ease: "easeOut" }} className="h-2 rounded-full bg-white" />
-                      </div>
-                    </motion.div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <div className="text-sm text-white/60">Proof Lag</div>
-                        <div className="mt-2 text-2xl font-semibold">{proofLag ?? "--"}</div>
-                        <div className="mt-1 text-xs text-white/45">Median verification delay</div>
-                      </div>
-                      <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                        <div className="text-sm text-white/60">Open actions</div>
-                        <div className="mt-2 text-2xl font-semibold">{openActions !== null ? String(openActions).padStart(2, "0") : "--"}</div>
-                        <div className="mt-1 text-xs text-white/45">Awaiting closure or proof</div>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-sm text-white/60">Action Required</div>
-                          <div className="mt-2 text-lg font-medium text-white">Verify missed service closure before payout window</div>
-                        </div>
-                        <div className="rounded-xl border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-200">High risk</div>
-                      </div>
-                      <div className="mt-4 flex items-center justify-between text-xs text-white/45">
-                        <span>Assigned to operator</span><span>Receipt required</span>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="text-sm text-white/60">Verified receipt artifact</div>
-                          <div className="mt-1 text-xs uppercase tracking-[0.18em] text-white/35">Constitutional proof object</div>
-                        </div>
-                        <div className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-white/60">Immutable</div>
-                      </div>
-                      <div className="mt-3 rounded-2xl border border-white/8 bg-neutral-950/80 px-4 py-4">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.16em] text-white/38">Receipt ID</div>
-                            <div className="mt-1 font-mono text-sm text-white">{recentReceipt?.id ?? "rcpt_live_pending"}</div>
-                          </div>
-                          <div className="inline-flex items-center gap-1 text-xs text-emerald-300"><CheckCircle2 className="h-4 w-4" />Verified</div>
-                        </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Event</div>
-                            <div className="mt-1 text-sm text-white">{recentReceipt?.event ?? "stripe.payment_succeeded"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Requirement</div>
-                            <div className="mt-1 text-sm text-white">{recentReceipt?.requirement ?? "verify_service_closure"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Operator</div>
-                            <div className="mt-1 text-sm text-white">{recentReceipt?.operator ?? "operator"}</div>
-                          </div>
-                          <div>
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-white/38">Sealed</div>
-                            <div className="mt-1 text-sm text-white">{recentReceipt?.timestamp ?? "waiting for live receipt"}</div>
-                          </div>
-                        </div>
-                        <div className="mt-4 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2 text-xs text-white/58">
-                          {recentReceipt?.proof ?? "Proof artifact is emitted by the kernel after verified closure and tied to the governed obligation."}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      {routes.slice(0, 3).map((route) => (
-                        <a key={route.href} href={route.href} className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 text-sm text-white/75 transition hover:border-white/20 hover:text-white">{route.name}</a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </section>
+      {/* CTA */}
+      <section className="border-t border-neutral-800 px-8 py-20 text-center">
+        <h2 className="text-2xl font-bold mb-4">Ready to close the gaps?</h2>
+        <p className="text-neutral-400 mb-8">One workspace. Full integrity layer. $50/mo.</p>
+        <Link
+          href="/login"
+          className="px-6 py-3 bg-white text-neutral-950 font-semibold rounded hover:bg-neutral-200 transition-colors"
+        >
+          Activate Access
+        </Link>
+      </section>
 
-        {/* LIVE SYSTEM GRAPH */}
-        <section className="border-y border-white/10 bg-neutral-950">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Live system graph</div>
-                <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">
-                  Watch the relationship between event, requirement, and receipt.
-                </h2>
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">
-                  AutoKirk should feel like governed infrastructure. This graph makes the system legible by showing how a live event becomes required work and then a sealed proof artifact.
-                </p>
-              </div>
-              <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/20">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.18em] text-white/38">Governed object graph</div>
-                    <div className="mt-2 text-lg font-semibold text-white">Kernel relationship view</div>
-                  </div>
-                  <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">Live model</div>
-                </div>
-                <div className="mt-8 grid gap-4 lg:grid-cols-[1fr_auto_1fr_auto_1fr] lg:items-center">
-                  {graphNodes.map((node, index) => (
-                    <React.Fragment key={node.title}>
-                      <motion.div initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.35, delay: index * 0.08 }} className="rounded-[1.6rem] border border-white/10 bg-neutral-950/80 p-5">
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/38">{node.title}</div>
-                        <div className="mt-3 break-all font-mono text-sm text-white">{node.value}</div>
-                        <p className="mt-3 text-sm leading-6 text-white/58">{node.detail}</p>
-                      </motion.div>
-                      {index < graphNodes.length - 1 && (
-                        <div className="flex items-center justify-center text-white/35">
-                          <ArrowRight className="h-5 w-5" />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </div>
-                <div className="mt-6 rounded-2xl border border-white/8 bg-neutral-950/70 px-4 py-4 text-sm text-white/60">
-                  Integrity impact: <span className="text-white">{integrity !== null ? `${integrity}` : "--"}</span> &middot; The receipt closes the loop and changes the trust state of the business.
-                </div>
-              </div>
-            </div>
-            <div className="mt-16 grid gap-12 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Why it feels like infrastructure</div>
-                <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">AutoKirk shows the machine, not just the message.</h2>
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">Infrastructure products earn trust by exposing state transitions, artifacts, and system health. AutoKirk should feel like a living operational ledger attached to a real business.</p>
-              </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Activity</div>
-                  <div className="mt-3 text-lg font-semibold text-white">Live kernel feed</div>
-                  <p className="mt-3 text-sm leading-6 text-white/60">Expose real state transitions so visitors see events becoming governed outcomes.</p>
-                </div>
-                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Artifact</div>
-                  <div className="mt-3 text-lg font-semibold text-white">Receipt object</div>
-                  <p className="mt-3 text-sm leading-6 text-white/60">Show the immutable proof artifact, not just the fact that work was completed.</p>
-                </div>
-                <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Signal</div>
-                  <div className="mt-3 text-lg font-semibold text-white">Integrity state</div>
-                  <p className="mt-3 text-sm leading-6 text-white/60">Let the operating health signal explain how trust changes as the loop closes.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+      {/* Footer */}
+      <footer className="border-t border-neutral-800 px-8 py-6 text-center text-neutral-600 text-xs">
+        © {new Date().getFullYear()} AutoKirk — Kirk Digital Holdings LLC
+      </footer>
 
-        {/* CONNECT */}
-        <section id="connect" className="border-y border-white/10 bg-white/[0.02]">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Connecting pieces</div>
-                <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">Connect AutoKirk to a live operation without replacing the operation.</h2>
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">Existing systems keep doing the work they already do. AutoKirk attaches to revenue-critical workflows, watches the real events, binds them to economic anchors, and becomes the proof and enforcement layer around the operation.</p>
-                <div className="mt-8 rounded-[1.8rem] border border-white/10 bg-neutral-950/70 p-6">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-white/70"><Link2 className="h-4 w-4" /></div>
-                    <div>
-                      <div className="text-sm font-medium text-white">Connection model</div>
-                      <p className="mt-2 text-sm leading-7 text-white/60">Source systems emit activity. AutoKirk normalizes that activity into events, derives requirements, surfaces actions, verifies closures, emits receipts, and updates integrity continuously.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                {connectors.map((connector, index) => (
-                  <motion.div key={connector.name} initial={{ opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.35, delay: index * 0.06 }} className="rounded-[1.8rem] border border-white/10 bg-neutral-950/70 p-6">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-lg font-semibold text-white">{connector.name}</div>
-                        <p className="mt-2 text-sm leading-6 text-white/60">{connector.note}</p>
-                      </div>
-                      <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-300">{connector.state}</div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-14 grid gap-4 lg:grid-cols-5">
-              {[["1","Connect","Bind Stripe, operator surfaces, and live workflow sources."],["2","Capture","Normalize source activity into canonical events and object anchors."],["3","Derive","Issue requirements automatically when proof or follow-through is required."],["4","Verify","Collect closure evidence, emit receipts, and resolve exceptions."],["5","Govern","Update integrity and protect economic movement when proof is missing."]].map(([num, title, body]) => (
-                <div key={title} className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-sm uppercase tracking-[0.18em] text-white/35">{num}</div>
-                  <div className="mt-3 text-lg font-semibold text-white">{title}</div>
-                  <p className="mt-3 text-sm leading-6 text-white/60">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* WHY */}
-        <section id="why" className="border-y border-white/10 bg-neutral-950">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="max-w-3xl">
-              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Why AutoKirk exists</div>
-              <h2 className="mt-3 max-w-4xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">The biggest operational risk is invisible work that never actually gets finished.</h2>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">Revenue loss begins in the gap between claimed execution and provable completion. AutoKirk closes that gap by making required work visible, enforceable, and verifiable.</p>
-            </div>
-            <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {painPoints.map((point) => (
-                <div key={point} className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-6 text-base leading-7 text-white/78 shadow-xl shadow-black/20">{point}</div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* SYSTEM */}
-        <section id="system">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-12 lg:grid-cols-[0.86fr_1.14fr] lg:items-start">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">System flow</div>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">Operational integrity comes from a clear, enforceable system.</h2>
-                <p className="mt-6 max-w-xl text-lg leading-8 text-white/68">AutoKirk is not another dashboard. It is a controlled loop that records operational reality, derives required work, validates completion, and updates trust in the business continuously.</p>
-                <div className="mt-8 rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-6">
-                  <div className="text-xs uppercase tracking-[0.2em] text-white/38">What the system does</div>
-                  <p className="mt-3 text-sm leading-7 text-white/62">Existing tools continue to run the operation. AutoKirk attaches to the workflow, watches real events, issues requirements, surfaces actions, and protects economic movement when proof is missing.</p>
-                </div>
-              </div>
-              <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-6">
-                <div className="space-y-4">
-                  {systemFlow.map((step, index) => (
-                    <motion.div key={step} initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true, amount: 0.35 }} transition={{ duration: 0.35, delay: index * 0.06 }} className="group flex items-center gap-4 rounded-2xl border border-white/8 bg-neutral-950/65 p-4 transition hover:border-white/20 hover:bg-white/[0.04]">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white text-sm font-semibold text-neutral-950">{index + 1}</div>
-                      <div>
-                        <div className="text-sm uppercase tracking-[0.18em] text-white/35">Stage {index + 1}</div>
-                        <div className="mt-1 text-lg font-medium text-white">{step}</div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* TIMELINE */}
-        <section className="border-y border-white/10 bg-neutral-950">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">System timeline</div>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">One governed loop from event to receipt.</h2>
-                <p className="mt-6 max-w-2xl text-lg leading-8 text-white/68">The UI should not feel like disconnected screens. It should reveal one continuous operating loop that the kernel governs end to end.</p>
-              </div>
-              <div className="space-y-4">
-                {timeline.map((item, index) => (
-                  <motion.div key={item.label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.3 }} transition={{ duration: 0.35, delay: index * 0.06 }} className="rounded-[1.7rem] border border-white/10 bg-white/[0.03] p-5">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white text-sm font-semibold text-neutral-950">{index + 1}</div>
-                      <div>
-                        <div className="text-lg font-semibold text-white">{item.label}</div>
-                        <p className="mt-1 text-sm leading-6 text-white/60">{item.body}</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* INTEGRITY */}
-        <section id="integrity" className="border-y border-white/10 bg-white/[0.02]">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="max-w-3xl">
-              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Primary operating KPI</div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">Integrity is the single number that shows if your business is actually operating correctly.</h2>
-              <p className="mt-6 text-lg leading-8 text-white/68">Instead of reading fragmented metrics, leadership sees one operating truth signal derived from closures, breaches, event coverage, response speed, and proof arrival.</p>
-            </div>
-            <div className="mt-10 rounded-[2rem] border border-white/10 bg-neutral-950/70 p-6">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/38">Integrity composition</div>
-                  <div className="mt-2 text-3xl font-semibold text-white">Integrity is derived from deterministic governance signals.</div>
-                </div>
-                <div className="text-sm text-white/55">This is not a vanity score. It is a weighted operating signal tied to verified system behavior.</div>
-              </div>
-              <div className="mt-8 space-y-4">
-                {integritySignals.map(([title, weight]) => {
-                  const pct = parseInt(weight, 10);
-                  return (
-                    <div key={`bar-${title}`}>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-white/68">{title}</span>
-                        <span className="text-white/48">{weight}</span>
-                      </div>
-                      <div className="mt-2 h-2 rounded-full bg-white/10">
-                        <div className="h-2 rounded-full bg-white" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="mt-12 grid gap-5 lg:grid-cols-5">
-              {integritySignals.map(([title, weight, desc]) => (
-                <div key={title} className="rounded-[1.8rem] border border-white/10 bg-neutral-950/70 p-6">
-                  <div className="text-sm uppercase tracking-[0.18em] text-white/40">{weight}</div>
-                  <div className="mt-3 text-lg font-semibold text-white">{title}</div>
-                  <p className="mt-3 text-sm leading-6 text-white/60">{desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* PROOF */}
-        <section id="proof">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-10 lg:grid-cols-[0.95fr_1.05fr]">
-              <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-7">
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Proof over promises</div>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Confidence grows when operations leave a permanent trail of proof.</h2>
-                <p className="mt-5 text-lg leading-8 text-white/68">AutoKirk turns real business activity into append-only proof surfaces that can be used to resolve disputes, expose gaps, and govern what should count as completed work.</p>
-                <div className="mt-8 grid gap-3">
-                  {trustSignals.map((signal, index) => (
-                    <motion.div key={signal} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.3, delay: index * 0.05 }} className="rounded-2xl border border-white/8 bg-neutral-950/65 px-4 py-4 text-sm text-white/78">{signal}</motion.div>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {surfaceCards.map((card) => (
-                  <div key={card.title} className="rounded-[1.8rem] border border-white/10 bg-neutral-950/70 p-6">
-                    <div className="text-xs uppercase tracking-[0.18em] text-white/40">{card.label}</div>
-                    <div className="mt-3 text-lg font-semibold text-white">{card.title}</div>
-                    <p className="mt-3 text-sm leading-6 text-white/60">{card.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* COMPARISON */}
-        <section className="border-y border-white/10 bg-neutral-950">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="grid gap-14 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-              <div>
-                <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">A real operational moment</div>
-                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">When proof is missing, revenue risk appears.</h2>
-                <p className="mt-6 text-lg leading-8 text-white/68">A service can be performed, but if closure never arrives the business cannot safely trust it. AutoKirk detects the missing proof, surfaces an action, and protects the operation before payouts or accounting continue.</p>
-              </div>
-              <div className="grid gap-8 md:grid-cols-2">
-                <div className="rounded-[2rem] border border-red-400/20 bg-red-400/5 p-7">
-                  <div className="flex items-center gap-2 text-sm uppercase tracking-[0.18em] text-red-300"><AlertCircle className="h-4 w-4" />Without AutoKirk</div>
-                  <ul className="mt-6 space-y-4 text-sm text-white/75">{comparison.without.map((item) => <li key={item}>{item}</li>)}</ul>
-                </div>
-                <div className="rounded-[2rem] border border-emerald-400/20 bg-emerald-400/5 p-7">
-                  <div className="flex items-center gap-2 text-sm uppercase tracking-[0.18em] text-emerald-300"><ShieldCheck className="h-4 w-4" />With AutoKirk</div>
-                  <ul className="mt-6 space-y-4 text-sm text-white/75">{comparison.with.map((item) => <li key={item}>{item}</li>)}</ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* SURFACES */}
-        <section id="surfaces" className="border-y border-white/10 bg-white/[0.02]">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="max-w-3xl">
-              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">Inside the system</div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">Operators interact with clear actions, proof, and outcomes.</h2>
-              <p className="mt-6 text-lg leading-8 text-white/68">Teams should not need to think about the kernel. They should see the required action, complete the work, attach proof, and let the system determine whether the business can trust the outcome.</p>
-            </div>
-            <div className="mt-14 grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-              <div className="rounded-[2rem] border border-white/10 bg-neutral-950 p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-white/40">Operator workspace</div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/60"><PlugZap className="h-3.5 w-3.5" />Live surface</div>
-                </div>
-                <div className="mt-5 space-y-4">
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm text-white/60">Action Required</div>
-                        <div className="mt-2 text-lg font-medium text-white">Submit closure proof for completed service before payout release</div>
-                      </div>
-                      <div className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/65">Due now</div>
-                    </div>
-                    <div className="mt-4 flex gap-2">
-                      <button className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-neutral-950">Open action</button>
-                      <button className="rounded-xl border border-white/12 px-3 py-2 text-xs text-white/75">Request exception</button>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="text-sm text-white/60">Required proof</div>
-                      <ul className="mt-3 space-y-2 text-sm text-white/72"><li>Closure confirmation</li><li>Operator identity</li><li>Checklist or media proof</li></ul>
-                    </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.03] p-4">
-                      <div className="text-sm text-white/60">System outcome</div>
-                      <ul className="mt-3 space-y-2 text-sm text-white/72"><li>Receipt emitted</li><li>Requirement satisfied</li><li>Integrity updated</li></ul>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {surfaceCards.map((card) => (
-                  <div key={card.label} className="rounded-[1.8rem] border border-white/10 bg-neutral-950/70 p-6">
-                    <div className="text-xs uppercase tracking-[0.18em] text-white/40">{card.label}</div>
-                    <div className="mt-3 text-lg font-semibold text-white">{card.title}</div>
-                    <p className="mt-3 text-sm leading-6 text-white/60">{card.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* 3 MINUTE DEMO */}
-        <section className="border-y border-white/10 bg-neutral-950">
-          <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
-            <div className="max-w-3xl">
-              <div className="text-sm font-semibold uppercase tracking-[0.22em] text-white/45">3 minute system demonstration</div>
-              <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-5xl">See AutoKirk prove operational truth in four screens.</h2>
-              <p className="mt-6 text-lg leading-8 text-white/68">The system is easiest to understand when you watch a real operational moment pass through the kernel. This is the exact flow founders and operators see when AutoKirk attaches to a running business.</p>
-            </div>
-            <div className="mt-14 grid gap-6 lg:grid-cols-4">
-              {[["1","Event enters","A real operational event enters the kernel — payment, service completion, or operator activity."],["2","Requirement issued","The system determines what proof or follow-through must occur before the outcome can be trusted."],["3","Closure submitted","An operator or automated system submits completion with evidence and identity."],["4","Receipt + integrity","The kernel verifies closure, emits a receipt artifact, and updates the integrity signal."]].map(([step, title, body]) => (
-                <div key={title} className="rounded-[1.8rem] border border-white/10 bg-white/[0.03] p-6">
-                  <div className="text-sm uppercase tracking-[0.18em] text-white/40">Step {step}</div>
-                  <div className="mt-3 text-lg font-semibold text-white">{title}</div>
-                  <p className="mt-3 text-sm leading-6 text-white/60">{body}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="border-t border-white/10 bg-neutral-950">
-          <div className="mx-auto max-w-5xl px-6 py-20 text-center lg:px-8">
-            <div className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.22em] text-white/70">
-              Founder-useful operating visibility
-            </div>
-            <h2 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-6xl">Run your business on verified execution, not assumptions.</h2>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-white/68">AutoKirk helps teams move from invisible operational failure to enforced execution, verifiable proof, and live integrity across the workflows that actually affect revenue.</p>
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <a href="#connect" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-neutral-950 transition hover:scale-[1.02]">
-                Connect operations <ArrowRight className="h-4 w-4" />
-              </a>
-              <a href="/login" className="inline-flex items-center justify-center rounded-2xl border border-white/15 px-6 py-3 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:bg-white/5">
-                Enter AutoKirk
-              </a>
-            </div>
-            <div className="mt-12 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5 text-left">
-                <div className="flex items-center gap-2 text-sm font-medium text-white"><PlugZap className="h-4 w-4 text-white/70" />Live connectors</div>
-                <p className="mt-3 text-sm leading-6 text-white/60">Connect the running system to the kernel instead of rebuilding the operation from scratch.</p>
-              </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5 text-left">
-                <div className="flex items-center gap-2 text-sm font-medium text-white"><Receipt className="h-4 w-4 text-white/70" />Receipt-backed truth</div>
-                <p className="mt-3 text-sm leading-6 text-white/60">Use verifiable receipts as the operating proof layer across actions, closures, and exceptions.</p>
-              </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5 text-left">
-                <div className="flex items-center gap-2 text-sm font-medium text-white"><LineChart className="h-4 w-4 text-white/70" />Founder control</div>
-                <p className="mt-3 text-sm leading-6 text-white/60">See integrity, breaches, actions, and receipts as a live operating control surface, not a passive dashboard.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </main>
-    </div>
+    </main>
   );
 }
