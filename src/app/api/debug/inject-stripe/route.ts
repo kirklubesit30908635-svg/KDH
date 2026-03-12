@@ -37,19 +37,33 @@ export async function POST(req: Request) {
     ...((body.payload as Record<string, unknown>) ?? {}),
   };
 
-  // 1. Insert into ingest.stripe_events so the intake counter increments
-  await supabaseAdmin
-    .schema("ingest")
-    .from("stripe_events")
-    .insert({
-      stripe_event_id: fakeId,
-      stripe_type: `stripe.${stripeType}`,
-      livemode: false,
-      payload: { id: fakeId, type: stripeType, data: { object: fakePayload } },
-    })
+  // 1. Try to bump the Stripe intake counter by inserting into ingest.stripe_events
+  //    Requires a valid provider_connection — look up the first active one
+  const { data: conn } = await supabaseAdmin
+    .schema("core")
+    .from("provider_connections")
+    .select("id, workspace_id")
+    .eq("provider", "stripe")
+    .eq("is_active", true)
+    .limit(1)
     .maybeSingle();
 
-  // 2. Create obligation as OPEN — no receipt yet, shows in the queue
+  if (conn) {
+    await supabaseAdmin
+      .schema("ingest")
+      .from("stripe_events")
+      .insert({
+        provider_connection_id: conn.id,
+        workspace_id: conn.workspace_id,
+        stripe_event_id: fakeId,
+        stripe_type: `stripe.${stripeType}`,
+        livemode: false,
+        stripe_created_at: new Date().toISOString(),
+        payload: { id: fakeId, type: stripeType, data: { object: fakePayload } },
+      });
+  }
+
+  // 2. Create obligation as OPEN — shows in queue, receipt created when sealed
   const oblInput = stripeEventToObligation(stripeType, fakePayload);
   oblInput.idempotency_key = `debug-inject-${fakeId}`;
 
@@ -60,7 +74,6 @@ export async function POST(req: Request) {
     stripe_type: stripeType,
     obligation_id: obligation.id,
     title: obligation.title,
-    status: "open",
-    note: "Obligation is OPEN — seal it from the Billing page to generate a receipt",
+    stripe_intake_incremented: !!conn,
   });
 }
