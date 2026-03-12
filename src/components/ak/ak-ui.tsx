@@ -1,32 +1,52 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
+
+// ─── Shell ─────────────────────────────────────────────────────────────────────
 
 export function AkShell(props: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
-      {/* subtle “submarine” atmosphere */}
-      <div className="pointer-events-none fixed inset-0 opacity-60">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#6b4e12]/10 blur-3xl" />
-        <div className="absolute top-40 left-10 h-[420px] w-[420px] rounded-full bg-indigo-500/5 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[520px] w-[520px] rounded-full bg-purple-500/5 blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-neutral-950 text-white">
+      {/* Subtle radial glow */}
+      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_50%)]" />
 
-      <div className="relative mx-auto w-full max-w-6xl px-6 py-10">
-        <div className="text-xs font-extrabold tracking-[0.32em] text-[#d6b24a]/90">
-          OLD SALT MARINE
-        </div>
-
-        <div className="mt-5">
-          <h1 className="text-5xl font-extrabold leading-[1.05] text-[#d6b24a] drop-shadow-[0_0_28px_rgba(214,178,74,0.12)]">
-            {props.title}
-          </h1>
-          {props.subtitle ? (
-            <div className="mt-4 max-w-3xl text-base text-zinc-400">
-              {props.subtitle}
+      {/* Header bar — matches homepage/login */}
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl">
+        <div className="flex items-center justify-between px-6 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-xs font-semibold tracking-[0.22em]">
+              AK
             </div>
-          ) : null}
+            <div>
+              <div className="text-sm font-semibold tracking-[0.26em] text-white/80">AUTOKIRK</div>
+              <div className="text-[10px] text-white/40">Revenue Integrity Operating Layer</div>
+            </div>
+          </Link>
+          <div className="flex items-center gap-5">
+            {/* Kernel live indicator */}
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+              <span className="text-[10px] uppercase tracking-[0.18em] text-white/45">Kernel live</span>
+            </div>
+          </div>
         </div>
+      </header>
+
+      <div className="mx-auto w-full max-w-6xl px-6 py-10">
+        {/* Page eyebrow */}
+        <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-white/30">
+          // {props.title}
+        </div>
+
+        {/* Page title */}
+        <h1 className="text-4xl font-semibold tracking-tight text-white">
+          {props.title}
+        </h1>
+
+        {props.subtitle && (
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">{props.subtitle}</p>
+        )}
 
         <div className="mt-10">{props.children}</div>
       </div>
@@ -34,13 +54,13 @@ export function AkShell(props: { title: string; subtitle?: string; children: Rea
   );
 }
 
+// ─── Panel ─────────────────────────────────────────────────────────────────────
+
 export function AkPanel(props: { className?: string; children: React.ReactNode }) {
   return (
     <div
       className={[
-        "rounded-2xl border border-[#2a2516] bg-[#070707]/90",
-        "shadow-[0_0_0_1px_rgba(214,178,74,0.08),0_18px_60px_rgba(0,0,0,0.55)]",
-        "backdrop-blur-sm",
+        "rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm",
         props.className ?? "",
       ].join(" ")}
     >
@@ -49,20 +69,25 @@ export function AkPanel(props: { className?: string; children: React.ReactNode }
   );
 }
 
-export function AkBadge(props: { tone?: "gold" | "muted" | "danger"; children: React.ReactNode }) {
+// ─── Badge ─────────────────────────────────────────────────────────────────────
+
+export function AkBadge(props: {
+  tone?: "gold" | "primary" | "muted" | "danger";
+  children: React.ReactNode;
+}) {
   const tone = props.tone ?? "muted";
   const cls =
-    tone === "gold"
-      ? "border-[#3a2f12] bg-[#0d0a03] text-[#d6b24a]"
+    tone === "gold" || tone === "primary"
+      ? "border-white/20 bg-white/[0.08] text-white/90"
       : tone === "danger"
-      ? "border-[#3a0f0f] bg-[#120606] text-[#ff3b30]"
-      : "border-[#222] bg-[#0b0b0b] text-zinc-300";
+      ? "border-red-400/20 bg-red-400/5 text-red-300"
+      : "border-white/10 bg-white/[0.04] text-white/50";
 
   return (
     <span
       className={[
         "inline-flex items-center rounded-full border px-2.5 py-1",
-        "text-[11px] font-extrabold tracking-wide",
+        "text-[11px] font-semibold tracking-wide",
         cls,
       ].join(" ")}
     >
@@ -71,15 +96,21 @@ export function AkBadge(props: { tone?: "gold" | "muted" | "danger"; children: R
   );
 }
 
-export function AkSectionHeader(props: { label: string; count?: number; right?: React.ReactNode }) {
+// ─── Section Header ───────────────────────────────────────────────────────────
+
+export function AkSectionHeader(props: {
+  label: string;
+  count?: number;
+  right?: React.ReactNode;
+}) {
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <div className="text-xs font-extrabold tracking-[0.22em] text-zinc-500">
-          {props.label.toUpperCase()}
+        <div className="text-[10px] font-semibold tracking-[0.22em] text-white/35 uppercase">
+          {props.label}
         </div>
         {typeof props.count === "number" ? (
-          <div className="text-xs font-bold text-zinc-600">{props.count}</div>
+          <div className="text-[10px] text-white/25">{props.count}</div>
         ) : null}
       </div>
       {props.right ? <div>{props.right}</div> : null}
@@ -87,37 +118,46 @@ export function AkSectionHeader(props: { label: string; count?: number; right?: 
   );
 }
 
+// ─── Input ────────────────────────────────────────────────────────────────────
+
 export function AkInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
       className={[
-        "w-full rounded-xl border border-[#2a2516] bg-black px-4 py-3 text-sm text-zinc-100",
-        "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#d6b24a]/30",
+        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white",
+        "placeholder:text-white/25 outline-none transition",
+        "focus:border-white/30 focus:bg-white/[0.06]",
         props.className ?? "",
       ].join(" ")}
     />
   );
 }
 
-export function AkButton(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "gold" | "muted" | "danger" }) {
-  const tone = props.tone ?? "gold";
+// ─── Button ───────────────────────────────────────────────────────────────────
+
+export function AkButton(
+  props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+    tone?: "gold" | "primary" | "muted" | "danger";
+  }
+) {
+  const { tone = "primary", className, ...rest } = props;
+
   const cls =
-    tone === "gold"
-      ? "bg-[#d6b24a] text-black hover:brightness-105"
+    tone === "gold" || tone === "primary"
+      ? "bg-white text-neutral-950 border-transparent hover:scale-[1.01] hover:shadow-[0_8px_32px_rgba(255,255,255,0.12)]"
       : tone === "danger"
-      ? "bg-[#ff3b30] text-black hover:brightness-105"
-      : "bg-[#121212] text-zinc-200 hover:bg-[#181818]";
+      ? "bg-red-400/10 text-red-300 border-red-400/20 hover:bg-red-400/20"
+      : "bg-white/[0.04] text-white/70 border-white/10 hover:bg-white/[0.08]";
 
   return (
     <button
-      {...props}
+      {...rest}
       className={[
-        "inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-extrabold",
-        "border border-[#2a2516] shadow-[0_0_0_1px_rgba(214,178,74,0.10)]",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
+        "inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-semibold transition",
+        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
         cls,
-        props.className ?? "",
+        className ?? "",
       ].join(" ")}
     />
   );

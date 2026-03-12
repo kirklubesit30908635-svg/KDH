@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Old Salt Marine — Sales",
-  description: "Sales inbox and action tracker",
+  title: "AutoKirk — Revenue Integrity Operating Layer",
+  description: "Governance kernel for revenue operations. Obligations, receipts, and enforcement in one system.",
 };
 
 export default function RootLayout({

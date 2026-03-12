@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "Supabase Local (autokirk-kernel)",
-      "runtimeExecutable": "supabase",
-      "runtimeArgs": ["start"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "supabase start; tail -f /dev/null"],
       "port": 54321,
       "autoPort": false
     },
