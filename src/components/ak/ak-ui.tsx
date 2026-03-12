@@ -2,131 +2,113 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
-const NAV_LINKS = [
-  { href: "/command",    label: "Inbox" },
-  { href: "/integrity",  label: "Integrity" },
-  { href: "/billing-ops", label: "Billing" },
-  { href: "/advertising", label: "Advertising" },
-  { href: "/receipts",   label: "Receipts" },
-  { href: "/users",      label: "Users" },
-] as const;
-
-// ─── Shell ─────────────────────────────────────────────────────────────────────
+// ─── Shell ──────────────────────────────────────────────────────────────────
 
 export function AkShell(props: { title: string; subtitle?: string; children: React.ReactNode }) {
-  const pathname = usePathname();
-
   return (
-    <div className="min-h-screen bg-neutral-950 text-white">
-      {/* Subtle radial glow */}
-      <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_50%)]" />
+    <div style={{
+      minHeight: "100vh",
+      background: "#000",
+      color: "#fff",
+      fontFamily: "monospace",
+    }}>
+      {/* Top-left identity line */}
+      <div style={{
+        padding: "8px 12px",
+        fontSize: 11,
+        letterSpacing: "0.18em",
+        color: "#fff",
+        fontWeight: 700,
+        textTransform: "uppercase",
+        borderBottom: "1px solid #111",
+      }}>
+        AUTO KIRK &bull; OPERATOR CONSOLE
+      </div>
 
-      {/* Header bar */}
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-6 py-3">
-          <Link href="/" className="flex items-center gap-3 flex-shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-xs font-semibold tracking-[0.22em]">
-              AK
-            </div>
-            <div className="hidden sm:block">
-              <div className="text-xs font-semibold tracking-[0.26em] text-white/80">AUTOKIRK</div>
-            </div>
-          </Link>
-
-          {/* Nav links */}
-          <nav className="flex items-center gap-1">
-            {NAV_LINKS.map(({ href, label }) => {
-              const active = pathname === href;
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  className={[
-                    "rounded-xl px-3 py-1.5 text-[11px] font-semibold tracking-wide transition",
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-white/40 hover:text-white/80 hover:bg-white/[0.05]",
-                  ].join(" ")}
-                >
-                  {label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-            <span className="text-[10px] uppercase tracking-[0.18em] text-white/45 hidden sm:inline">Kernel live</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="mx-auto w-full max-w-6xl px-6 py-10">
-        {/* Page eyebrow */}
-        <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-white/30">
-          // {props.title}
-        </div>
-
-        {/* Page title */}
-        <h1 className="text-4xl font-semibold tracking-tight text-white">
+      <div style={{ padding: "16px 12px" }}>
+        {/* Gold page title */}
+        <h1 style={{
+          fontSize: 48,
+          fontWeight: 800,
+          color: "#c8960c",
+          margin: "0 0 4px 0",
+          lineHeight: 1.1,
+          fontFamily: "monospace",
+        }}>
           {props.title}
         </h1>
 
         {props.subtitle && (
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/50">{props.subtitle}</p>
+          <p style={{
+            fontSize: 13,
+            color: "#888",
+            margin: "0 0 20px 0",
+            fontFamily: "monospace",
+          }}>
+            {props.subtitle}
+          </p>
         )}
 
-        <div className="mt-10">{props.children}</div>
+        <div style={{ marginTop: 8 }}>{props.children}</div>
       </div>
     </div>
   );
 }
 
-// ─── Panel ─────────────────────────────────────────────────────────────────────
+// ─── Panel ──────────────────────────────────────────────────────────────────
 
 export function AkPanel(props: { className?: string; children: React.ReactNode }) {
   return (
     <div
-      className={[
-        "rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm",
-        props.className ?? "",
-      ].join(" ")}
+      className={props.className ?? ""}
+      style={{
+        border: "1px solid #222",
+        borderRadius: 4,
+        background: "#080808",
+        padding: "12px 14px",
+        marginBottom: 8,
+      }}
     >
       {props.children}
     </div>
   );
 }
 
-// ─── Badge ─────────────────────────────────────────────────────────────────────
+// ─── Badge ──────────────────────────────────────────────────────────────────
 
 export function AkBadge(props: {
   tone?: "gold" | "primary" | "muted" | "danger";
   children: React.ReactNode;
 }) {
   const tone = props.tone ?? "muted";
-  const cls =
+
+  const style: React.CSSProperties =
     tone === "gold" || tone === "primary"
-      ? "border-white/20 bg-white/[0.08] text-white/90"
+      ? { background: "#c8960c", color: "#000", border: "1px solid #c8960c" }
       : tone === "danger"
-      ? "border-red-400/20 bg-red-400/5 text-red-300"
-      : "border-white/10 bg-white/[0.04] text-white/50";
+      ? { background: "#1a0000", color: "#ff4444", border: "1px solid #550000" }
+      : { background: "#111", color: "#666", border: "1px solid #2a2a2a" };
 
   return (
-    <span
-      className={[
-        "inline-flex items-center rounded-full border px-2.5 py-1",
-        "text-[11px] font-semibold tracking-wide",
-        cls,
-      ].join(" ")}
-    >
+    <span style={{
+      display: "inline-flex",
+      alignItems: "center",
+      padding: "2px 8px",
+      borderRadius: 3,
+      fontSize: 10,
+      fontWeight: 700,
+      letterSpacing: "0.12em",
+      textTransform: "uppercase",
+      fontFamily: "monospace",
+      ...style,
+    }}>
       {props.children}
     </span>
   );
 }
 
-// ─── Section Header ───────────────────────────────────────────────────────────
+// ─── Section Header ─────────────────────────────────────────────────────────
 
 export function AkSectionHeader(props: {
   label: string;
@@ -134,13 +116,27 @@ export function AkSectionHeader(props: {
   right?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <div className="text-[10px] font-semibold tracking-[0.22em] text-white/35 uppercase">
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+      marginBottom: 6,
+      marginTop: 16,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.22em",
+          color: "#555",
+          textTransform: "uppercase",
+          fontFamily: "monospace",
+        }}>
           {props.label}
         </div>
         {typeof props.count === "number" ? (
-          <div className="text-[10px] text-white/25">{props.count}</div>
+          <div style={{ fontSize: 10, color: "#444", fontFamily: "monospace" }}>{props.count}</div>
         ) : null}
       </div>
       {props.right ? <div>{props.right}</div> : null}
@@ -148,47 +144,66 @@ export function AkSectionHeader(props: {
   );
 }
 
-// ─── Input ────────────────────────────────────────────────────────────────────
+// ─── Input ──────────────────────────────────────────────────────────────────
 
 export function AkInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  const { style, ...rest } = props;
   return (
     <input
-      {...props}
-      className={[
-        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white",
-        "placeholder:text-white/25 outline-none transition",
-        "focus:border-white/30 focus:bg-white/[0.06]",
-        props.className ?? "",
-      ].join(" ")}
+      {...rest}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        borderRadius: 3,
+        border: "1px solid #2a2a2a",
+        background: "#050505",
+        padding: "10px 12px",
+        fontSize: 13,
+        color: "#fff",
+        outline: "none",
+        fontFamily: "monospace",
+        ...style,
+      }}
     />
   );
 }
 
-// ─── Button ───────────────────────────────────────────────────────────────────
+// ─── Button ─────────────────────────────────────────────────────────────────
 
 export function AkButton(
   props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
     tone?: "gold" | "primary" | "muted" | "danger";
   }
 ) {
-  const { tone = "primary", className, ...rest } = props;
+  const { tone = "gold", style, ...rest } = props;
 
-  const cls =
-    tone === "gold" || tone === "primary"
-      ? "bg-white text-neutral-950 border-transparent hover:scale-[1.01] hover:shadow-[0_8px_32px_rgba(255,255,255,0.12)]"
+  const toneStyle: React.CSSProperties =
+    tone === "gold"
+      ? { background: "#c8960c", color: "#000", border: "1px solid #c8960c" }
+      : tone === "primary"
+      ? { background: "#fff", color: "#000", border: "1px solid #fff" }
       : tone === "danger"
-      ? "bg-red-400/10 text-red-300 border-red-400/20 hover:bg-red-400/20"
-      : "bg-white/[0.04] text-white/70 border-white/10 hover:bg-white/[0.08]";
+      ? { background: "#1a0000", color: "#ff4444", border: "1px solid #550000" }
+      : { background: "#111", color: "#888", border: "1px solid #2a2a2a" };
 
   return (
     <button
       {...rest}
-      className={[
-        "inline-flex items-center justify-center rounded-2xl border px-4 py-3 text-sm font-semibold transition",
-        "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100",
-        cls,
-        className ?? "",
-      ].join(" ")}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "6px 14px",
+        borderRadius: 3,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: "0.08em",
+        cursor: "pointer",
+        fontFamily: "monospace",
+        textTransform: "uppercase",
+        ...toneStyle,
+        ...style,
+      }}
     />
   );
 }
