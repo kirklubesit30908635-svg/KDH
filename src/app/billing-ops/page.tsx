@@ -96,7 +96,6 @@ export default function BillingOpsPage() {
         alert(`Seal failed: ${json.error ?? "Unknown error"}`);
       } else {
         setRows((prev) => prev.filter((r) => r.obligation_id !== obligationId));
-        // Refresh stats count
         fetch("/api/billing-ops/stats")
           .then((r) => r.json())
           .then((s) => setStats(s))
@@ -124,8 +123,8 @@ export default function BillingOpsPage() {
       subtitle="Stripe intake → obligations → closure → receipts"
     >
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-zinc-500">
-          <div className="h-1 w-1 rounded-full bg-[#d6b24a] animate-pulse" />
+        <div className="flex items-center gap-3 text-sm text-white/35">
+          <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
           Loading pipeline…
         </div>
       )}
@@ -133,10 +132,10 @@ export default function BillingOpsPage() {
       {!loading && err && (
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
-          <div className="text-sm text-zinc-300">{err}</div>
+          <div className="text-sm text-white/60">{err}</div>
           <button
             onClick={loadData}
-            className="mt-4 text-xs font-bold text-[#d6b24a] hover:underline"
+            className="mt-4 text-xs font-bold text-white/60 hover:text-white hover:underline transition"
           >
             Retry →
           </button>
@@ -149,61 +148,61 @@ export default function BillingOpsPage() {
           {stats && (
             <div className="mb-8 grid gap-3 md:grid-cols-4">
               <AkPanel className="p-5 relative overflow-hidden">
-                <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-2">
+                <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-2">
                   STRIPE INTAKE
                 </div>
-                <div className="text-4xl font-extrabold text-[#d6b24a]">
+                <div className="text-4xl font-extrabold text-white">
                   {stats.stripe_events_total}
                 </div>
-                <div className="mt-1 text-xs text-zinc-500">raw events</div>
-                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-zinc-700 text-lg hidden md:block">→</div>
+                <div className="mt-1 text-xs text-white/35">raw events</div>
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-white/20 text-lg hidden md:block">→</div>
               </AkPanel>
 
               <AkPanel className="p-5 relative overflow-hidden">
-                <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-2">
+                <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-2">
                   OPEN
                 </div>
                 <div className="text-4xl font-extrabold text-amber-400">
                   {stats.open_obligations}
                 </div>
-                <div className="mt-1 text-xs text-zinc-500">pending duties</div>
-                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-zinc-700 text-lg hidden md:block">→</div>
+                <div className="mt-1 text-xs text-white/35">pending duties</div>
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-white/20 text-lg hidden md:block">→</div>
               </AkPanel>
 
               <AkPanel className="p-5 relative overflow-hidden">
-                <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-2">
+                <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-2">
                   SEALED
                 </div>
                 <div className="text-4xl font-extrabold text-emerald-400">
                   {stats.sealed_obligations}
                 </div>
-                <div className="mt-1 text-xs text-zinc-500">closed with receipt</div>
-                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-zinc-700 text-lg hidden md:block">→</div>
+                <div className="mt-1 text-xs text-white/35">closed with receipt</div>
+                <div className="absolute top-1/2 -right-2 -translate-y-1/2 text-white/20 text-lg hidden md:block">→</div>
               </AkPanel>
 
               <AkPanel className="p-5">
-                <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-2">
+                <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-2">
                   CLOSURE RATE
                 </div>
-                <div className="text-4xl font-extrabold text-[#d6b24a]">
+                <div className="text-4xl font-extrabold text-white">
                   {closureRate !== null ? `${closureRate}%` : "—"}
                 </div>
-                <div className="mt-1 text-xs text-zinc-500">sealed / total</div>
+                <div className="mt-1 text-xs text-white/35">sealed / total</div>
               </AkPanel>
             </div>
           )}
 
-          <div className="h-px bg-gradient-to-r from-[#d6b24a]/15 via-[#d6b24a]/5 to-transparent mb-8" />
+          <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mb-8" />
 
           {/* Open obligations */}
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="text-3xl font-extrabold text-zinc-100">{rows.length}</span>
-              <span className="text-sm text-zinc-500">open billing obligations</span>
+              <span className="text-3xl font-extrabold text-white">{rows.length}</span>
+              <span className="text-sm text-white/35">open billing obligations</span>
             </div>
             <button
               onClick={loadData}
-              className="text-xs font-bold text-zinc-500 hover:text-[#d6b24a] transition"
+              className="text-xs font-bold text-white/35 hover:text-white transition"
             >
               Refresh
             </button>
@@ -212,10 +211,10 @@ export default function BillingOpsPage() {
           {rows.length === 0 && (
             <AkPanel className="p-10 text-center">
               <div className="text-4xl mb-3">✓</div>
-              <div className="text-base font-extrabold text-zinc-100 mb-1">
+              <div className="text-base font-extrabold text-white mb-1">
                 All Clear
               </div>
-              <div className="text-sm text-zinc-500">
+              <div className="text-sm text-white/35">
                 No open billing obligations.
               </div>
             </AkPanel>
@@ -238,25 +237,25 @@ export default function BillingOpsPage() {
                                 <AkBadge tone="danger">BREACH</AkBadge>
                               )}
                             </div>
-                            <div className="text-base font-extrabold text-zinc-100 leading-snug">
+                            <div className="text-base font-extrabold text-white leading-snug">
                               {safeStr(row.title)}
                             </div>
                             {row.why && (
-                              <div className="mt-1.5 text-sm text-zinc-400">
+                              <div className="mt-1.5 text-sm text-white/45">
                                 {row.why}
                               </div>
                             )}
-                            <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
+                            <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/35">
                               {row.due_at && (
                                 <span>
                                   Due:{" "}
-                                  <span className="text-zinc-300">{fmtDue(row.due_at)}</span>
+                                  <span className="text-white/60">{fmtDue(row.due_at)}</span>
                                 </span>
                               )}
                               {row.economic_ref_id && (
                                 <span>
                                   Ref:{" "}
-                                  <span className="text-zinc-300">
+                                  <span className="text-white/60">
                                     {safeStr(row.economic_ref_type)} {safeStr(row.economic_ref_id)}
                                   </span>
                                 </span>
@@ -264,7 +263,7 @@ export default function BillingOpsPage() {
                               {row.age_hours != null && (
                                 <span>
                                   Age:{" "}
-                                  <span className="text-zinc-300">{Math.round(row.age_hours)}h</span>
+                                  <span className="text-white/60">{Math.round(row.age_hours)}h</span>
                                 </span>
                               )}
                             </div>
@@ -294,13 +293,13 @@ export default function BillingOpsPage() {
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/receipts"
-              className="rounded-xl bg-[#d6b24a] text-black px-4 py-2.5 text-sm font-extrabold hover:brightness-105 transition"
+              className="rounded-xl bg-white text-neutral-950 px-4 py-2.5 text-sm font-extrabold hover:bg-white/90 transition"
             >
               All Receipts →
             </Link>
             <Link
               href="/command"
-              className="rounded-xl bg-[#121212] text-zinc-200 border border-[#2a2516] px-4 py-2.5 text-sm font-extrabold hover:bg-[#181818] transition"
+              className="rounded-xl bg-white/[0.04] text-white/70 border border-white/10 px-4 py-2.5 text-sm font-extrabold hover:bg-white/[0.07] transition"
             >
               Command View →
             </Link>
@@ -315,18 +314,18 @@ export default function BillingOpsPage() {
             className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setInspecting(null)}
           />
-          <div className="relative w-full max-w-md bg-[#070707] border-l border-[#2a2516] overflow-y-auto shadow-2xl">
+          <div className="relative w-full max-w-md bg-neutral-950 border-l border-white/10 overflow-y-auto shadow-2xl">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <div className="text-xs font-extrabold tracking-[0.22em] text-zinc-500 mb-1">
+                  <div className="text-xs font-extrabold tracking-[0.22em] text-white/35 mb-1">
                     BILLING OBLIGATION
                   </div>
-                  <h2 className="text-lg font-extrabold text-[#d6b24a]">Inspect</h2>
+                  <h2 className="text-lg font-extrabold text-white">Inspect</h2>
                 </div>
                 <button
                   onClick={() => setInspecting(null)}
-                  className="rounded-xl border border-[#2a2516] bg-[#0d0d0d] px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition"
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white/40 hover:text-white transition"
                 >
                   ✕ Close
                 </button>
@@ -349,10 +348,10 @@ export default function BillingOpsPage() {
                   ] as [string, string | null][]
                 ).map(([label, value]) => (
                   <AkPanel key={label} className="p-3">
-                    <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">
+                    <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">
                       {label.toUpperCase()}
                     </div>
-                    <div className="text-zinc-200 break-all text-sm">{value || "—"}</div>
+                    <div className="text-white/70 break-all text-sm">{value || "—"}</div>
                   </AkPanel>
                 ))}
               </div>

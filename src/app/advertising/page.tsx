@@ -74,8 +74,8 @@ export default function AdvertisingPage() {
       subtitle="Spend → Lead → Follow-Up → Sale → Margin → Renewal Gate"
     >
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-zinc-500">
-          <div className="h-1 w-1 rounded-full bg-[#d6b24a] animate-pulse" />
+        <div className="flex items-center gap-3 text-sm text-white/35">
+          <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
           Loading…
         </div>
       )}
@@ -83,7 +83,7 @@ export default function AdvertisingPage() {
       {!loading && err && (
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
-          <div className="text-sm text-zinc-300">{err}</div>
+          <div className="text-sm text-white/60">{err}</div>
         </AkPanel>
       )}
 
@@ -91,18 +91,18 @@ export default function AdvertisingPage() {
         <>
           {/* summary bar */}
           <div className="mb-8 flex items-center gap-3">
-            <span className="text-3xl font-extrabold text-zinc-100">{totalOpen}</span>
-            <span className="text-sm text-zinc-500">open obligations</span>
+            <span className="text-3xl font-extrabold text-white">{totalOpen}</span>
+            <span className="text-sm text-white/35">open obligations</span>
           </div>
 
           {/* all clear */}
           {totalOpen === 0 && (
             <AkPanel className="p-10 text-center">
               <div className="text-4xl mb-3">✓</div>
-              <div className="text-base font-extrabold text-zinc-100 mb-1">
+              <div className="text-base font-extrabold text-white mb-1">
                 All Clear
               </div>
-              <div className="text-sm text-zinc-500">
+              <div className="text-sm text-white/35">
                 No open advertising obligations.
               </div>
             </AkPanel>
@@ -123,25 +123,25 @@ export default function AdvertisingPage() {
                           {row.is_breach && <AkBadge tone="danger">BREACH</AkBadge>}
                         </div>
 
-                        <div className="text-base font-extrabold text-zinc-100 leading-snug">
+                        <div className="text-base font-extrabold text-white leading-snug">
                           {safeStr(row.title)}
                         </div>
 
                         {row.why && (
-                          <div className="mt-1.5 text-sm text-zinc-400">{row.why}</div>
+                          <div className="mt-1.5 text-sm text-white/45">{row.why}</div>
                         )}
 
-                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
+                        <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/35">
                           {row.due_at && (
                             <span>
                               Due:{" "}
-                              <span className="text-zinc-300">{fmtDue(row.due_at)}</span>
+                              <span className="text-white/60">{fmtDue(row.due_at)}</span>
                             </span>
                           )}
                           {row.economic_ref_id && (
                             <span>
                               Ref:{" "}
-                              <span className="text-zinc-300">
+                              <span className="text-white/60">
                                 {safeStr(row.economic_ref_type)} {safeStr(row.economic_ref_id)}
                               </span>
                             </span>
@@ -149,7 +149,7 @@ export default function AdvertisingPage() {
                           {row.age_hours != null && (
                             <span>
                               Age:{" "}
-                              <span className="text-zinc-300">
+                              <span className="text-white/60">
                                 {Math.round(row.age_hours)}h
                               </span>
                             </span>
@@ -164,14 +164,14 @@ export default function AdvertisingPage() {
           )}
 
           {/* divider */}
-          <div className="my-10 h-px bg-gradient-to-r from-[#d6b24a]/15 via-[#d6b24a]/5 to-transparent" />
+          <div className="my-10 h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
 
           {/* Recent Receipts */}
           <div>
             <AkSectionHeader label="Recent Receipts" count={receipts.length} />
 
             {receipts.length === 0 && (
-              <div className="mt-4 text-sm text-zinc-600">
+              <div className="mt-4 text-sm text-white/30">
                 No advertising receipts yet. Sealed obligations appear here.
               </div>
             )}
@@ -189,14 +189,14 @@ export default function AdvertisingPage() {
                           </AkBadge>
                         )}
                       </div>
-                      <div className="text-xs text-zinc-500">
+                      <div className="text-xs text-white/35">
                         Receipt:{" "}
-                        <span className="font-mono text-zinc-300">
+                        <span className="font-mono text-white/60">
                           {r.receipt_id.slice(0, 12)}…
                         </span>
                       </div>
                     </div>
-                    <div className="text-xs text-zinc-500 text-right shrink-0">
+                    <div className="text-xs text-white/35 text-right shrink-0">
                       {new Date(r.sealed_at).toLocaleString()}
                     </div>
                   </div>
@@ -209,13 +209,13 @@ export default function AdvertisingPage() {
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/command"
-              className="rounded-xl bg-[#d6b24a] text-black px-4 py-2.5 text-sm font-extrabold hover:brightness-105 transition"
+              className="rounded-xl bg-white text-neutral-950 px-4 py-2.5 text-sm font-extrabold hover:bg-white/90 transition"
             >
               Command View →
             </Link>
             <Link
               href="/receipts"
-              className="rounded-xl bg-[#121212] text-zinc-200 border border-[#2a2516] px-4 py-2.5 text-sm font-extrabold hover:bg-[#181818] transition"
+              className="rounded-xl bg-white/[0.04] text-white/70 border border-white/10 px-4 py-2.5 text-sm font-extrabold hover:bg-white/[0.07] transition"
             >
               All Receipts →
             </Link>

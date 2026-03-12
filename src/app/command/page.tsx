@@ -141,8 +141,8 @@ export default function InboxPage() {
             className={[
               "rounded-xl px-4 py-2 text-xs font-extrabold border transition",
               locationFilter === loc
-                ? "bg-[#d6b24a] text-black border-[#d6b24a]"
-                : "bg-[#0d0d0d] text-zinc-400 border-[#2a2516] hover:text-zinc-100",
+                ? "bg-white text-neutral-950 border-white"
+                : "bg-white/[0.04] text-white/40 border-white/10 hover:text-white",
             ].join(" ")}
           >
             {loc}
@@ -150,15 +150,15 @@ export default function InboxPage() {
         ))}
         <button
           onClick={loadData}
-          className="ml-auto text-xs font-bold text-zinc-500 hover:text-[#d6b24a] transition"
+          className="ml-auto text-xs font-bold text-white/35 hover:text-white transition"
         >
           Refresh
         </button>
       </div>
 
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-zinc-500">
-          <div className="h-1 w-1 rounded-full bg-[#d6b24a] animate-pulse" />
+        <div className="flex items-center gap-3 text-sm text-white/35">
+          <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
           Loading…
         </div>
       )}
@@ -166,10 +166,10 @@ export default function InboxPage() {
       {!loading && err && (
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
-          <div className="text-sm text-zinc-300">{err}</div>
+          <div className="text-sm text-white/60">{err}</div>
           <button
             onClick={loadData}
-            className="mt-4 text-xs font-bold text-[#d6b24a] hover:underline"
+            className="mt-4 text-xs font-bold text-white/60 hover:text-white hover:underline transition"
           >
             Retry →
           </button>
@@ -179,8 +179,8 @@ export default function InboxPage() {
       {!loading && !err && (
         <>
           <div className="mb-6 flex items-center gap-3">
-            <span className="text-3xl font-extrabold text-zinc-100">{filtered.length}</span>
-            <span className="text-sm text-zinc-500">
+            <span className="text-3xl font-extrabold text-white">{filtered.length}</span>
+            <span className="text-sm text-white/35">
               open item{filtered.length !== 1 ? "s" : ""}
               {locationFilter !== "All Locations" ? ` · ${locationFilter}` : ""}
             </span>
@@ -189,8 +189,8 @@ export default function InboxPage() {
           {filtered.length === 0 && (
             <AkPanel className="p-10 text-center">
               <div className="text-4xl mb-3">✓</div>
-              <div className="text-base font-extrabold text-zinc-100 mb-1">All Clear</div>
-              <div className="text-sm text-zinc-500">
+              <div className="text-base font-extrabold text-white mb-1">All Clear</div>
+              <div className="text-sm text-white/35">
                 {locationFilter !== "All Locations"
                   ? `No open items at ${locationFilter}.`
                   : "No open items. Every duty has been logged."}
@@ -223,19 +223,19 @@ export default function InboxPage() {
                             )}
                           </div>
 
-                          <div className="text-base font-extrabold text-zinc-100 leading-snug">
+                          <div className="text-base font-extrabold text-white leading-snug">
                             {safeStr(row.title)}
                           </div>
 
                           {row.why && (
-                            <div className="mt-1.5 text-sm text-zinc-400">{row.why}</div>
+                            <div className="mt-1.5 text-sm text-white/45">{row.why}</div>
                           )}
 
-                          <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
+                          <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/35">
                             {row.due_at && (
                               <span>
                                 Due:{" "}
-                                <span className={row.is_breach ? "text-red-400 font-bold" : "text-zinc-300"}>
+                                <span className={row.is_breach ? "text-red-400 font-bold" : "text-white/60"}>
                                   {fmtDue(row.due_at)}
                                 </span>
                               </span>
@@ -246,7 +246,7 @@ export default function InboxPage() {
                             {row.economic_ref_id && (
                               <span>
                                 Ref:{" "}
-                                <span className="text-zinc-300 font-mono text-[11px]">
+                                <span className="text-white/60 font-mono text-[11px]">
                                   {safeStr(row.economic_ref_id)}
                                 </span>
                               </span>
@@ -305,24 +305,24 @@ export default function InboxPage() {
               <div className="text-5xl mb-4">
                 {sealedReceipt.action === "touch" ? "✋" : "✓"}
               </div>
-              <div className="text-xl font-extrabold text-[#d6b24a] mb-1">
+              <div className="text-xl font-extrabold text-white mb-1">
                 {sealedReceipt.action === "touch"
                   ? "Touch Logged"
                   : sealedReceipt.action === "quote"
                   ? "Quote Marked Sent"
                   : "Sealed"}
               </div>
-              <div className="mt-5 rounded-xl bg-[#0a0a0a] border border-[#2a2516] p-4 text-left">
-                <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-2">
+              <div className="mt-5 rounded-xl bg-white/[0.04] border border-white/10 p-4 text-left">
+                <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-2">
                   RECEIPT ID
                 </div>
-                <div className="font-mono text-xs text-[#d6b24a] break-all">
+                <div className="font-mono text-xs text-white/60 break-all">
                   {sealedReceipt.receipt_id}
                 </div>
               </div>
               <button
                 onClick={() => setSealedReceipt(null)}
-                className="mt-6 w-full rounded-xl bg-[#d6b24a] text-black px-4 py-3 text-sm font-extrabold hover:brightness-105 transition"
+                className="mt-6 w-full rounded-xl bg-white text-neutral-950 px-4 py-3 text-sm font-extrabold hover:bg-white/90 transition"
               >
                 Done
               </button>

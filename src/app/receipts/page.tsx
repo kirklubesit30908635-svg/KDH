@@ -65,7 +65,7 @@ export default function ReceiptsPage() {
     >
       {/* search */}
       <AkPanel className="p-4 mb-6">
-        <div className="text-[10px] font-extrabold tracking-[0.22em] text-zinc-600 mb-2">
+        <div className="text-[10px] font-extrabold tracking-[0.22em] text-white/30 mb-2">
           SEARCH RECEIPTS
         </div>
         <AkInput
@@ -79,8 +79,8 @@ export default function ReceiptsPage() {
       <AkSectionHeader label="Results" count={filtered.length} />
 
       {loading && (
-        <div className="mt-4 flex items-center gap-3 text-sm text-zinc-500">
-          <div className="h-1 w-1 rounded-full bg-[#d6b24a] animate-pulse" />
+        <div className="mt-4 flex items-center gap-3 text-sm text-white/35">
+          <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
           Loading proof records…
         </div>
       )}
@@ -88,18 +88,18 @@ export default function ReceiptsPage() {
       {!loading && err && (
         <AkPanel className="mt-4 p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
-          <div className="text-sm text-zinc-300">{err}</div>
+          <div className="text-sm text-white/60">{err}</div>
         </AkPanel>
       )}
 
       {!loading && !err && filtered.length === 0 && (
         <AkPanel className="mt-4 p-8 text-center">
           <div className="text-3xl mb-3">○</div>
-          <div className="text-sm font-extrabold text-zinc-400">No receipts found</div>
+          <div className="text-sm font-extrabold text-white/45">No receipts found</div>
           {q && (
             <button
               onClick={() => setQ("")}
-              className="mt-3 text-xs text-[#d6b24a] hover:underline font-bold"
+              className="mt-3 text-xs text-white/60 hover:text-white hover:underline font-bold transition"
             >
               Clear search
             </button>
@@ -110,7 +110,6 @@ export default function ReceiptsPage() {
       {!loading && !err && filtered.length > 0 && (
         <div className="mt-4 grid gap-3">
           {filtered.map((r) => {
-            // Derive a readable title: prefer economic ref, fallback to receipt_id
             const refLabel =
               r.economic_ref_id
                 ? `${safeStr(r.economic_ref_type)} ${safeStr(r.economic_ref_id)}`.trim()
@@ -128,37 +127,35 @@ export default function ReceiptsPage() {
                 {/* primary info */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    {/* title: ref label if available, else short ID */}
-                    <div className="text-base font-extrabold text-zinc-100 leading-snug">
+                    <div className="text-base font-extrabold text-white leading-snug">
                       {refLabel ?? r.receipt_id.slice(0, 16) + "…"}
                     </div>
 
-                    {/* sealed by + time */}
-                    <div className="mt-2 text-sm text-zinc-400">
+                    <div className="mt-2 text-sm text-white/45">
                       Sealed by{" "}
-                      <span className="text-zinc-200 font-semibold">
+                      <span className="text-white/70 font-semibold">
                         {safeStr(r.sealed_by) || "system"}
                       </span>
-                      <span className="mx-2 text-zinc-600">·</span>
+                      <span className="mx-2 text-white/20">·</span>
                       {new Date(r.sealed_at).toLocaleString()}
                     </div>
                   </div>
                 </div>
 
                 {/* detail row */}
-                <div className="mt-3 pt-3 border-t border-[#1a1a1a] grid grid-cols-1 gap-1 text-xs text-zinc-600 font-mono">
+                <div className="mt-3 pt-3 border-t border-white/[0.06] grid grid-cols-1 gap-1 text-xs text-white/25 font-mono">
                   <div>
-                    <span className="text-zinc-700">receipt </span>
-                    <span className="text-zinc-400">{r.receipt_id}</span>
+                    <span className="text-white/20">receipt </span>
+                    <span className="text-white/45">{r.receipt_id}</span>
                   </div>
                   <div>
-                    <span className="text-zinc-700">obligation </span>
-                    <span className="text-zinc-400">{r.obligation_id}</span>
+                    <span className="text-white/20">obligation </span>
+                    <span className="text-white/45">{r.obligation_id}</span>
                   </div>
                   {r.ledger_event_id && (
                     <div>
-                      <span className="text-zinc-700">ledger </span>
-                      <span className="text-zinc-400">{r.ledger_event_id}</span>
+                      <span className="text-white/20">ledger </span>
+                      <span className="text-white/45">{r.ledger_event_id}</span>
                     </div>
                   )}
                 </div>
@@ -172,13 +169,13 @@ export default function ReceiptsPage() {
       <div className="mt-10 flex flex-wrap gap-3">
         <Link
           href="/command"
-          className="rounded-xl bg-[#d6b24a] text-black px-4 py-2.5 text-sm font-extrabold hover:brightness-105 transition"
+          className="rounded-xl bg-white text-neutral-950 px-4 py-2.5 text-sm font-extrabold hover:bg-white/90 transition"
         >
           Command →
         </Link>
         <Link
           href="/"
-          className="rounded-xl bg-[#121212] text-zinc-200 border border-[#2a2516] px-4 py-2.5 text-sm font-extrabold hover:bg-[#181818] transition"
+          className="rounded-xl bg-white/[0.04] text-white/70 border border-white/10 px-4 py-2.5 text-sm font-extrabold hover:bg-white/[0.07] transition"
         >
           ← Home
         </Link>
