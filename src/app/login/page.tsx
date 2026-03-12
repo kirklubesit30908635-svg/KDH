@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
 import { ShieldCheck, Activity, Receipt, CheckCircle2 } from "lucide-react";
 
@@ -11,6 +12,15 @@ export default function LoginPage() {
   const [error, setError]     = useState<string | null>(null);
 
   const supabase = createBrowserSupabaseClient();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const urlError = searchParams.get("error");
+    const detail   = searchParams.get("detail");
+    if (urlError) {
+      setError(detail ? `Auth failed: ${detail}` : "Sign-in link expired or already used. Please request a new one.");
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

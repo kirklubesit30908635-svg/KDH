@@ -34,8 +34,12 @@ export async function GET(request: NextRequest) {
     if (!error) {
       return response; // session cookies are baked in, redirect to /command
     }
+
+    // Surface the real error for debugging
+    const msg = encodeURIComponent(error.message ?? "exchange_failed");
+    return NextResponse.redirect(new URL(`/login?error=auth_failed&detail=${msg}`, origin));
   }
 
-  // Code missing or exchange failed
-  return NextResponse.redirect(new URL("/login?error=auth_failed", origin));
+  // No code param — likely implicit-flow hash redirect; send to login with hint
+  return NextResponse.redirect(new URL("/login?error=no_code", origin));
 }
