@@ -1,9 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
 import { ShieldCheck, Activity, Receipt, CheckCircle2 } from "lucide-react";
+
+// ── Reads ?error= / ?detail= from the URL and sets error state ───────────────
+function AuthErrorReader({ onError }: { onError: (msg: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const urlError = searchParams.get("error");
+    const detail   = searchParams.get("detail");
+    if (urlError) {
+      onError(detail ? `Auth failed: ${detail}` : "Sign-in link expired or already used. Please request a new one.");
+    }
+  }, [searchParams, onError]);
+  return null;
+}
 
 export default function LoginPage() {
   const [email, setEmail]     = useState("");
@@ -12,15 +25,6 @@ export default function LoginPage() {
   const [error, setError]     = useState<string | null>(null);
 
   const supabase = createBrowserSupabaseClient();
-  const searchParams = useSearchParams();
-
-  useEffect(() => {
-    const urlError = searchParams.get("error");
-    const detail   = searchParams.get("detail");
-    if (urlError) {
-      setError(detail ? `Auth failed: ${detail}` : "Sign-in link expired or already used. Please request a new one.");
-    }
-  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +47,10 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen overflow-hidden bg-neutral-950 text-white">
+      <Suspense fallback={null}>
+        <AuthErrorReader onError={setError} />
+      </Suspense>
+
       {/* Subtle radial glow */}
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.1),transparent_50%)]" />
 
