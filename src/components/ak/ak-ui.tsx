@@ -2,33 +2,63 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const NAV_LINKS = [
+  { href: "/command",    label: "Inbox" },
+  { href: "/integrity",  label: "Integrity" },
+  { href: "/billing-ops", label: "Billing" },
+  { href: "/advertising", label: "Advertising" },
+  { href: "/receipts",   label: "Receipts" },
+  { href: "/users",      label: "Users" },
+] as const;
 
 // ─── Shell ─────────────────────────────────────────────────────────────────────
 
 export function AkShell(props: { title: string; subtitle?: string; children: React.ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <div className="min-h-screen bg-neutral-950 text-white">
       {/* Subtle radial glow */}
       <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[44rem] bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.06),transparent_50%)]" />
 
-      {/* Header bar — matches homepage/login */}
+      {/* Header bar */}
       <header className="sticky top-0 z-30 border-b border-white/10 bg-neutral-950/80 backdrop-blur-xl">
-        <div className="flex items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-xs font-semibold tracking-[0.22em]">
+        <div className="flex items-center justify-between px-6 py-3">
+          <Link href="/" className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 bg-white/5 text-xs font-semibold tracking-[0.22em]">
               AK
             </div>
-            <div>
-              <div className="text-sm font-semibold tracking-[0.26em] text-white/80">AUTOKIRK</div>
-              <div className="text-[10px] text-white/40">Revenue Integrity Operating Layer</div>
+            <div className="hidden sm:block">
+              <div className="text-xs font-semibold tracking-[0.26em] text-white/80">AUTOKIRK</div>
             </div>
           </Link>
-          <div className="flex items-center gap-5">
-            {/* Kernel live indicator */}
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-              <span className="text-[10px] uppercase tracking-[0.18em] text-white/45">Kernel live</span>
-            </div>
+
+          {/* Nav links */}
+          <nav className="flex items-center gap-1">
+            {NAV_LINKS.map(({ href, label }) => {
+              const active = pathname === href;
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={[
+                    "rounded-xl px-3 py-1.5 text-[11px] font-semibold tracking-wide transition",
+                    active
+                      ? "bg-white/10 text-white"
+                      : "text-white/40 hover:text-white/80 hover:bg-white/[0.05]",
+                  ].join(" ")}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            <span className="text-[10px] uppercase tracking-[0.18em] text-white/45 hidden sm:inline">Kernel live</span>
           </div>
         </div>
       </header>
