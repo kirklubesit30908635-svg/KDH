@@ -106,7 +106,7 @@ function buildSignals(s: IntegrityStats): Signal[] {
 
 function scoreGrade(s: number) {
   if (s >= 90) return { grade: "A", label: "GOVERNANCE CLEAN",          color: "#22c55e" };
-  if (s >= 80) return { grade: "B", label: "OPERATING WITHIN BOUNDS",   color: "#d6b24a" };
+  if (s >= 80) return { grade: "B", label: "OPERATING WITHIN BOUNDS",   color: "#60a5fa" };
   if (s >= 70) return { grade: "C", label: "WATCH — REVIEW REQUIRED",   color: "#f59e0b" };
   if (s >= 60) return { grade: "D", label: "AT RISK — ACTION REQUIRED", color: "#f97316" };
   return              { grade: "F", label: "CRITICAL — SYSTEM AT RISK",  color: "#ef4444" };
@@ -154,7 +154,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
           <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
         </filter>
       </defs>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1c1c1c" strokeWidth="13" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="13" />
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="13"
         strokeLinecap="round"
         strokeDasharray={`${(circ * score) / 100} ${circ}`}
@@ -169,7 +169,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
         {score}
       </text>
       <text x={cx} y={cy + 22} textAnchor="middle" dominantBaseline="middle"
-        fill="#3f3f46" fontSize="9" fontWeight="700"
+        fill="rgba(255,255,255,0.22)" fontSize="9" fontWeight="700"
         fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="3">
         INTEGRITY
       </text>
@@ -184,7 +184,7 @@ function MiniRing({ score, color }: { score: number; color: string }) {
   const circ = 2 * Math.PI * r;
   return (
     <svg viewBox="0 0 56 56" className="w-14 h-14 flex-shrink-0">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1c1c1c" strokeWidth="5" />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" />
       <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="5"
         strokeLinecap="round"
         strokeDasharray={`${(circ * score) / 100} ${circ}`}
@@ -204,7 +204,7 @@ function MiniRing({ score, color }: { score: number; color: string }) {
 
 function MiniBar({ pct, color }: { pct: number; color: string }) {
   return (
-    <div className="mt-2.5 h-1 w-full rounded-full bg-[#1a1a1a] overflow-hidden">
+    <div className="mt-2.5 h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
       <div className="h-full rounded-full transition-all duration-700"
         style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: color }} />
     </div>
@@ -219,22 +219,22 @@ function BreakdownRow({
   label: string; weight: string; pts: number; pct: number; color: string; rawLabel: string;
 }) {
   return (
-    <div className="py-3.5 border-b border-[#161616] last:border-0">
+    <div className="py-3.5 border-b border-white/[0.06] last:border-0">
       <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-4">
-          <div className="text-[10px] font-extrabold tracking-widest text-zinc-500 w-24">{label}</div>
-          <div className="text-[10px] font-mono text-zinc-700">{weight}</div>
+          <div className="text-[10px] font-extrabold tracking-widest text-white/35 w-24">{label}</div>
+          <div className="text-[10px] font-mono text-white/20">{weight}</div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {/* Section 8: show raw signal → pts format */}
-          <div className="font-mono text-[11px] text-zinc-600">{rawLabel}</div>
-          <div className="text-zinc-700 text-[10px]">→</div>
+          <div className="font-mono text-[11px] text-white/25">{rawLabel}</div>
+          <div className="text-white/20 text-[10px]">→</div>
           <div className="text-sm font-extrabold w-10 text-right" style={{ color }}>
             +{pts}
           </div>
         </div>
       </div>
-      <div className="h-1 w-full rounded-full bg-[#1a1a1a] overflow-hidden">
+      <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700"
           style={{ width: `${Math.min(100, Math.max(0, pct))}%`, backgroundColor: color }} />
       </div>
@@ -276,8 +276,8 @@ export default function IntegrityPage() {
 
       {/* ── Loading ──────────────────────────────────────────────────────── */}
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-zinc-500">
-          <div className="h-1.5 w-1.5 rounded-full bg-[#d6b24a] animate-pulse" />
+        <div className="flex items-center gap-3 text-sm text-white/35">
+          <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
           Computing integrity score…
         </div>
       )}
@@ -286,8 +286,8 @@ export default function IntegrityPage() {
       {!loading && err && (
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
-          <div className="text-sm text-zinc-300">{err}</div>
-          <button onClick={loadStats} className="mt-4 text-xs font-bold text-[#d6b24a] hover:underline">Retry →</button>
+          <div className="text-sm text-white/70">{err}</div>
+          <button onClick={loadStats} className="mt-4 text-xs font-bold text-white/40 hover:text-white/80 transition">Retry →</button>
         </AkPanel>
       )}
 
@@ -305,7 +305,7 @@ export default function IntegrityPage() {
               <ScoreRing score={stats.integrity_score} color={scoreInfo.color} />
 
               <div className="flex-1 text-center md:text-left">
-                <div className="text-[10px] font-extrabold tracking-[0.32em] text-zinc-600 mb-4">
+                <div className="text-[10px] font-extrabold tracking-[0.32em] text-white/30 mb-4">
                   SYSTEM INTEGRITY SCORE
                 </div>
 
@@ -324,7 +324,7 @@ export default function IntegrityPage() {
                   <span className="text-xs font-extrabold tracking-[0.2em]" style={{ color: scoreInfo.color }}>
                     {scoreInfo.label}
                   </span>
-                  <span className="text-zinc-700">·</span>
+                  <span className="text-white/20">·</span>
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold tracking-wide"
                     style={{
@@ -339,18 +339,18 @@ export default function IntegrityPage() {
                 </div>
 
                 {/* Formula */}
-                <div className="mt-4 font-mono text-[10px] text-zinc-700 leading-relaxed">
+                <div className="mt-4 font-mono text-[10px] text-white/20 leading-relaxed">
                   score = 0.30×CR + 0.25×(100−BR) + 0.20×EC + 0.15×LS + 0.10×PS
                   <br />
-                  <span className="text-zinc-500">
+                  <span className="text-white/35">
                     = {stats.pts_closure} + {stats.pts_breach} + {stats.pts_coverage} + {stats.pts_latency} + {stats.pts_proof}{" "}
                     = <span style={{ color: scoreInfo.color }}>{stats.integrity_score}</span>
                   </span>
                 </div>
 
-                <div className="mt-3 text-[11px] text-zinc-700">
+                <div className="mt-3 text-[11px] text-white/20">
                   {stats.total_obligations} obligations sampled · {new Date(stats.computed_at).toLocaleTimeString()} ·{" "}
-                  <button onClick={loadStats} className="text-[#d6b24a]/50 hover:text-[#d6b24a] transition">Refresh</button>
+                  <button onClick={loadStats} className="text-white/30 hover:text-white/60 transition">Refresh</button>
                 </div>
               </div>
             </div>
@@ -373,13 +373,13 @@ export default function IntegrityPage() {
                     style={{ color: signalColor(sig.level) }}>
                     {signalIcon(sig.level)}
                   </span>
-                  <span className="text-sm text-zinc-300 leading-snug">{sig.message}</span>
+                  <span className="text-sm text-white/70 leading-snug">{sig.message}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="h-px bg-gradient-to-r from-[#d6b24a]/15 via-[#d6b24a]/5 to-transparent mb-6" />
+          <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mb-6" />
 
           {/* ══ FIVE METRICS ══════════════════════════════════════════════ */}
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5 mb-8">
@@ -389,9 +389,9 @@ export default function IntegrityPage() {
               const c = metricColor(stats.closure_rate, 80, 60);
               return (
                 <AkPanel className="p-5">
-                  <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">CLOSURE RATE</div>
+                  <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">CLOSURE RATE</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.closure_rate}%</div>
-                  <div className="mt-1 text-[11px] text-zinc-600">{stats.sealed_obligations} of {stats.total_obligations} sealed</div>
+                  <div className="mt-1 text-[11px] text-white/30">{stats.sealed_obligations} of {stats.total_obligations} sealed</div>
                   <MiniBar pct={stats.closure_rate} color={c} />
                 </AkPanel>
               );
@@ -402,9 +402,9 @@ export default function IntegrityPage() {
               const c = metricColor(stats.breach_rate, 0, 10, true);
               return (
                 <AkPanel className="p-5">
-                  <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">BREACH RATE</div>
+                  <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">BREACH RATE</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.breach_rate}%</div>
-                  <div className="mt-1 text-[11px] text-zinc-600">{stats.breach_count} of {stats.open_obligations} open</div>
+                  <div className="mt-1 text-[11px] text-white/30">{stats.breach_count} of {stats.open_obligations} open</div>
                   <MiniBar pct={stats.breach_rate} color={c} />
                 </AkPanel>
               );
@@ -415,9 +415,9 @@ export default function IntegrityPage() {
               const c = metricColor(stats.event_coverage, 90, 70);
               return (
                 <AkPanel className="p-5">
-                  <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">EVENT COVERAGE</div>
+                  <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">EVENT COVERAGE</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.event_coverage}%</div>
-                  <div className="mt-1 text-[11px] text-zinc-600">
+                  <div className="mt-1 text-[11px] text-white/30">
                     {stats.covered_events} processed · {stats.events_awaiting} awaiting
                   </div>
                   <MiniBar pct={stats.event_coverage} color={c} />
@@ -430,9 +430,9 @@ export default function IntegrityPage() {
               const c = metricColor(stats.latency_score, 70, 50);
               return (
                 <AkPanel className="p-5">
-                  <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">OBL. LATENCY</div>
+                  <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">OBL. LATENCY</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{fmtHours(stats.avg_closure_hours)}</div>
-                  <div className="mt-1 text-[11px] text-zinc-600">avg time to closure</div>
+                  <div className="mt-1 text-[11px] text-white/30">avg time to closure</div>
                   <MiniBar pct={stats.latency_score} color={c} />
                 </AkPanel>
               );
@@ -443,9 +443,9 @@ export default function IntegrityPage() {
               const c = stats.proof_lag === 0 ? "#22c55e" : stats.proof_lag < 3 ? "#f59e0b" : "#ef4444";
               return (
                 <AkPanel className="p-5">
-                  <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">PROOF LAG</div>
+                  <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">PROOF LAG</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.proof_lag}</div>
-                  <div className="mt-1 text-[11px] text-zinc-600">sealed without receipt</div>
+                  <div className="mt-1 text-[11px] text-white/30">sealed without receipt</div>
                   <MiniBar pct={stats.proof_score} color={c} />
                 </AkPanel>
               );
@@ -506,33 +506,33 @@ export default function IntegrityPage() {
                   <AkPanel key={d.face} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
-                        <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">
+                        <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">
                           {d.face.toUpperCase()}
                         </div>
-                        <div className="text-sm font-extrabold text-zinc-100 leading-snug">{d.label}</div>
+                        <div className="text-sm font-extrabold text-white/90 leading-snug">{d.label}</div>
                       </div>
                       <MiniRing score={d.integrity_score} color={color} />
                     </div>
 
                     {d.total === 0 ? (
-                      <div className="text-xs text-zinc-600 italic">No obligations yet</div>
+                      <div className="text-xs text-white/30 italic">No obligations yet</div>
                     ) : (
                       <>
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
-                            <div className="text-[10px] font-extrabold tracking-widest text-zinc-700 mb-0.5">CLOSURE</div>
+                            <div className="text-[10px] font-extrabold tracking-widest text-white/20 mb-0.5">CLOSURE</div>
                             <div className="text-lg font-extrabold" style={{ color: cColor }}>{d.closure_rate}%</div>
-                            <div className="text-[11px] text-zinc-700">{d.sealed}/{d.total}</div>
+                            <div className="text-[11px] text-white/20">{d.sealed}/{d.total}</div>
                           </div>
                           <div>
-                            <div className="text-[10px] font-extrabold tracking-widest text-zinc-700 mb-0.5">BREACH</div>
+                            <div className="text-[10px] font-extrabold tracking-widest text-white/20 mb-0.5">BREACH</div>
                             <div className="text-lg font-extrabold" style={{ color: bColor }}>{d.breach_rate}%</div>
-                            <div className="text-[11px] text-zinc-700">{d.breach_count} active</div>
+                            <div className="text-[11px] text-white/20">{d.breach_count} active</div>
                           </div>
                         </div>
 
                         {/* Domain bar */}
-                        <div className="h-1 w-full rounded-full bg-[#1a1a1a] overflow-hidden">
+                        <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
                           <div className="h-full rounded-full transition-all duration-700"
                             style={{ width: `${d.integrity_score}%`, backgroundColor: color }} />
                         </div>
@@ -545,20 +545,20 @@ export default function IntegrityPage() {
           </div>
 
           {/* Divider */}
-          <div className="h-px bg-gradient-to-r from-[#d6b24a]/10 via-transparent to-transparent mb-6" />
+          <div className="h-px bg-gradient-to-r from-white/8 via-transparent to-transparent mb-6" />
 
           {/* ══ NAV ══════════════════════════════════════════════════════ */}
           <div className="flex flex-wrap gap-3">
             <Link href="/billing-ops"
-              className="rounded-xl bg-[#d6b24a] text-black px-4 py-2.5 text-sm font-extrabold hover:brightness-105 transition">
+              className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-neutral-950 transition hover:scale-[1.01]">
               Billing Enforcement →
             </Link>
             <Link href="/receipts"
-              className="rounded-xl bg-[#121212] text-zinc-200 border border-[#2a2516] px-4 py-2.5 text-sm font-extrabold hover:bg-[#181818] transition">
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]">
               All Receipts →
             </Link>
             <Link href="/command"
-              className="rounded-xl bg-[#121212] text-zinc-200 border border-[#2a2516] px-4 py-2.5 text-sm font-extrabold hover:bg-[#181818] transition">
+              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]">
               Command →
             </Link>
           </div>
