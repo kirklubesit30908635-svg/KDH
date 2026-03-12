@@ -111,6 +111,34 @@ export async function POST(req: NextRequest) {
       console.error("[stripe-webhook] obligation/receipt creation failed:", oblErr?.message ?? oblErr);
     }
 
+    // --- Subscription gate: update core.operators ---
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const authUid = session.metadata?.operator_auth_uid;
+      if (authUid && session.customer && session.subscription) {
+        await supabaseAdmin
+          .schema("core")
+          .from("operators")
+          .update({
+            stripe_customer_id:     String(session.customer),
+            stripe_subscription_id: String(session.subscription),
+            subscription_status:    "active",
+          })
+          .eq("auth_uid", authUid);
+      }
+    }
+
+    if (event.type === "customer.subscription.deleted") {
+      const sub = event.data.object as Stripe.Subscription;
+      if (sub.customer) {
+        await supabaseAdmin
+          .schema("core")
+          .from("operators")
+          .update({ subscription_status: "inactive" })
+          .eq("stripe_customer_id", String(sub.customer));
+      }
+    }
+
     return NextResponse.json(
       {
         ok: true,
