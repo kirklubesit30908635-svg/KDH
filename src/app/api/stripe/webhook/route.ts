@@ -6,7 +6,13 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
-    return NextResponse.json({ error: "Missing Stripe env vars" }, { status: 500 });
+    return NextResponse.json({
+      error: "Missing Stripe env vars",
+      missing: [
+        !process.env.STRIPE_SECRET_KEY && "STRIPE_SECRET_KEY",
+        !process.env.STRIPE_WEBHOOK_SECRET && "STRIPE_WEBHOOK_SECRET",
+      ].filter(Boolean),
+    }, { status: 500 });
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
