@@ -47,15 +47,11 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_ACCOUNT_ID ??
       "";
 
-    if (!providerAccountId) {
-      return NextResponse.json(
-        { env, error: "Cannot resolve Stripe provider_account_id — set STRIPE_ACCOUNT_ID env var" },
-        { status: 500 }
-      );
-    }
-
     // Ledger ingest — soft failure (api schema may not exist on all deployments)
     let ingestEventId: string | null = null;
+    if (!providerAccountId) {
+      console.warn("[stripe-webhook] providerAccountId not resolved — skipping ledger ingest. Set STRIPE_ACCOUNT_ID env var to enable.");
+    } else {
     const { data: ingestData, error: ingestErr } = await supabaseAdmin
       .schema("api")
       .rpc("ingest_stripe_event", {
@@ -74,6 +70,7 @@ export async function POST(req: NextRequest) {
       const ingestResult = Array.isArray(ingestData) ? ingestData[0] : ingestData;
       ingestEventId = ingestResult?.event_id ?? null;
     }
+    } // end providerAccountId block
 
     // --- Business layer: generate obligation + receipt ---
     let obligationId: string | null = null;
