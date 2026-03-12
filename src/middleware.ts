@@ -46,6 +46,7 @@ export async function middleware(request: NextRequest) {
   )
 
   const { data: operator } = await adminClient
+    .schema('core')
     .from('operators')
     .select('subscription_status')
     .eq('auth_uid', user.id)
