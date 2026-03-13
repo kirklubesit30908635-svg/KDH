@@ -36,7 +36,7 @@ export function AkBadge({ children, tone, color }: { children: React.ReactNode; 
   return <span style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700, backgroundColor: `${c}18`, border: `1px solid ${c}30`, color: c }}>{children}</span>;
 }
 
-export function AkButton({ children, onClick, variant = "ghost", tone, className, disabled, type = "button" }: { children: React.ReactNode; onClick?: () => void; variant?: "primary" | "ghost"; tone?: Tone; disabled?: boolean; type?: "button" | "submit" | "reset" }) {
+export function AkButton({ children, onClick, variant = "ghost", tone, className, disabled, type = "button" }: { children: React.ReactNode; onClick?: () => void; variant?: "primary" | "ghost"; tone?: Tone; className?: string; disabled?: boolean; type?: "button" | "submit" | "reset" }) {
   const isPrimary = variant === "primary";
   const c = tone ? TONES[tone] : undefined;
   return (
@@ -49,6 +49,7 @@ export function AkButton({ children, onClick, variant = "ghost", tone, className
 export function AkInput({ value, onChange, placeholder, type = "text" }: { value: string; onChange: (val: string) => void; placeholder?: string; type?: string }) {
   return <input type={type} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} style={{ width: "100%", backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 10, padding: "10px 14px", color: "#fff", fontSize: 14, outline: "none", boxSizing: "border-box" }} />;
 }
+
 
 
 
