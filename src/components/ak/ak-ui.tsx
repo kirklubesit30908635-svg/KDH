@@ -151,8 +151,8 @@ export function AkBadge(props: {
     tone === "gold" || tone === "primary"
       ? { background: GOLD, color: BLACK }
       : tone === "danger"
-      ? { background: "#3a0000", color: "#f87171", border: "1px solid #7f1d1d" }
-      : { background: "#111", color: DIM, border: "1px solid #333" };
+        ? { background: "#3a0000", color: "#f87171", border: "1px solid #7f1d1d" }
+        : { background: "#111", color: DIM, border: "1px solid #333" };
 
   return (
     <span
@@ -251,10 +251,10 @@ export function AkButton(props: {
     tone === "gold"
       ? { background: GOLD, color: BLACK, border: "none" }
       : tone === "danger"
-      ? { background: "#3a0000", color: "#f87171", border: "none" }
-      : tone === "muted"
-      ? { background: "#111", color: DIM, border: "1px solid #333" }
-      : { background: "transparent", color: "#fff", border: "1px solid #333" };
+        ? { background: "#3a0000", color: "#f87171", border: "none" }
+        : tone === "muted"
+          ? { background: "#111", color: DIM, border: "1px solid #333" }
+          : { background: "transparent", color: "#fff", border: "1px solid #333" };
 
   return (
     <button
