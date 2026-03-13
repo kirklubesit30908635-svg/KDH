@@ -59,7 +59,7 @@ type AkBadgeProps = {
   color?: string;
 };
 
-export function AkBadge({ children, color = "rgba(255,255,255,0.15)" }: AkBadgeProps) {
+export function AkBadge({ children, color, tone }: AkBadgeProps) {
   return (
     <span style={{ display: "inline-flex", alignItems: "center", borderRadius: 999, padding: "2px 10px", fontSize: 11, fontWeight: 700, backgroundColor: `${color}18`, border: `1px solid ${color}30`, color }}>
       {children}
@@ -69,15 +69,9 @@ export function AkBadge({ children, color = "rgba(255,255,255,0.15)" }: AkBadgeP
 
 // ─── AkButton ─────────────────────────────────────────────────────────────────
 
-type AkButtonProps = {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: "primary" | "ghost";
-  disabled?: boolean;
-  type?: "button" | "submit" | "reset";
-};
+type AkButtonProps = { children: React.ReactNode; onClick?: () => void; variant?: "primary" | "ghost"; tone?: "gold" | "danger" | "muted"; disabled?: boolean; type?: "button" | "submit" | "reset"; };;
 
-export function AkButton({ children, onClick, variant = "ghost", disabled, type = "button" }: AkButtonProps) {
+export function AkButton({ children, onClick, variant = "ghost", tone, disabled, type = "button" }: AkButtonProps) {
   const isPrimary = variant === "primary";
   return (
     <button
@@ -119,3 +113,5 @@ export function AkInput({ value, onChange, placeholder, type = "text" }: AkInput
     />
   );
 }
+
+
