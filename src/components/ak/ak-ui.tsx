@@ -1,8 +1,5 @@
-<<<<<<< HEAD
-"use client";
-=======
-﻿"use client";
->>>>>>> 39486c4 (pass production build for operator console and api surfaces)
+use client";
+
 
 import React from "react";
 import Link from "next/link";
