@@ -1,757 +1,699 @@
-"use client";
-
-import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import React, { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import {
   Activity,
   ArrowRight,
-  CircleAlert,
-  CircleCheckBig,
-  Lock,
-  LogIn,
-  ReceiptText,
-  RefreshCw,
+  BadgeCheck,
+  Bell,
+  Brain,
+  Building2,
+  CheckCircle2,
+  CircleDashed,
+  Filter,
+  Receipt,
+  Search,
   Shield,
-  Sparkles,
+  Siren,
+  Target,
+  TrendingUp,
+  UserRound,
+  Workflow,
+  XCircle,
 } from "lucide-react";
 
-type Confidence = "High" | "Medium" | "Low";
+const shell = "min-h-screen bg-zinc-950 text-zinc-50";
+const card = "rounded-3xl border border-zinc-800 bg-zinc-900/80 shadow-2xl shadow-black/30";
+const muted = "text-zinc-400";
+const pill =
+  "inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300";
+const statCard = "rounded-2xl border border-zinc-800 bg-zinc-950/90 p-4";
 
-type SeverityGroup = "critical" | "at_risk" | "due_today" | "queue";
+const movements = [
+  {
+    id: "mv_82014",
+    object: "Service Work Order",
+    objectId: "wo_2144",
+    face: "Marine Dealership",
+    domain: "Service / Washbay",
+    action: "Wash completed",
+    actor: "Operator: J. Ellis",
+    tier: "Tier 1 • Auto-close allowed",
+    value: "$145",
+    status: "Receipted",
+    time: "08:43 AM",
+    date: "Mar 12, 2026",
+    outcome: "Closed",
+  },
+  {
+    id: "mv_82015",
+    object: "Invoice",
+    objectId: "inv_9118",
+    face: "Billing Enforcement",
+    domain: "Payments",
+    action: "Charge succeeded",
+    actor: "Stripe webhook",
+    tier: "Tier 2 • Assisted close",
+    value: "$4,980",
+    status: "Open Obligation",
+    time: "08:47 AM",
+    date: "Mar 12, 2026",
+    outcome: "Awaiting closure",
+  },
+  {
+    id: "mv_82016",
+    object: "Ad Campaign",
+    objectId: "cmp_102",
+    face: "Advertising Enforcement",
+    domain: "Lead Flow",
+    action: "Campaign underperforming",
+    actor: "Schema AI suggestion",
+    tier: "Tier 2 • Assisted close",
+    value: "$1,250 spend",
+    status: "Suggested action",
+    time: "09:01 AM",
+    date: "Mar 12, 2026",
+    outcome: "Review needed",
+  },
+  {
+    id: "mv_82017",
+    object: "Lead",
+    objectId: "lead_459",
+    face: "Sales Reality",
+    domain: "Follow-Up",
+    action: "No follow-up within 24h",
+    actor: "Policy timer",
+    tier: "Tier 1 • Auto-close allowed",
+    value: "$12,000 potential",
+    status: "Eliminated",
+    time: "09:18 AM",
+    date: "Mar 12, 2026",
+    outcome: "Receipted elimination",
+  },
+];
 
-interface DomainStat {
-  face: string;
-  label: string;
-  total: number;
-  sealed: number;
-  open: number;
-  breach_count: number;
-  closure_rate: number;
-  breach_rate: number;
-  integrity_score: number;
+const receipts = [
+  {
+    id: "rcpt_0a19d3",
+    obligation: "obl_6012",
+    object: "wo_2144",
+    face: "Marine Dealership",
+    actor: "J. Ellis",
+    state: "SEALED",
+    timestamp: "2026-03-12 08:43:19",
+    lineage: "hash_89f2...d221",
+  },
+  {
+    id: "rcpt_0a19d4",
+    obligation: "obl_6013",
+    object: "inv_9118",
+    face: "Billing Enforcement",
+    actor: "Stripe webhook",
+    state: "OPEN",
+    timestamp: "2026-03-12 08:47:03",
+    lineage: "hash_9ab2...e410",
+  },
+  {
+    id: "rcpt_0a19d5",
+    obligation: "obl_6014",
+    object: "lead_459",
+    face: "Sales Reality",
+    actor: "Policy timer",
+    state: "ELIMINATED",
+    timestamp: "2026-03-12 09:18:47",
+    lineage: "hash_123f...af04",
+  },
+];
+
+const faces = [
+  {
+    name: "Marine Dealership",
+    domains: ["Service", "Washbay", "Parts", "Sales"],
+    integrity: 97,
+    pressure: "1 stalled object",
+    note: "Highest readiness for first deployment",
+  },
+  {
+    name: "Billing Enforcement",
+    domains: ["Stripe", "Reconciliation", "Collections"],
+    integrity: 100,
+    pressure: "0 breaches",
+    note: "Cleanest proof chain today",
+  },
+  {
+    name: "Advertising Enforcement",
+    domains: ["Spend", "Lead", "Outcome", "Renewal"],
+    integrity: 91,
+    pressure: "2 review items",
+    note: "Best premium advisory wedge",
+  },
+];
+
+function runSanityChecks() {
+  const checks = [
+    { name: "movements present", pass: movements.length > 0 },
+    { name: "receipts present", pass: receipts.length > 0 },
+    { name: "faces present", pass: faces.length > 0 },
+    {
+      name: "every receipt has an id and lineage",
+      pass: receipts.every((r) => Boolean(r.id && r.lineage)),
+    },
+    {
+      name: "every face has at least one domain",
+      pass: faces.every((f) => Array.isArray(f.domains) && f.domains.length > 0),
+    },
+  ];
+
+  return {
+    passed: checks.every((c) => c.pass),
+    checks,
+  };
 }
 
-interface IntegrityStats {
-  integrity_score: number;
-  confidence: Confidence;
-  closure_rate: number;
-  breach_rate: number;
-  event_coverage: number;
-  events_awaiting: number;
-  avg_closure_hours: number | null;
-  latency_score: number;
-  proof_lag: number;
-  proof_score: number;
-  pts_closure: number;
-  pts_breach: number;
-  pts_coverage: number;
-  pts_latency: number;
-  pts_proof: number;
-  domains: DomainStat[];
-  open_obligations: number;
-  sealed_obligations: number;
-  total_obligations: number;
-  breach_count: number;
-  stripe_events: number;
-  covered_events: number;
-  computed_at: string;
+function SectionTitle({ eyebrow, title, body }) {
+  return (
+    <div className="space-y-2">
+      <div className={pill}>{eyebrow}</div>
+      <h2 className="text-3xl font-black tracking-tight md:text-4xl">{title}</h2>
+      {body ? <p className={`max-w-3xl text-base ${muted}`}>{body}</p> : null}
+    </div>
+  );
 }
 
-interface CommandRow {
-  obligation_id: string;
-  title: string;
-  why: string | null;
-  face: string | null;
-  severity: SeverityGroup;
-  due_at: string | null;
-  created_at: string | null;
-  age_hours: number | null;
-  is_breach: boolean | null;
-  economic_ref_type: string | null;
-  economic_ref_id: string | null;
-  location: string | null;
-}
-
-interface ReceiptRow {
-  receipt_id: string;
-  obligation_id: string;
-  sealed_at: string;
-  sealed_by: string | null;
-  face: string | null;
-  economic_ref_type: string | null;
-  economic_ref_id: string | null;
-  ledger_event_id: string | null;
-}
-
-class ApiError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
-
-const FACE_ROUTES: Record<string, string | null> = {
-  billing: "/billing-ops",
-  advertising: "/advertising",
-  dealership: null,
-  washbay: "/washbay",
-};
-
-async function fetchJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: "no-store" });
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok) {
-    const message =
-      json && typeof json === "object" && "error" in json && typeof json.error === "string"
-        ? json.error
-        : `HTTP ${res.status}`;
-    throw new ApiError(res.status, message);
-  }
-
-  return json as T;
-}
-
-function scoreColor(score: number): string {
-  if (score >= 90) return "#3ddc97";
-  if (score >= 75) return "#63a8ff";
-  if (score >= 60) return "#f6c453";
-  return "#ff6b7a";
-}
-
-function gradeLabel(score: number): string {
-  if (score >= 90) return "Governance clean";
-  if (score >= 75) return "Within operating bounds";
-  if (score >= 60) return "Needs review";
-  return "At risk";
-}
-
-function confidenceTone(confidence: Confidence): string {
-  if (confidence === "High") return "text-emerald-300 border-emerald-400/20 bg-emerald-400/10";
-  if (confidence === "Medium") return "text-amber-200 border-amber-300/20 bg-amber-300/10";
-  return "text-rose-200 border-rose-300/20 bg-rose-300/10";
-}
-
-function severityTone(severity: SeverityGroup): string {
-  switch (severity) {
-    case "critical":
-      return "text-rose-200 border-rose-300/20 bg-rose-300/10";
-    case "at_risk":
-      return "text-amber-200 border-amber-300/20 bg-amber-300/10";
-    case "due_today":
-      return "text-sky-200 border-sky-300/20 bg-sky-300/10";
-    default:
-      return "text-slate-300 border-white/10 bg-white/5";
-  }
-}
-
-function fmtFace(face: string | null | undefined): string {
-  if (!face) return "Unknown";
-  return face.replace(/[_-]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
-}
-
-function fmtAge(hours: number | null): string {
-  if (hours == null) return "No age";
-  if (hours < 1) return "< 1h old";
-  if (hours < 24) return `${Math.round(hours)}h old`;
-  return `${Math.round(hours / 24)}d old`;
-}
-
-function fmtHours(hours: number | null): string {
-  if (hours == null) return "—";
-  if (hours < 1) return "< 1h";
-  if (hours < 24) return `${Math.round(hours)}h`;
-  const days = Math.floor(hours / 24);
-  const remainder = Math.round(hours % 24);
-  return remainder > 0 ? `${days}d ${remainder}h` : `${days}d`;
-}
-
-function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return "No timestamp";
-  try {
-    return new Date(iso).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function sortCommands(rows: CommandRow[]): CommandRow[] {
-  return [...rows].sort((a, b) => {
-    const dueA = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
-    const dueB = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
-    if (dueA !== dueB) return dueA - dueB;
-
-    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
-    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
-    return createdA - createdB;
-  });
-}
-
-function ScoreDial({ score }: { score: number | null }) {
-  const accent = score == null ? "rgba(255,255,255,0.18)" : scoreColor(score);
-  const sweep = score == null ? 300 : Math.max(0, Math.min(360, Math.round((score / 100) * 360)));
+function TopNav({ current, setCurrent }) {
+  const items = [
+    ["System", Activity],
+    ["Command", Workflow],
+    ["Proof", Receipt],
+    ["Markets", Building2],
+    ["Intelligence", Brain],
+  ];
 
   return (
-    <div
-      className="relative grid h-40 w-40 place-items-center rounded-full p-3 shadow-[0_0_80px_rgba(61,220,151,0.12)] sm:h-48 sm:w-48"
-      style={{
-        background: `conic-gradient(from 220deg, ${accent} 0deg ${sweep}deg, rgba(255,255,255,0.08) ${sweep}deg 360deg)`,
-      }}
-    >
-      <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-[#070b15]">
-        <div className="text-center">
-          <div className="text-5xl font-semibold tracking-tight sm:text-6xl">{score ?? "—"}</div>
-          <div className="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-500">{score == null ? "Locked" : "Integrity"}</div>
+    <div className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-xl">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 md:px-8">
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.28em] text-zinc-400">AutoKirk</div>
+          <div className="text-lg font-black">Revenue Integrity Kernel</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {items.map(([label, Icon]) => {
+            const active = current === label;
+            return (
+              <button
+                key={label}
+                onClick={() => setCurrent(label)}
+                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                  active
+                    ? "bg-white text-zinc-950"
+                    : "border border-zinc-800 bg-zinc-900 text-zinc-300 hover:border-zinc-700 hover:text-white"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
 
-function MetricTile({
-  label,
-  value,
-  supporting,
-}: {
-  label: string;
-  value: string;
-  supporting: string;
-}) {
+function Hero({ setCurrent }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div>
-      <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">{value}</div>
-      <div className="mt-2 text-sm text-slate-400">{supporting}</div>
-    </div>
-  );
-}
-
-function SurfaceLink({
-  eyebrow,
-  title,
-  body,
-  href,
-  locked,
-}: {
-  eyebrow: string;
-  title: string;
-  body: string;
-  href?: string | null;
-  locked?: boolean;
-}) {
-  const content = (
-    <div className="group rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5 transition hover:border-white/20 hover:bg-white/[0.06]">
-      <div className="flex items-center justify-between gap-4">
-        <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{eyebrow}</div>
-        <div className="text-sm text-slate-400">{locked ? "Not exposed yet" : "Open"}</div>
+    <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+      <div className={`${card} p-7 md:p-10`}>
+        <div className={pill}>Surface simplicity. Core ruthlessness.</div>
+        <h1 className="mt-4 max-w-4xl text-4xl font-black leading-[0.95] tracking-tight md:text-6xl">
+          Every revenue action becomes accountable, searchable, and provable.
+        </h1>
+        <p className={`mt-5 max-w-3xl text-lg ${muted}`}>
+          AutoKirk is not a dashboard. It is a kernel that turns economically meaningful movement into
+          receipted truth. Events become obligations. Obligations reach closure, termination, or elimination.
+          Nothing tied to revenue disappears without history.
+        </p>
+        <div className="mt-7 flex flex-wrap gap-3">
+          <button
+            onClick={() => setCurrent("System")}
+            className="rounded-full bg-white px-5 py-3 text-sm font-bold text-zinc-950"
+          >
+            Enter operator system
+          </button>
+          <button
+            onClick={() => setCurrent("Proof")}
+            className="rounded-full border border-zinc-700 px-5 py-3 text-sm font-bold text-white"
+          >
+            View proof layer
+          </button>
+        </div>
       </div>
-      <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-50">{title}</div>
-      <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">{body}</p>
-      <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-slate-100">
-        {locked ? "Held inside kernel" : "Enter sector"}
-        <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
-      </div>
-    </div>
-  );
-
-  if (!href || locked) return content;
-  return <Link href={href}>{content}</Link>;
-}
-
-export default function HomePage() {
-  const [integrity, setIntegrity] = useState<IntegrityStats | null>(null);
-  const [command, setCommand] = useState<CommandRow[]>([]);
-  const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [authLocked, setAuthLocked] = useState(false);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErrors([]);
-
-    const results = await Promise.allSettled([
-      fetchJson<IntegrityStats>("/api/integrity/stats"),
-      fetchJson<{ rows: CommandRow[] }>("/api/command/feed"),
-      fetchJson<{ rows: ReceiptRow[] }>("/api/receipts/feed"),
-    ]);
-
-    const nextErrors: string[] = [];
-    let unauthorized = false;
-
-    const [integrityRes, commandRes, receiptRes] = results;
-
-    if (integrityRes.status === "fulfilled") {
-      setIntegrity(integrityRes.value);
-    } else {
-      if (integrityRes.reason instanceof ApiError && integrityRes.reason.status === 401) {
-        unauthorized = true;
-      } else {
-        nextErrors.push(`Integrity: ${integrityRes.reason instanceof Error ? integrityRes.reason.message : "Load failed"}`);
-      }
-      setIntegrity(null);
-    }
-
-    if (commandRes.status === "fulfilled") {
-      setCommand(commandRes.value.rows ?? []);
-    } else {
-      if (commandRes.reason instanceof ApiError && commandRes.reason.status === 401) {
-        unauthorized = true;
-      } else {
-        nextErrors.push(`Command: ${commandRes.reason instanceof Error ? commandRes.reason.message : "Load failed"}`);
-      }
-      setCommand([]);
-    }
-
-    if (receiptRes.status === "fulfilled") {
-      setReceipts(receiptRes.value.rows ?? []);
-    } else {
-      if (receiptRes.reason instanceof ApiError && receiptRes.reason.status === 401) {
-        unauthorized = true;
-      } else {
-        nextErrors.push(`Receipts: ${receiptRes.reason instanceof Error ? receiptRes.reason.message : "Load failed"}`);
-      }
-      setReceipts([]);
-    }
-
-    const hasLiveData = [integrityRes, commandRes, receiptRes].some((r) => r.status === "fulfilled");
-    setAuthLocked(unauthorized && !hasLiveData);
-    setErrors(nextErrors);
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const queue = useMemo(() => sortCommands(command).slice(0, 5), [command]);
-  const recentReceipts = useMemo(() => receipts.slice(0, 4), [receipts]);
-  const domains = useMemo(() => {
-    return [...(integrity?.domains ?? [])].sort((a, b) => {
-      if (a.integrity_score !== b.integrity_score) return a.integrity_score - b.integrity_score;
-      if (a.open !== b.open) return b.open - a.open;
-      return a.label.localeCompare(b.label);
-    });
-  }, [integrity]);
-
-  const pulseCopy = integrity
-    ? integrity.open_obligations > 0
-      ? `${integrity.open_obligations} live obligation${integrity.open_obligations === 1 ? "" : "s"} require attention.`
-      : "No open obligations. The system is operating cleanly."
-    : authLocked
-      ? "Authenticate to load governed state."
-      : loading
-        ? "Pulling system state..."
-        : "Live state unavailable.";
-
-  return (
-    <div className="min-h-screen bg-[#050816] text-slate-100">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute left-[-10%] top-[8%] h-72 w-72 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="absolute right-[-5%] top-[20%] h-80 w-80 rounded-full bg-sky-400/10 blur-3xl" />
-        <div className="absolute bottom-[-10%] left-[20%] h-72 w-72 rounded-full bg-fuchsia-400/5 blur-3xl" />
-      </div>
-
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/85 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">AutoKirk · Operator Console</div>
-            <div className="mt-1 text-sm text-slate-300">System · Command · Enforcement · Proof</div>
-          </div>
-
-          <div className="hidden items-center gap-2 md:flex">
-            <Link href="/integrity" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
-              System
-            </Link>
-            <Link href="/command" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
-              Command
-            </Link>
-            <Link href="/receipts" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
-              Receipts
-            </Link>
-            <button
-              type="button"
-              onClick={() => void load()}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+      <div className={`${card} p-7`}>
+        <div className={pill}>Live operating grammar</div>
+        <div className="mt-6 space-y-4">
+          {[
+            ["Event", CircleDashed, "Something crossed the kernel boundary"],
+            ["Obligation", Siren, "Revenue movement now requires closure"],
+            ["Command", Workflow, "Human or policy advances the object"],
+            ["Receipt", Receipt, "Immutable proof emitted"],
+            ["Integrity", Shield, "System truth is recalculated"],
+          ].map(([label, Icon, text], idx) => (
+            <motion.div
+              key={label}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.08 }}
+              className="flex items-center gap-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4"
             >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </button>
+              <div className="rounded-2xl border border-zinc-700 p-3">
+                <Icon className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-sm font-black uppercase tracking-[0.18em] text-zinc-300">{label}</div>
+                <div className={`text-sm ${muted}`}>{text}</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SystemPage() {
+  const stats = [
+    ["Integrity", "97", "Governance clean"],
+    ["Open obligations", "3", "1 requires human closure"],
+    ["Receipts today", "41", "All revenue movement accounted"],
+    ["Potential leakage", "$12,000", "1 eliminated lead path"],
+  ];
+
+  return (
+    <div className="space-y-8">
+      <SectionTitle
+        eyebrow="System"
+        title="The machine, not the menu."
+        body="This page makes the kernel legible. It shows pressure, flow, and proof in one place so the operator understands what is moving, what is stuck, and what has already been sealed."
+      />
+
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {stats.map(([label, value, note]) => (
+          <div key={label} className={statCard}>
+            <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{label}</div>
+            <div className="mt-2 text-4xl font-black">{value}</div>
+            <div className={`mt-2 text-sm ${muted}`}>{note}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className={`${card} p-6`}>
+          <SectionTitle
+            eyebrow="Live movement"
+            title="Revenue flow through the kernel"
+            body="This is the visual centerpiece. Operators should see movement passing through stages, not disconnected pages."
+          />
+          <div className="mt-6 grid gap-3 md:grid-cols-5">
+            {[
+              ["Events", "18", Activity],
+              ["Obligations", "7", Siren],
+              ["Command", "3", Workflow],
+              ["Receipts", "41", Receipt],
+              ["Closures", "16", CheckCircle2],
+            ].map(([label, value, Icon], i) => (
+              <div key={label} className="relative rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <Icon className="mb-3 h-5 w-5 text-zinc-300" />
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{label}</div>
+                <div className="mt-1 text-3xl font-black">{value}</div>
+                {i < 4 ? (
+                  <ArrowRight className="absolute -right-3 top-1/2 hidden h-5 w-5 -translate-y-1/2 text-zinc-700 md:block" />
+                ) : null}
+              </div>
+            ))}
           </div>
         </div>
-      </header>
 
-      <main className="relative mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
-              <Sparkles className="h-3.5 w-3.5" />
-              Governed operator surface
-            </div>
-
-            <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Know the state. Resolve the duty. Seal the proof.
-            </h1>
-
-            <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              AutoKirk should feel like one governed machine, not a pile of screens. The landing page must tell the operator
-              three things immediately: the current state, the live pressure, and the proof that the system is actually
-              closing work.
-            </p>
-
-            <div className="mt-8 flex flex-wrap gap-2 text-sm text-slate-300">
-              {[
-                "event",
-                "obligation",
-                "command",
-                "closure",
-                "receipt",
-                "integrity",
-              ].map((step, index) => (
-                <div key={step} className="flex items-center gap-2">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200">
-                    {step}
-                  </span>
-                  {index < 5 && <ArrowRight className="h-4 w-4 text-slate-500" />}
+        <div className={`${card} p-6`}>
+          <SectionTitle
+            eyebrow="Pressure"
+            title="What needs attention now"
+            body="This is where the system earns its keep. It converts abstract architecture into operator pressure."
+          />
+          <div className="mt-5 space-y-3">
+            {[
+              ["Billing obligation waiting for closure", "Human required", Bell],
+              ["Advertising campaign underperforming", "Suggested review", Brain],
+              ["Lead path eliminated automatically", "Proof stored", XCircle],
+            ].map(([title, note, Icon]) => (
+              <div key={title} className="flex items-start gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <div className="rounded-xl border border-zinc-700 p-2">
+                  <Icon className="h-4 w-4" />
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link
-                href="/integrity"
-                className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:translate-y-[-1px]"
-              >
-                <Shield className="h-4 w-4" />
-                Open system state
-              </Link>
-              <Link
-                href="/command"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
-              >
-                <Activity className="h-4 w-4" />
-                Go to command
-              </Link>
-              <Link
-                href="/receipts"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
-              >
-                <ReceiptText className="h-4 w-4" />
-                View receipts
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-5 py-3 text-sm font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/5"
-              >
-                <LogIn className="h-4 w-4" />
-                Authenticate
-              </Link>
-            </div>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(7,11,21,0.92),rgba(7,11,21,0.72))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-              <div className="flex flex-wrap items-start justify-between gap-6">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">System pulse</div>
-                  <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                    {integrity ? gradeLabel(integrity.integrity_score) : authLocked ? "Authentication required" : "Loading state"}
-                  </div>
-                  <p className="mt-3 max-w-sm text-sm leading-6 text-slate-400">{pulseCopy}</p>
-                  {integrity && (
-                    <div
-                      className={`mt-4 inline-flex items-center rounded-full border px-3 py-1 text-xs ${confidenceTone(integrity.confidence)}`}
-                    >
-                      Confidence: {integrity.confidence}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mx-auto sm:mx-0">
-                  <ScoreDial score={integrity ? integrity.integrity_score : null} />
+                  <div className="font-semibold">{title}</div>
+                  <div className={`text-sm ${muted}`}>{note}</div>
                 </div>
               </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <MetricTile
-                  label="Open duty"
-                  value={integrity ? String(integrity.open_obligations) : authLocked ? "Locked" : "—"}
-                  supporting={integrity ? "active obligations in queue" : "authenticate to load"}
-                />
-                <MetricTile
-                  label="Proof lag"
-                  value={integrity ? String(integrity.proof_lag) : authLocked ? "Locked" : "—"}
-                  supporting={integrity ? "sealed without receipt" : "proof surface not loaded"}
-                />
-                <MetricTile
-                  label="Closure latency"
-                  value={integrity ? fmtHours(integrity.avg_closure_hours) : authLocked ? "Locked" : "—"}
-                  supporting={integrity ? "average time to close" : "live timing unavailable"}
-                />
-              </div>
-            </div>
-
-            {authLocked ? (
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <Lock className="h-5 w-5 text-slate-200" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-medium text-white">Live governed data is protected.</div>
-                    <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-                      This page is ready to act as the real system entry point. Once authenticated, it will pull integrity,
-                      queue pressure, and receipts from the governed API surfaces already in the app.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Live command pressure</div>
-                  <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{command.length}</div>
-                  <div className="mt-1 text-sm text-slate-400">items currently requiring operator action</div>
-                  <div className="mt-4 flex items-center gap-2 text-sm text-slate-300">
-                    {command.length === 0 ? (
-                      <>
-                        <CircleCheckBig className="h-4 w-4 text-emerald-300" />
-                        All clear
-                      </>
-                    ) : (
-                      <>
-                        <CircleAlert className="h-4 w-4 text-amber-300" />
-                        Queue has live pressure
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Recent proof</div>
-                  <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{receipts.length}</div>
-                  <div className="mt-1 text-sm text-slate-400">receipts currently available in the proof layer</div>
-                  <div className="mt-4 text-sm text-slate-300">{integrity ? fmtDate(integrity.computed_at) : "Waiting for live state"}</div>
-                </div>
-              </div>
-            )}
+            ))}
           </div>
-        </section>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        {errors.length > 0 && (
-          <section className="rounded-3xl border border-rose-300/15 bg-rose-300/10 p-4 text-sm text-rose-100">
-            <div className="font-medium">Some live surfaces failed to load.</div>
-            <ul className="mt-2 space-y-1 text-rose-100/80">
-              {errors.map((error) => (
-                <li key={error}>• {error}</li>
+function CommandPage() {
+  return (
+    <div className="space-y-8">
+      <SectionTitle
+        eyebrow="Command"
+        title="Where revenue-linked duty becomes visible."
+        body="Command is not a task list. It is the live queue of governed obligations that have not yet reached closure, termination, or elimination."
+      />
+      <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className={`${card} p-6`}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Queue pressure</div>
+              <div className="mt-2 text-5xl font-black">3</div>
+            </div>
+            <div className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-semibold">
+              1 human-close required
+            </div>
+          </div>
+          <div className="mt-6 space-y-3">
+            {movements
+              .filter((m) => m.status !== "Receipted")
+              .map((m) => (
+                <div key={m.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black uppercase tracking-[0.16em] text-zinc-500">{m.face}</div>
+                      <div className="mt-1 text-lg font-semibold">{m.action}</div>
+                      <div className={`mt-1 text-sm ${muted}`}>
+                        {m.object} • {m.objectId} • {m.value}
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-semibold">
+                      {m.status}
+                    </div>
+                  </div>
+                  <div className={`mt-3 text-sm ${muted}`}>{m.actor} • {m.tier}</div>
+                  <div className="mt-4 flex gap-2">
+                    <button className="rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-950">
+                      Inspect object
+                    </button>
+                    <button className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold">
+                      Close or escalate
+                    </button>
+                  </div>
+                </div>
               ))}
-            </ul>
-          </section>
-        )}
-
-        <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-6">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Command preview</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Resolve the oldest duty first.</h2>
+          </div>
+        </div>
+        <div className={`${card} p-6`}>
+          <SectionTitle
+            eyebrow="Why this page wins"
+            title="A real painkiller"
+            body="This is the page that makes AutoKirk sellable. It shows where money is at risk, what requires action, and whether policy or a human must close the path."
+          />
+          <div className="mt-6 grid gap-3 md:grid-cols-2">
+            {[
+              ["Unknown revenue leakage becomes visible", Target],
+              ["Human authority only where needed", UserRound],
+              ["Low-value noise can auto-close without disappearing", Workflow],
+              ["Every step still leaves proof", Receipt],
+            ].map(([text, Icon]) => (
+              <div key={text} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <Icon className="mb-3 h-5 w-5 text-zinc-300" />
+                <div className="font-semibold">{text}</div>
               </div>
-              <Link href="/command" className="text-sm text-slate-300 transition hover:text-white">
-                Open queue →
-              </Link>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {authLocked && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                  Authenticate to load the live command queue.
-                </div>
-              )}
-
-              {!authLocked && queue.length === 0 && (
-                <div className="rounded-2xl border border-emerald-400/15 bg-emerald-400/10 p-5">
-                  <div className="flex items-center gap-2 text-emerald-100">
-                    <CircleCheckBig className="h-4 w-4" />
-                    <span className="font-medium">All clear</span>
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-emerald-50/80">
-                    No open obligations are visible right now. When pressure returns, it should appear here before the operator
-                    goes anywhere else.
-                  </p>
-                </div>
-              )}
-
-              {!authLocked &&
-                queue.map((row) => (
-                  <div key={row.obligation_id} className="rounded-2xl border border-white/10 bg-[#080c17] p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-400">
-                            {fmtFace(row.face)}
-                          </span>
-                          <span className={`rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] ${severityTone(row.severity)}`}>
-                            {row.severity.replace(/_/g, " ")}
-                          </span>
-                          {row.is_breach ? (
-                            <span className="rounded-full border border-rose-300/15 bg-rose-300/10 px-2.5 py-1 text-[11px] uppercase tracking-[0.2em] text-rose-100">
-                              breach
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="mt-3 text-lg font-medium text-white">{row.title}</div>
-                        {row.why ? <div className="mt-1 text-sm text-slate-400">{row.why}</div> : null}
-                      </div>
-                      <div className="text-right text-sm text-slate-400">
-                        <div>{fmtAge(row.age_hours)}</div>
-                        <div className="mt-1">{fmtDate(row.due_at ?? row.created_at)}</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
+            ))}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-6">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Proof surface</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Institutional memory, not activity feed.</h2>
+function ProofPage() {
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase().trim();
+    if (!q) return receipts;
+    return receipts.filter((r) => JSON.stringify(r).toLowerCase().includes(q));
+  }, [query]);
+
+  return (
+    <div className="space-y-8">
+      <SectionTitle
+        eyebrow="Proof"
+        title="Searchable revenue forensics"
+        body="This is one of the strongest pages in the product. Any revenue-linked movement should be retrievable by time, date, category, actor, obligation, object, or receipt identity."
+      />
+      <div className={`${card} p-6`}>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-xl">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search receipt id, object id, face, actor, obligation, time, or status"
+              className="w-full rounded-2xl border border-zinc-800 bg-zinc-950 px-11 py-4 text-sm outline-none ring-0 placeholder:text-zinc-500"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {['Date range', 'Face', 'Actor', 'Status', 'Tier'].map((f) => (
+              <button
+                key={f}
+                className="inline-flex items-center gap-2 rounded-full border border-zinc-800 bg-zinc-950 px-4 py-2 text-sm font-semibold"
+              >
+                <Filter className="h-4 w-4" />
+                {f}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-6 space-y-3">
+          {filtered.map((r) => (
+            <div key={r.id} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+              <div className="grid gap-3 md:grid-cols-[1.1fr_0.9fr_0.9fr]">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Receipt</div>
+                  <div className="mt-1 text-lg font-semibold">{r.id}</div>
+                  <div className={`mt-1 text-sm ${muted}`}>Object {r.object} • Obligation {r.obligation}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Proof state</div>
+                  <div className="mt-1 text-lg font-semibold">{r.state}</div>
+                  <div className={`mt-1 text-sm ${muted}`}>{r.face}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Lineage</div>
+                  <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold">
+                    <Shield className="h-4 w-4" /> {r.lineage}
+                  </div>
+                  <div className={`mt-1 text-sm ${muted}`}>{r.actor} • {r.timestamp}</div>
+                </div>
               </div>
-              <Link href="/receipts" className="text-sm text-slate-300 transition hover:text-white">
-                Open receipts →
-              </Link>
             </div>
-
-            <div className="mt-5 space-y-3">
-              {authLocked && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                  Authenticate to load receipts.
-                </div>
-              )}
-
-              {!authLocked && recentReceipts.length === 0 && (
-                <div className="rounded-2xl border border-white/10 bg-[#080c17] p-5 text-sm text-slate-400">
-                  No receipts are visible yet.
-                </div>
-              )}
-
-              {!authLocked &&
-                recentReceipts.map((receipt) => (
-                  <div key={receipt.receipt_id} className="rounded-2xl border border-white/10 bg-[#080c17] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-lg font-medium text-white">{receipt.receipt_id.slice(0, 18)}…</div>
-                        <div className="mt-1 text-sm text-slate-400">
-                          {fmtFace(receipt.face)} · {fmtDate(receipt.sealed_at)}
-                        </div>
-                        <div className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-500">
-                          obligation {receipt.obligation_id.slice(0, 16)}…
-                        </div>
-                      </div>
-                      <div className="rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-100">
-                        sealed
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-6">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Enforcement sectors</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Faces ranked by real pressure.</h2>
+          ))}
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/80 p-8 text-center">
+              <div className="text-lg font-semibold">No proof records matched your search.</div>
+              <div className={`mt-2 text-sm ${muted}`}>
+                Try searching by receipt id, object id, face, actor, or timestamp.
               </div>
-              <Link href="/integrity" className="text-sm text-slate-300 transition hover:text-white">
-                Full system state →
-              </Link>
             </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            <div className="mt-5 grid gap-3">
-              {authLocked && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                  Authenticate to see face-level live ranking.
-                </div>
-              )}
-
-              {!authLocked && domains.length === 0 && (
-                <div className="rounded-2xl border border-white/10 bg-[#080c17] p-5 text-sm text-slate-400">
-                  No domain stats are available yet.
-                </div>
-              )}
-
-              {!authLocked &&
-                domains.map((domain) => {
-                  const route = FACE_ROUTES[domain.face] ?? null;
-                  const accent = scoreColor(domain.integrity_score);
-                  const content = (
-                    <div className="rounded-2xl border border-white/10 bg-[#080c17] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{domain.face}</div>
-                          <div className="mt-2 text-lg font-medium text-white">{domain.label}</div>
-                          <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-400">
-                            <span>{domain.open} open</span>
-                            <span>{domain.sealed} sealed</span>
-                            <span>{domain.breach_count} breach</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-3xl font-semibold tracking-tight" style={{ color: accent }}>
-                            {domain.integrity_score}
-                          </div>
-                          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">integrity</div>
-                        </div>
-                      </div>
-                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5">
-                        <div className="h-full rounded-full" style={{ width: `${domain.integrity_score}%`, backgroundColor: accent }} />
-                      </div>
-                    </div>
-                  );
-
-                  return route ? <Link key={domain.face} href={route}>{content}</Link> : <div key={domain.face}>{content}</div>;
-                })}
+function MarketsPage() {
+  return (
+    <div className="space-y-8">
+      <SectionTitle
+        eyebrow="Markets"
+        title="One kernel. Different faces."
+        body="This page explains the deployment strategy. The kernel stays fixed. Faces change vocabulary. Domains generate objects. That is how AutoKirk expands without back-solving the core."
+      />
+      <div className="grid gap-4 lg:grid-cols-3">
+        {faces.map((face) => (
+          <div key={face.name} className={`${card} p-6`}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Face</div>
+                <div className="mt-1 text-2xl font-black">{face.name}</div>
+              </div>
+              <div className="rounded-full border border-zinc-700 px-3 py-2 text-sm font-bold">
+                Integrity {face.integrity}
+              </div>
+            </div>
+            <div className={`mt-3 text-sm ${muted}`}>{face.note}</div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {face.domains.map((d) => (
+                <span key={d} className="rounded-full border border-zinc-800 bg-zinc-950 px-3 py-1 text-xs font-semibold">
+                  {d}
+                </span>
+              ))}
+            </div>
+            <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Pressure</div>
+              <div className="mt-1 text-lg font-semibold">{face.pressure}</div>
             </div>
           </div>
+        ))}
+      </div>
 
-          <div className="space-y-6">
-            <SurfaceLink
-              eyebrow="System"
-              title="Judgment"
-              body="The machine's current truth. Integrity is where the operator learns whether governance is clean, degraded, or at risk."
-              href="/integrity"
-            />
-            <SurfaceLink
-              eyebrow="Command"
-              title="Action"
-              body="Open duty, oldest first. The queue should compress uncertainty and make the next required move unmistakable."
-              href="/command"
-            />
-            <SurfaceLink
-              eyebrow="Proof"
-              title="Memory"
-              body="Every sealed obligation leaves a receipt. Proof turns work into institutional memory instead of disappearing activity."
-              href="/receipts"
-            />
-            <SurfaceLink
-              eyebrow="Kernel"
-              title="Dealership enforcement"
-              body="The face exists in the system grammar, but the dedicated surface is not publicly exposed in this app structure yet."
-              locked
-            />
+      <div className={`${card} p-6`}>
+        <SectionTitle
+          eyebrow="Highest revenue path"
+          title="Service departments first"
+          body="If I were optimizing for survival and revenue, I would lead with service environments where leakage is obvious, tickets are meaningful, and closeout chaos is common. Marine service is a strong first wedge."
+        />
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {[
+            ['Leakage is constant', 'Work orders, inspections, parts, and follow-up disappear without proof.'],
+            ['Value is easy to measure', 'Each missed closeout has direct revenue consequences.'],
+            ['Expansion path is natural', 'Washbay to service to parts to billing to sales.'],
+          ].map(([title, body]) => (
+            <div key={title} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+              <div className="font-semibold">{title}</div>
+              <div className={`mt-2 text-sm ${muted}`}>{body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function IntelligencePage() {
+  return (
+    <div className="space-y-8">
+      <SectionTitle
+        eyebrow="Intelligence"
+        title="Proof outranks inference"
+        body="Schema AI should not mutate the system. It should learn from receipts, compare patterns, and recommend stronger movement policies without crossing the authority boundary."
+      />
+      <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+        <div className={`${card} p-6`}>
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Learns from</div>
+          <div className="mt-5 space-y-3">
+            {[
+              'Time to closure',
+              'Positive vs negative outcomes',
+              'Market face differences',
+              'Actor behavior',
+              'Termination and elimination frequency',
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <BadgeCheck className="h-5 w-5 text-zinc-300" />
+                <div className="font-semibold">{item}</div>
+              </div>
+            ))}
           </div>
-        </section>
+        </div>
+        <div className={`${card} p-6`}>
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Premium revenue route</div>
+          <div className="mt-3 text-2xl font-black">Advisory and optimization on top of the kernel</div>
+          <div className={`mt-3 text-sm ${muted}`}>
+            The real upsell is not generic AI. It is market-aware, receipted, closure-aware recommendations that
+            show where money is being lost and what policy changes could stop it.
+          </div>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {[
+              ['Leak detection advisory', TrendingUp],
+              ['Closure policy tuning', Shield],
+              ['Notification tuning', Bell],
+              ['Cross-market intelligence', Building2],
+            ].map(([label, Icon]) => (
+              <div key={label} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <Icon className="mb-3 h-5 w-5 text-zinc-300" />
+                <div className="font-semibold">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SanityChecksPanel() {
+  const results = useMemo(() => runSanityChecks(), []);
+
+  return (
+    <div className={`${card} p-6`}>
+      <SectionTitle
+        eyebrow="Sanity checks"
+        title="Blueprint integrity"
+        body="These lightweight checks make sure the demo data model backing the pages is internally coherent."
+      />
+      <div className="mt-5 grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+        {results.checks.map((check) => (
+          <div key={check.name} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+            <div className="mb-2 inline-flex rounded-full border border-zinc-700 px-2 py-1 text-xs font-bold uppercase tracking-[0.16em]">
+              {check.pass ? "Pass" : "Fail"}
+            </div>
+            <div className="text-sm font-semibold">{check.name}</div>
+          </div>
+        ))}
+      </div>
+      <div className={`mt-4 text-sm ${results.passed ? 'text-emerald-400' : 'text-amber-400'}`}>
+        {results.passed ? 'All sanity checks passed.' : 'One or more sanity checks failed.'}
+      </div>
+    </div>
+  );
+}
+
+export default function AutoKirkWebpagesBlueprint() {
+  const [current, setCurrent] = useState('System');
+
+  const CurrentPage = useMemo(() => {
+    switch (current) {
+      case 'Command':
+        return <CommandPage />;
+      case 'Proof':
+        return <ProofPage />;
+      case 'Markets':
+        return <MarketsPage />;
+      case 'Intelligence':
+        return <IntelligencePage />;
+      default:
+        return <SystemPage />;
+    }
+  }, [current]);
+
+  return (
+    <div className={shell}>
+      <TopNav current={current} setCurrent={setCurrent} />
+      <main className="mx-auto max-w-7xl space-y-10 px-5 py-8 md:px-8 md:py-10">
+        <Hero setCurrent={setCurrent} />
+        {CurrentPage}
+        <SanityChecksPanel />
+        <div className={`${card} p-6`}>
+          <SectionTitle
+            eyebrow="Design summary"
+            title="What these webpages are trying to accomplish"
+            body="Make AutoKirk understandable as a machine, sellable through one painful wedge, and scalable without diluting the kernel. These pages are designed to eliminate abstraction, expose operator pressure, and emphasize proof as the center of trust."
+          />
+          <div className="mt-6 grid gap-3 md:grid-cols-4">
+            {[
+              ['Kernel stays strict', Shield],
+              ['Service wedge first', Building2],
+              ['Proof is searchable', Search],
+              ['AI remains subordinate', Brain],
+            ].map(([label, Icon]) => (
+              <div key={label} className="rounded-2xl border border-zinc-800 bg-zinc-950/80 p-4">
+                <Icon className="mb-3 h-5 w-5 text-zinc-300" />
+                <div className="font-semibold">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     </div>
   );
