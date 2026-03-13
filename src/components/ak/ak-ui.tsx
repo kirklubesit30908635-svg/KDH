@@ -1,12 +1,20 @@
-﻿@'
 "use client";
+
 import React from "react";
 import Link from "next/link";
+
+type AkShellProps = {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+};
+
 const GOLD = "#c8960c";
 const BLACK = "#000";
 const DIM = "#888";
 const BORDER = "#1a1a1a";
-export function AkShell(props: { title: string; subtitle?: string; children: React.ReactNode }) {
+
+export function AkShell(props: AkShellProps) {
   return (
     <div style={{ minHeight: "100vh", background: BLACK, color: "#fff", fontFamily: "monospace", paddingBottom: 60 }}>
       <div style={{ padding: "10px 16px", borderBottom: "1px solid #1a1a1a", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: GOLD, fontFamily: "monospace" }}>
