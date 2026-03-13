@@ -44,7 +44,7 @@ export function AkPanel({ children, className, style }: AkPanelProps) {
 
 // ─── AkSectionHeader ──────────────────────────────────────────────────────────
 
-export function AkSectionHeader({ label }: { label: string }) {
+export function AkSectionHeader({ label, count }: { label: string; count?: number }) {
   return (
     <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.28em", color: "rgba(255,255,255,0.25)", textTransform: "uppercase", paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
       {label}
