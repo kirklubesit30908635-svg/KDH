@@ -56,9 +56,40 @@ export function AkInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   const { className, style, ...rest } = props;
   return <input {...rest} style={{ width: "100%", background: "#0a0a0a", border: "1px solid #333", color: "#fff", fontFamily: "monospace", fontSize: 13, padding: "8px 12px", outline: "none", borderRadius: 3, boxSizing: "border-box", ...style }} />;
 }
-export function AkButton(props: { tone?: "gold" | "ghost" | "danger"; children: React.ReactNode; onClick?: () => void; disabled?: boolean; type?: "button" | "submit" | "reset" }) {
+export function AkButton(props: {
+  tone?: "gold" | "ghost" | "danger";
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  type?: "button" | "submit";
+}) {
   const tone = props.tone ?? "gold";
-  const s = tone === "gold" ? { background: GOLD, color: BLACK, border: "none" } : tone === "danger" ? { background: "#3a0000", color: "#f87171", border: "1px solid #7f1d1d" } : { background: "transparent", color: DIM, border: "1px solid #333" };
-  return <button type={props.type ?? "button"} onClick={props.onClick} disabled={props.disabled} style={{ padding: "8px 20px", fontSize: 12, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.08em", cursor: props.disabled ? "not-allowed" : "pointer", opacity: props.disabled ? 0.5 : 1, borderRadius: 3, ...s }}>{props.children}</button>;
+
+  const s =
+    tone === "gold"
+      ? { background: GOLD, color: BLACK, border: "none" }
+      : tone === "danger"
+      ? { background: "#3a0000", color: "#f87171", border: "none" }
+      : { background: "transparent", color: "#fff", border: "1px solid #333" };
+
+  return (
+    <button
+      type={props.type ?? "button"}
+      onClick={props.onClick}
+      disabled={props.disabled}
+      style={{
+        padding: "8px 20px",
+        fontSize: 12,
+        fontWeight: 700,
+        fontFamily: "monospace",
+        letterSpacing: "0.08em",
+        cursor: props.disabled ? "not-allowed" : "pointer",
+        opacity: props.disabled ? 0.5 : 1,
+        borderRadius: 3,
+        ...s
+      }}
+    >
+      {props.children}
+    </button>
+  );
 }
-'@ | Set-Content "C:\Users\chase kirk\autokirk-kernel\src\components\ak\ak-ui.tsx" -Encoding UTF8
