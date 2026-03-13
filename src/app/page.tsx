@@ -180,7 +180,7 @@ function SectionTitle({ eyebrow, title, body }: { eyebrow: string; title: string
   );
 }
 
-function TopNav({ current, setCurrent }) {
+function TopNav({ current, setCurrent }: { current: string; setCurrent: (v: string) => void }) {
   const items = [
     ["System", Activity],
     ["Command", Workflow],
@@ -699,4 +699,5 @@ export default function AutoKirkWebpagesBlueprint() {
     </div>
   );
 }
+
 
