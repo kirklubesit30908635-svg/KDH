@@ -1,5 +1,4 @@
-use client";
-
+"use client";
 
 import React from "react";
 import Link from "next/link";
@@ -239,17 +238,6 @@ export function AkInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-<<<<<<< HEAD
-export function AkButton(props: {
-  tone?: "gold" | "ghost" | "danger" | "muted";
-  children: React.ReactNode;
-  onClick?: () => void;
-  disabled?: boolean;
-  type?: "button" | "submit";
-}) {
-  const tone = props.tone ?? "gold";
-
-=======
 export function AkButton({
   tone = "gold",
   className,
@@ -259,7 +247,6 @@ export function AkButton({
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: "gold" | "ghost" | "danger" | "muted";
 }) {
->>>>>>> 39486c4 (pass production build for operator console and api surfaces)
   const s =
     tone === "gold"
       ? { background: GOLD, color: BLACK, border: "none" }
@@ -271,31 +258,13 @@ export function AkButton({
 
   return (
     <button
-<<<<<<< HEAD
-      type={props.type ?? "button"}
-      onClick={props.onClick}
-      disabled={props.disabled}
-=======
       className={className}
->>>>>>> 39486c4 (pass production build for operator console and api surfaces)
       style={{
         padding: "8px 20px",
         fontSize: 12,
         fontWeight: 700,
         fontFamily: "monospace",
         letterSpacing: "0.08em",
-<<<<<<< HEAD
-        cursor: props.disabled ? "not-allowed" : "pointer",
-        opacity: props.disabled ? 0.5 : 1,
-        borderRadius: 3,
-        ...s,
-      }}
-    >
-      {props.children}
-    </button>
-  );
-}
-=======
         cursor: rest.disabled ? "not-allowed" : "pointer",
         opacity: rest.disabled ? 0.5 : 1,
         borderRadius: 3,
@@ -308,4 +277,3 @@ export function AkButton({
     </button>
   );
 }
->>>>>>> 39486c4 (pass production build for operator console and api surfaces)
