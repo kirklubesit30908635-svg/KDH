@@ -19,25 +19,21 @@ export type MachineObligation = {
 }
 
 export type MachineEvent = {
-  id: number
-  object_id: string | null
-  obligation_id: string | null
-  event_type: string
-  actor_class: string
-  actor_id: string
-  occurred_at: string
+  id: string
+  chain_key: string
+  seq: number
+  event_type_id: number
   payload: Record<string, unknown> | null
+  created_at: string
 }
 
 export type MachineReceipt = {
   id: string
-  object_id: string
-  obligation_id: string | null
-  receipt_type: string
-  actor_class: string
-  actor_id: string
-  reason_code: string | null
-  issued_at: string
+  event_id: string
+  receipt_type_id: number
+  chain_key: string
+  seq: number
+  created_at: string
 }
 
 export type MachineState = {

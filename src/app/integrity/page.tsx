@@ -228,7 +228,7 @@ function BreakdownRow({
         <div className="flex items-center gap-3 shrink-0">
           {/* Section 8: show raw signal -> pts format */}
           <div className="font-mono text-[11px] text-white/25">{rawLabel}</div>
-          <div className="text-white/20 text-[10px]">-></div>
+          <div className="text-white/20 text-[10px]">{"\u2192"}</div>
           <div className="text-sm font-extrabold w-10 text-right" style={{ color }}>
             +{pts}
           </div>
@@ -287,7 +287,7 @@ export default function IntegrityPage() {
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
           <div className="text-sm text-white/70">{err}</div>
-          <button onClick={loadStats} className="mt-4 text-xs font-bold text-white/40 hover:text-white/80 transition">Retry -></button>
+          <button onClick={loadStats} className="mt-4 text-xs font-bold text-white/40 hover:text-white/80 transition">{"Retry \u2192"}</button>
         </AkPanel>
       )}
 
@@ -551,15 +551,15 @@ export default function IntegrityPage() {
           <div className="flex flex-wrap gap-3">
             <Link href="/billing-ops"
               className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-neutral-950 transition hover:scale-[1.01]">
-              Billing Enforcement ->
+              {"Billing Enforcement \u2192"}
             </Link>
             <Link href="/receipts"
               className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]">
-              All Receipts ->
+              {"All Receipts \u2192"}
             </Link>
             <Link href="/command"
               className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]">
-              Command ->
+              {"Command \u2192"}
             </Link>
           </div>
         </>

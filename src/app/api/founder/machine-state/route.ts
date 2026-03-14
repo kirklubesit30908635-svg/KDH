@@ -22,15 +22,15 @@ export async function GET() {
         .limit(80),
 
       supabase.schema("ledger").from("events")
-        .select("id,object_id,obligation_id,event_type,actor_class,actor_id,occurred_at,payload")
+        .select("id,chain_key,seq,event_type_id,payload,created_at")
         .eq("workspace_id", workspaceId)
-        .order("id", { ascending: false })
+        .order("seq", { ascending: false })
         .limit(80),
 
       supabase.schema("ledger").from("receipts")
-        .select("id,object_id,obligation_id,receipt_type,actor_class,actor_id,reason_code,issued_at")
+        .select("id,event_id,receipt_type_id,chain_key,seq,created_at")
         .eq("workspace_id", workspaceId)
-        .order("issued_at", { ascending: false })
+        .order("seq", { ascending: false })
         .limit(80),
     ])
 
