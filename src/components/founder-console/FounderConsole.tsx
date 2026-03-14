@@ -2,9 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { MachineHealth, MachineState } from "@/lib/founder-console/types"
+import { CLASS_RULES, type KernelClass } from "@/lib/kernel/rules"
 
-const kernelClasses = ["lead", "invoice", "job", "campaign", "inspection", "payment"]
-const economicPostures = ["revenue_candidate", "direct_revenue", "cost_exposure", "revenue_recovery", "non_economic"]
+const kernelClasses = Object.keys(CLASS_RULES) as KernelClass[]
 const terminalActions = ["closed", "terminated", "eliminated"]
 const reasonCodes = [
   "customer_declined",
@@ -68,10 +68,13 @@ export default function FounderConsole() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
-  const [kernelClass, setKernelClass] = useState("lead")
+  const [kernelClass, setKernelClass] = useState<KernelClass>("lead")
   const [economicPosture, setEconomicPosture] = useState("revenue_candidate")
   const [sourceRef, setSourceRef] = useState("")
   const [objectMetadata, setObjectMetadata] = useState('{\n  "channel": "founder_console"\n}')
+
+  const allowedPostures = CLASS_RULES[kernelClass]?.allowedPostures ?? []
+  const allowedObligations = CLASS_RULES[kernelClass]?.allowedObligations ?? []
 
   const [selectedObjectId, setSelectedObjectId] = useState("")
   const [obligationType, setObligationType] = useState("follow_up")
@@ -112,6 +115,19 @@ export default function FounderConsole() {
   useEffect(() => {
     loadMachine()
   }, [])
+
+  // Reset posture + obligation type when class changes
+  useEffect(() => {
+    const rule = CLASS_RULES[kernelClass]
+    if (rule) {
+      if (!(rule.allowedPostures as readonly string[]).includes(economicPosture)) {
+        setEconomicPosture(rule.allowedPostures[0])
+      }
+      if (!(rule.allowedObligations as readonly string[]).includes(obligationType)) {
+        setObligationType(rule.defaultObligation)
+      }
+    }
+  }, [kernelClass])
 
   useEffect(() => {
     if (!selectedObjectId && state?.objects?.[0]?.id) {
@@ -222,14 +238,14 @@ export default function FounderConsole() {
           <div className="grid gap-6 self-start">
             <Panel title="Object intake" subtitle="Reality enters jurisdiction here.">
               <Field label="Kernel class">
-                <select value={kernelClass} onChange={(e) => setKernelClass(e.target.value)} className="input-field">
+                <select value={kernelClass} onChange={(e) => setKernelClass(e.target.value as KernelClass)} className="input-field">
                   {kernelClasses.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </Field>
 
               <Field label="Economic posture">
                 <select value={economicPosture} onChange={(e) => setEconomicPosture(e.target.value)} className="input-field">
-                  {economicPostures.map((item) => <option key={item} value={item}>{item}</option>)}
+                  {allowedPostures.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </Field>
 
@@ -268,7 +284,9 @@ export default function FounderConsole() {
               </Field>
 
               <Field label="Obligation type">
-                <input value={obligationType} onChange={(e) => setObligationType(e.target.value)} className="input-field" />
+                <select value={obligationType} onChange={(e) => setObligationType(e.target.value)} className="input-field">
+                  {allowedObligations.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
               </Field>
 
               <Field label="Metadata JSON">
