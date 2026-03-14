@@ -1,4 +1,5 @@
-﻿"use client";
+﻿import Link from "next/link";
+"use client";
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
@@ -38,7 +39,7 @@ const movements = [
     domain: "Service / Washbay",
     action: "Wash completed",
     actor: "Operator: J. Ellis",
-    tier: "Tier 1 â€¢ Auto-close allowed",
+    tier: "Tier 1 • Auto-close allowed",
     value: "$145",
     status: "Receipted",
     time: "08:43 AM",
@@ -53,7 +54,7 @@ const movements = [
     domain: "Payments",
     action: "Charge succeeded",
     actor: "Stripe webhook",
-    tier: "Tier 2 â€¢ Assisted close",
+    tier: "Tier 2 • Assisted close",
     value: "$4,980",
     status: "Open Obligation",
     time: "08:47 AM",
@@ -68,7 +69,7 @@ const movements = [
     domain: "Lead Flow",
     action: "Campaign underperforming",
     actor: "Schema AI suggestion",
-    tier: "Tier 2 â€¢ Assisted close",
+    tier: "Tier 2 • Assisted close",
     value: "$1,250 spend",
     status: "Suggested action",
     time: "09:01 AM",
@@ -83,7 +84,7 @@ const movements = [
     domain: "Follow-Up",
     action: "No follow-up within 24h",
     actor: "Policy timer",
-    tier: "Tier 1 â€¢ Auto-close allowed",
+    tier: "Tier 1 • Auto-close allowed",
     value: "$12,000 potential",
     status: "Eliminated",
     time: "09:18 AM",
@@ -391,21 +392,27 @@ function CommandPage() {
                       <div className="text-sm font-black uppercase tracking-[0.16em] text-zinc-500">{m.face}</div>
                       <div className="mt-1 text-lg font-semibold">{m.action}</div>
                       <div className={`mt-1 text-sm ${muted}`}>
-                        {m.object} â€¢ {m.objectId} â€¢ {m.value}
+                        {m.object} • {m.objectId} • {m.value}
                       </div>
                     </div>
                     <div className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-semibold">
                       {m.status}
                     </div>
                   </div>
-                  <div className={`mt-3 text-sm ${muted}`}>{m.actor} â€¢ {m.tier}</div>
+                  <div className={`mt-3 text-sm ${muted}`}>{m.actor} • {m.tier}</div>
                   <div className="mt-4 flex gap-2">
-                    <button className="rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-950">
+                    <Link
+                      href="/billing-ops"
+                      className="rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-950"
+                    >
                       Inspect object
-                    </button>
-                    <button className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold">
+                    </Link>
+                    <Link
+                      href="/command"
+                      className="rounded-full border border-zinc-700 px-4 py-2 text-sm font-bold"
+                    >
                       Close or escalate
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -481,7 +488,7 @@ function ProofPage() {
                 <div>
                   <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Receipt</div>
                   <div className="mt-1 text-lg font-semibold">{r.id}</div>
-                  <div className={`mt-1 text-sm ${muted}`}>Object {r.object} â€¢ Obligation {r.obligation}</div>
+                  <div className={`mt-1 text-sm ${muted}`}>Object {r.object} • Obligation {r.obligation}</div>
                 </div>
                 <div>
                   <div className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">Proof state</div>
@@ -493,7 +500,7 @@ function ProofPage() {
                   <div className="mt-1 inline-flex items-center gap-2 text-sm font-semibold">
                     <Shield className="h-4 w-4" /> {r.lineage}
                   </div>
-                  <div className={`mt-1 text-sm ${muted}`}>{r.actor} â€¢ {r.timestamp}</div>
+                  <div className={`mt-1 text-sm ${muted}`}>{r.actor} • {r.timestamp}</div>
                 </div>
               </div>
             </div>
@@ -699,5 +706,8 @@ export default function AutoKirkWebpagesBlueprint() {
     </div>
   );
 }
+
+
+
 
 
