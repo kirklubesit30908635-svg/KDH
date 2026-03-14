@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getFounderSupabase } from "@/lib/founder-console/server";
 
 export const runtime = "nodejs";
 
@@ -144,6 +144,7 @@ export async function POST(req: NextRequest) {
   }
 
   const results: Record<string, unknown> = { type: event.type };
+  const sb = getFounderSupabase();
 
   // -----------------------------------------------------------------
   // Legacy operator updates (keep existing behaviour)
@@ -152,7 +153,7 @@ export async function POST(req: NextRequest) {
     const session = event.data.object as Stripe.Checkout.Session;
     const authUid = session.metadata?.operator_auth_uid;
     if (authUid && session.customer && session.subscription) {
-      await supabaseAdmin
+      await sb
         .schema("core")
         .from("operators")
         .update({
@@ -167,7 +168,7 @@ export async function POST(req: NextRequest) {
   if (event.type === "customer.subscription.deleted") {
     const sub = event.data.object as Stripe.Subscription;
     if (sub.customer) {
-      await supabaseAdmin
+      await sb
         .schema("core")
         .from("operators")
         .update({ subscription_status: "inactive" })
@@ -184,7 +185,6 @@ export async function POST(req: NextRequest) {
     const metadata = extractMetadata(event);
     const sourceRef = extractSourceRef(event);
     const actorId = `stripe:${event.id}`;
-    const sb = supabaseAdmin;
 
     // 1. Acknowledge object
     const { data: objectId, error: ackErr } = await sb
