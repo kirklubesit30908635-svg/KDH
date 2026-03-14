@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AkShell, AkPanel, AkSectionHeader } from "@/components/ak/ak-ui";
 
-// â”€â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Types --------------------------------------------------------------------
 
 interface DomainStat {
   face:            string;
@@ -46,13 +46,10 @@ interface IntegrityStats {
   stripe_events:      number;
   covered_events:     number;
 
-  aging_penalty:  number;
-  speed_mult:     number;
-  delta_log:      { direction: "up" | "down" | "neutral"; label: string }[];
   computed_at: string;
 }
 
-// â”€â”€â”€ Signal generator (Section 19 â€” System Intelligence) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Signal generator (Section 19 -- System Intelligence) ----------------------
 
 type SignalLevel = "clean" | "warn" | "critical";
 interface Signal { level: SignalLevel; message: string }
@@ -77,7 +74,7 @@ function buildSignals(s: IntegrityStats): Signal[] {
   if (s.event_coverage < 100 && s.stripe_events > 0) {
     out.push({
       level: "warn",
-      message: `Event coverage at ${s.event_coverage}% â€” ${s.events_awaiting} inbound event${s.events_awaiting !== 1 ? "s" : ""} without an obligation`,
+      message: `Event coverage at ${s.event_coverage}% -- ${s.events_awaiting} inbound event${s.events_awaiting !== 1 ? "s" : ""} without an obligation`,
     });
   }
 
@@ -93,26 +90,26 @@ function buildSignals(s: IntegrityStats): Signal[] {
     if (d.total > 0 && d.integrity_score < 70) {
       out.push({
         level: "warn",
-        message: `${d.label} integrity at ${d.integrity_score} â€” needs attention`,
+        message: `${d.label} integrity at ${d.integrity_score} -- needs attention`,
       });
     }
   }
 
   if (out.length === 0) {
-    out.push({ level: "clean", message: "All signals clear â€” governance operating cleanly" });
+    out.push({ level: "clean", message: "All signals clear -- governance operating cleanly" });
   }
 
   return out;
 }
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Helpers ------------------------------------------------------------------
 
 function scoreGrade(s: number) {
   if (s >= 90) return { grade: "A", label: "GOVERNANCE CLEAN",          color: "#22c55e" };
   if (s >= 80) return { grade: "B", label: "OPERATING WITHIN BOUNDS",   color: "#60a5fa" };
-  if (s >= 70) return { grade: "C", label: "WATCH â€” REVIEW REQUIRED",   color: "#f59e0b" };
-  if (s >= 60) return { grade: "D", label: "AT RISK â€” ACTION REQUIRED", color: "#f97316" };
-  return              { grade: "F", label: "CRITICAL â€” SYSTEM AT RISK",  color: "#ef4444" };
+  if (s >= 70) return { grade: "C", label: "WATCH -- REVIEW REQUIRED",   color: "#f59e0b" };
+  if (s >= 60) return { grade: "D", label: "AT RISK -- ACTION REQUIRED", color: "#f97316" };
+  return              { grade: "F", label: "CRITICAL -- SYSTEM AT RISK",  color: "#ef4444" };
 }
 
 function confidenceColor(c: "High" | "Medium" | "Low") {
@@ -124,7 +121,7 @@ function signalColor(l: SignalLevel) {
 }
 
 function signalIcon(l: SignalLevel) {
-  return l === "clean" ? "âœ“" : l === "warn" ? "â–³" : "âœ•";
+  return l === "clean" ? "v" : l === "warn" ? "^" : "x";
 }
 
 function metricColor(value: number, good: number, warn: number, invert = false) {
@@ -135,7 +132,7 @@ function metricColor(value: number, good: number, warn: number, invert = false) 
 }
 
 function fmtHours(h: number | null): string {
-  if (h === null) return "â€”";
+  if (h === null) return "--";
   if (h < 1)      return "< 1h";
   if (h < 24)     return `${Math.round(h)}h`;
   const d = Math.floor(h / 24);
@@ -143,7 +140,7 @@ function fmtHours(h: number | null): string {
   return r > 0 ? `${d}d ${r}h` : `${d}d`;
 }
 
-// â”€â”€â”€ SVG Ring â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- SVG Ring -----------------------------------------------------------------
 
 function ScoreRing({ score, color }: { score: number; color: string }) {
   const r = 80; const cx = 100; const cy = 100;
@@ -180,7 +177,7 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   );
 }
 
-// â”€â”€â”€ Mini ring (for domains) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Mini ring (for domains) --------------------------------------------------
 
 function MiniRing({ score, color }: { score: number; color: string }) {
   const r = 22; const cx = 28; const cy = 28;
@@ -203,7 +200,7 @@ function MiniRing({ score, color }: { score: number; color: string }) {
   );
 }
 
-// â”€â”€â”€ Mini bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Mini bar -----------------------------------------------------------------
 
 function MiniBar({ pct, color }: { pct: number; color: string }) {
   return (
@@ -214,7 +211,7 @@ function MiniBar({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-// â”€â”€â”€ Score Breakdown row (Section 8 â€” improved clarity) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Score Breakdown row (Section 8 -- improved clarity) -----------------------
 
 function BreakdownRow({
   label, weight, pts, pct, color, rawLabel,
@@ -229,9 +226,9 @@ function BreakdownRow({
           <div className="text-[10px] font-mono text-white/20">{weight}</div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          {/* Section 8: show raw signal â†’ pts format */}
+          {/* Section 8: show raw signal -> pts format */}
           <div className="font-mono text-[11px] text-white/25">{rawLabel}</div>
-          <div className="text-white/20 text-[10px]">â†’</div>
+          <div className="text-white/20 text-[10px]">-></div>
           <div className="text-sm font-extrabold w-10 text-right" style={{ color }}>
             +{pts}
           </div>
@@ -245,7 +242,7 @@ function BreakdownRow({
   );
 }
 
-// â”€â”€â”€ Page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --- Page ---------------------------------------------------------------------
 
 export default function IntegrityPage() {
   const [stats,   setStats]   = useState<IntegrityStats | null>(null);
@@ -277,27 +274,27 @@ export default function IntegrityPage() {
   return (
     <AkShell title="Integrity" subtitle="Five signals. One score. No hiding.">
 
-      {/* â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* -- Loading -------------------------------------------------------- */}
       {loading && (
         <div className="flex items-center gap-3 text-sm text-white/35">
           <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Computing integrity scoreâ€¦
+          Computing integrity score...
         </div>
       )}
 
-      {/* â”€â”€ Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* -- Error ---------------------------------------------------------- */}
       {!loading && err && (
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
           <div className="text-sm text-white/70">{err}</div>
-          <button onClick={loadStats} className="mt-4 text-xs font-bold text-white/40 hover:text-white/80 transition">Retry â†’</button>
+          <button onClick={loadStats} className="mt-4 text-xs font-bold text-white/40 hover:text-white/80 transition">Retry -></button>
         </AkPanel>
       )}
 
       {!loading && !err && stats && scoreInfo && (
         <>
 
-          {/* â•â• HERO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* == HERO ====================================================== */}
           <AkPanel className="p-8 mb-6 overflow-hidden relative">
             <div
               className="pointer-events-none absolute -left-12 top-1/2 -translate-y-1/2 h-64 w-64 rounded-full blur-3xl opacity-15"
@@ -327,7 +324,7 @@ export default function IntegrityPage() {
                   <span className="text-xs font-extrabold tracking-[0.2em]" style={{ color: scoreInfo.color }}>
                     {scoreInfo.label}
                   </span>
-                  <span className="text-white/20">Â·</span>
+                  <span className="text-white/20">┬╖</span>
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold tracking-wide"
                     style={{
@@ -343,7 +340,7 @@ export default function IntegrityPage() {
 
                 {/* Formula */}
                 <div className="mt-4 font-mono text-[10px] text-white/20 leading-relaxed">
-                  score = 0.30Ã—CR + 0.25Ã—(100âˆ’BR) + 0.20Ã—EC + 0.15Ã—LS + 0.10Ã—PS
+                  score = 0.30xCR + 0.25x(100-BR) + 0.20xEC + 0.15xLS + 0.10xPS
                   <br />
                   <span className="text-white/35">
                     = {stats.pts_closure} + {stats.pts_breach} + {stats.pts_coverage} + {stats.pts_latency} + {stats.pts_proof}{" "}
@@ -352,14 +349,14 @@ export default function IntegrityPage() {
                 </div>
 
                 <div className="mt-3 text-[11px] text-white/20">
-                  {stats.total_obligations} obligations sampled Â· {new Date(stats.computed_at).toLocaleTimeString()} Â·{" "}
+                  {stats.total_obligations} obligations sampled ┬╖ {new Date(stats.computed_at).toLocaleTimeString()} ┬╖{" "}
                   <button onClick={loadStats} className="text-white/30 hover:text-white/60 transition">Refresh</button>
                 </div>
               </div>
             </div>
           </AkPanel>
 
-          {/* â•â• SYSTEM INTELLIGENCE SIGNALS (Section 19) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* == SYSTEM INTELLIGENCE SIGNALS (Section 19) ================== */}
           <div className="mb-6">
             <AkSectionHeader label="System Intelligence" />
             <div className="mt-3 space-y-2">
@@ -382,32 +379,9 @@ export default function IntegrityPage() {
             </div>
           </div>
 
-          {/* ══ SCORE DELTA LOG ══════════════════════════════════════════ */}
-          <div className="mb-6">
-            <AkSectionHeader label="Score Movement" />
-            <div className="mt-3 flex flex-wrap gap-2">
-              {stats.delta_log.map((item, i) => {
-                const color = item.direction === "up" ? "#22c55e" : item.direction === "down" ? "#ef4444" : "#6b7280";
-                const icon  = item.direction === "up" ? "▲" : item.direction === "down" ? "▼" : "·";
-                return (
-                  <span key={i} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold"
-                    style={{ color, borderColor: `${color}25`, backgroundColor: `${color}0a` }}>
-                    <span>{icon}</span>{item.label}
-                  </span>
-                );
-              })}
-              {stats.aging_penalty > 0 && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-bold"
-                  style={{ color: "#f97316", borderColor: "#f9731625", backgroundColor: "#f974160a" }}>
-                  ⏳ {stats.open_obligations} open obligations aging
-                </span>
-              )}
-            </div>
-          </div>
-
           <div className="h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent mb-6" />
 
-          {/* â•â• FIVE METRICS â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* == FIVE METRICS ============================================== */}
           <div className="grid gap-4 grid-cols-2 md:grid-cols-5 mb-8">
 
             {/* Closure Rate */}
@@ -444,7 +418,7 @@ export default function IntegrityPage() {
                   <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">EVENT COVERAGE</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.event_coverage}%</div>
                   <div className="mt-1 text-[11px] text-white/30">
-                    {stats.covered_events} processed Â· {stats.events_awaiting} awaiting
+                    {stats.covered_events} processed ┬╖ {stats.events_awaiting} awaiting
                   </div>
                   <MiniBar pct={stats.event_coverage} color={c} />
                 </AkPanel>
@@ -478,7 +452,7 @@ export default function IntegrityPage() {
             })()}
           </div>
 
-          {/* â•â• SCORE BREAKDOWN (Section 8 â€” improved clarity) â•â•â•â•â•â•â•â•â•â• */}
+          {/* == SCORE BREAKDOWN (Section 8 -- improved clarity) ========== */}
           <div className="mb-8">
             <AkSectionHeader label="Score Breakdown" />
             <AkPanel className="mt-4 px-5 py-1">
@@ -510,15 +484,6 @@ export default function IntegrityPage() {
                 color={metricColor(stats.latency_score, 70, 50)}
                 rawLabel={fmtHours(stats.avg_closure_hours)}
               />
-              {stats.aging_penalty > 0 && (
-                <BreakdownRow
-                  label="AGING"     weight="−pts"
-                  pts={-stats.aging_penalty}
-                  pct={Math.max(0, 100 - stats.aging_penalty * 3)}
-                  color="#f97316"
-                  rawLabel={`${stats.open_obligations} open aging`}
-                />
-              )}
               <BreakdownRow
                 label="PROOF"      weight="10%"
                 pts={stats.pts_proof}
@@ -529,7 +494,7 @@ export default function IntegrityPage() {
             </AkPanel>
           </div>
 
-          {/* â•â• ENFORCEMENT DOMAINS (Section 17) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* == ENFORCEMENT DOMAINS (Section 17) ======================== */}
           <div className="mb-8">
             <AkSectionHeader label="Enforcement Domains" />
             <div className="mt-4 grid gap-4 md:grid-cols-3">
@@ -582,19 +547,19 @@ export default function IntegrityPage() {
           {/* Divider */}
           <div className="h-px bg-gradient-to-r from-white/8 via-transparent to-transparent mb-6" />
 
-          {/* â•â• NAV â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
+          {/* == NAV ====================================================== */}
           <div className="flex flex-wrap gap-3">
             <Link href="/billing-ops"
               className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-neutral-950 transition hover:scale-[1.01]">
-              Billing Enforcement â†’
+              Billing Enforcement ->
             </Link>
             <Link href="/receipts"
               className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]">
-              All Receipts â†’
+              All Receipts ->
             </Link>
             <Link href="/command"
               className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08]">
-              Command â†’
+              Command ->
             </Link>
           </div>
         </>
@@ -602,5 +567,3 @@ export default function IntegrityPage() {
     </AkShell>
   );
 }
-
-
