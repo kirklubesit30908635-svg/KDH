@@ -16,7 +16,7 @@ export async function GET() {
   try {
     const [summaryRes, receiptsRes] = await Promise.all([
       supabaseAdmin
-        .schema("signals")
+        .schema("core")
         .from("v_integrity_summary")
         .select("open_obligations, sealed_obligations, stripe_events")
         .eq("workspace_id", process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID ?? "")

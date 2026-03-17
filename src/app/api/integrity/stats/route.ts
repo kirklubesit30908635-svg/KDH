@@ -59,7 +59,7 @@ export async function GET() {
       openActionRowsRes,
     ] = await Promise.all([
       supabaseAdmin
-        .schema("signals")
+        .schema("core")
         .from("v_integrity_summary")
         .select("*")
         .eq("workspace_id", process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID ?? "")
