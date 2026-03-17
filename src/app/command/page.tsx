@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NextActionRow } from "@/lib/ui-models";
 import { fmtDue, safeStr } from "@/lib/ui-fmt";
@@ -33,10 +34,21 @@ interface SealedReceipt {
   action: "touch" | "quote" | "seal";
 }
 
+class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 export default function InboxPage() {
   const [rows, setRows] = useState<NextActionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [authLocked, setAuthLocked] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
   const [locationFilter, setLocationFilter] = useState<LocationFilter>("All Locations");
   const [sealedReceipt, setSealedReceipt] = useState<SealedReceipt | null>(null);
@@ -48,10 +60,7 @@ export default function InboxPage() {
       return ta - tb;
     });
     if (locationFilter !== "All Locations") {
-      list = list.filter((r) => {
-        const loc = (r as any).location ?? "";
-        return loc === locationFilter;
-      });
+      list = list.filter((r) => (r.location ?? "") === locationFilter);
     }
     return list;
   }, [rows, locationFilter]);
@@ -59,16 +68,21 @@ export default function InboxPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     setErr(null);
+    setAuthLocked(false);
     try {
-      const res = await fetch("/api/command/feed");
+      const res = await fetch("/api/command/feed", { cache: "no-store" });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? `HTTP ${res.status}`);
+        throw new ApiError(res.status, j.error ?? `HTTP ${res.status}`);
       }
-      const json = await res.json();
-      setRows((json.rows ?? []) as NextActionRow[]);
+      setRows((j.rows ?? []) as NextActionRow[]);
     } catch (e) {
-      setErr(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
+      if (e instanceof ApiError && e.status === 401) {
+        setAuthLocked(true);
+        setErr(null);
+      } else {
+        setErr(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
       setRows([]);
     }
     setLoading(false);
@@ -131,7 +145,7 @@ export default function InboxPage() {
   }
 
   return (
-    <AkShell title="Inbox" subtitle="Your next actions — oldest first.">
+    <AkShell title="Command" subtitle="Your next actions — oldest first.">
       {/* location filter */}
       <div className="mb-6 flex items-center gap-2 flex-wrap">
         {OSM_LOCATIONS.map((loc) => (
@@ -163,6 +177,29 @@ export default function InboxPage() {
         </div>
       )}
 
+      {!loading && authLocked && (
+        <AkPanel className="p-6">
+          <div className="text-sm font-extrabold text-white mb-2">Sign in to load the command queue</div>
+          <div className="text-sm text-white/60 max-w-xl">
+            AutoKirk found the command surface, but there is no live authenticated operator session attached to this browser.
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/login?redirect=%2Fcommand"
+              className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
+            >
+              Sign in
+            </Link>
+            <button
+              onClick={loadData}
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-extrabold text-white/70 transition hover:border-white/20 hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        </AkPanel>
+      )}
+
       {!loading && err && (
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
@@ -176,7 +213,7 @@ export default function InboxPage() {
         </AkPanel>
       )}
 
-      {!loading && !err && (
+      {!loading && !err && !authLocked && (
         <>
           <div className="mb-6 flex items-center gap-3">
             <span className="text-3xl font-extrabold text-white">{filtered.length}</span>
@@ -204,7 +241,7 @@ export default function InboxPage() {
               <div className="mt-4 grid gap-4">
                 {filtered.map((row) => {
                   const kind = getActionKind(row);
-                  const location = (row as any).location as string | null | undefined;
+                  const location = row.location;
                   const isActing = actingId === row.obligation_id;
 
                   return (

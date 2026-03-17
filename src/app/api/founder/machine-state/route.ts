@@ -44,7 +44,7 @@ export async function GET() {
     const events = eventsRes.data || []
     const receipts = receiptsRes.data || []
 
-    const staleObligations = obligations.filter((row: any) => {
+    const staleObligations = obligations.filter((row) => {
       if (row.state === "resolved") return false
       const ageMs = Date.now() - new Date(row.opened_at).getTime()
       return ageMs > 1000 * 60 * 60 * 8
@@ -60,8 +60,8 @@ export async function GET() {
       receipts,
       metrics: {
         objects: objects.length,
-        openObligations: obligations.filter((row: any) => row.state !== "resolved").length,
-        resolvedObligations: obligations.filter((row: any) => row.state === "resolved").length,
+        openObligations: obligations.filter((row) => row.state !== "resolved").length,
+        resolvedObligations: obligations.filter((row) => row.state === "resolved").length,
         events: events.length,
         receipts: receipts.length,
         staleObligations,
@@ -69,7 +69,8 @@ export async function GET() {
     }
 
     return NextResponse.json(payload)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to load founder machine state" }, { status: 500 })
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to load founder machine state"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

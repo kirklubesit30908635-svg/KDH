@@ -1,10 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileCheck, Hash, Clock, Search } from "lucide-react";
 import { AkShell, AkPanel, AkSectionHeader, AkInput } from "@/components/ak/ak-ui";
 import type { ReceiptRow } from "@/lib/ui-models";
 import { safeStr } from "@/lib/ui-fmt";
+
+class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
 function fmtDate(iso: string) {
   try {
@@ -29,22 +40,28 @@ export default function ReceiptsPage() {
   const [rows, setRows] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [authLocked, setAuthLocked] = useState(false);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<ReceiptRow | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setErr(null);
+    setAuthLocked(false);
     try {
-      const res = await fetch("/api/receipts/feed");
+      const res = await fetch("/api/receipts/feed", { cache: "no-store" });
+      const j = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? `HTTP ${res.status}`);
+        throw new ApiError(res.status, j.error ?? `HTTP ${res.status}`);
       }
-      const json = await res.json();
-      setRows((json.rows ?? []) as ReceiptRow[]);
+      setRows((j.rows ?? []) as ReceiptRow[]);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      if (e instanceof ApiError && e.status === 401) {
+        setAuthLocked(true);
+        setErr(null);
+      } else {
+        setErr(e instanceof Error ? e.message : String(e));
+      }
       setRows([]);
     }
     setLoading(false);
@@ -100,6 +117,29 @@ export default function ReceiptsPage() {
         </div>
       )}
 
+      {!loading && authLocked && (
+        <AkPanel className="px-6 py-5 max-w-lg">
+          <div className="text-sm font-extrabold text-white mb-2">Sign in to load receipts</div>
+          <div className="text-sm text-white/60">
+            AutoKirk found the receipts surface, but there is no live authenticated operator session attached to this browser.
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/login?redirect=%2Freceipts"
+              className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
+            >
+              Sign in
+            </Link>
+            <button
+              onClick={loadData}
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-extrabold text-white/70 transition hover:border-white/20 hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        </AkPanel>
+      )}
+
       {!loading && err && (
         <AkPanel className="px-6 py-5 max-w-lg border-red-400/20 bg-red-400/5">
           <div className="text-xs font-semibold uppercase tracking-widest text-red-400 mb-2">Error</div>
@@ -113,7 +153,7 @@ export default function ReceiptsPage() {
         </AkPanel>
       )}
 
-      {!loading && !err && (
+      {!loading && !err && !authLocked && (
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           {/* Receipt list */}
           <div>
@@ -202,7 +242,7 @@ export default function ReceiptsPage() {
             {selected ? (
               <div className="sticky top-24 rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-6">
                 <div className="text-[9px] uppercase tracking-[0.3em] text-white/35 mb-5">
-                  // Receipt detail
+                  Receipt detail
                 </div>
 
                 <div className="flex items-center gap-3 mb-6">

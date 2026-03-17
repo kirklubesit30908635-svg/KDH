@@ -15,10 +15,12 @@ export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
       .schema("core")
-      .from("v_next_actions")
+      .from("v_operator_next_actions")
       .select("*")
       .eq("face", "billing")
-      .order("due_at", { ascending: true, nullsFirst: false });
+      .order("is_overdue", { ascending: false })
+      .order("due_at", { ascending: true, nullsFirst: false })
+      .order("sort_key", { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

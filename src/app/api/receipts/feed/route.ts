@@ -17,9 +17,9 @@ export async function GET() {
     // Projection surface — operator-facing read
     const { data, error } = await supabaseAdmin
       .schema("core")
-      .from("v_receipts")
+      .from("v_recent_receipts")
       .select("*")
-      .order("sealed_at", { ascending: false });
+      .order("created_at", { ascending: false });
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });

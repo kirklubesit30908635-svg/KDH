@@ -1,7 +1,7 @@
+import Stripe from "stripe";
 import { NextResponse } from "next/server";
-import { createObligation } from "@/lib/obligation-store";
-import { stripeEventToObligation } from "@/lib/stripe-obligations";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { debugRoutesEnabled } from "@/lib/debug-access";
+import { ingestStripeEventCanonical } from "@/lib/stripe-canonical-ingest";
 
 export const runtime = "nodejs";
 
@@ -12,10 +12,23 @@ const ALLOWED_TYPES = [
   "customer.subscription.deleted",
   "charge.dispute.created",
   "charge.refunded",
+  "invoice.updated",
+  "payment_intent.succeeded",
+  "payment_intent.payment_failed",
+  "charge.succeeded",
 ];
 
+type DebugStripeInjectRequest = {
+  type?: string;
+  payload?: Record<string, unknown>;
+};
+
 export async function POST(req: Request) {
-  const body = await req.json().catch(() => ({}));
+  if (!debugRoutesEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const body = (await req.json().catch(() => ({}))) as DebugStripeInjectRequest;
   const stripeType: string = body.type ?? "invoice.payment_failed";
 
   if (!ALLOWED_TYPES.includes(stripeType)) {
@@ -37,43 +50,28 @@ export async function POST(req: Request) {
     ...((body.payload as Record<string, unknown>) ?? {}),
   };
 
-  // 1. Try to bump the Stripe intake counter by inserting into ingest.stripe_events
-  //    Requires a valid provider_connection — look up the first active one
-  const { data: conn } = await supabaseAdmin
-    .schema("core")
-    .from("provider_connections")
-    .select("id, workspace_id")
-    .eq("provider", "stripe")
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle();
+  const fakeEvent = {
+    id: fakeId,
+    object: "event",
+    api_version: "2026-02-25.clover",
+    created: Math.floor(Date.now() / 1000),
+    data: { object: fakePayload },
+    livemode: false,
+    pending_webhooks: 0,
+    request: { id: null, idempotency_key: null },
+    type: stripeType,
+  } as unknown as Stripe.Event;
 
-  if (conn) {
-    await supabaseAdmin
-      .schema("ingest")
-      .from("stripe_events")
-      .insert({
-        provider_connection_id: conn.id,
-        workspace_id: conn.workspace_id,
-        stripe_event_id: fakeId,
-        stripe_type: `stripe.${stripeType}`,
-        livemode: false,
-        stripe_created_at: new Date().toISOString(),
-        payload: { id: fakeId, type: stripeType, data: { object: fakePayload } },
-      });
-  }
-
-  // 2. Create obligation as OPEN — shows in queue, receipt created when sealed
-  const oblInput = stripeEventToObligation(stripeType, fakePayload);
-  oblInput.idempotency_key = `debug-inject-${fakeId}`;
-
-  const obligation = await createObligation(oblInput);
+  const ingest = await ingestStripeEventCanonical(fakeEvent);
 
   return NextResponse.json({
     ok: true,
     stripe_type: stripeType,
-    obligation_id: obligation.id,
-    title: obligation.title,
-    stripe_intake_incremented: !!conn,
+    canonical_type: ingest.canonicalType,
+    provider_account_id: ingest.providerAccountId,
+    ledger_event_id: ingest.eventId,
+    receipt_id: ingest.receiptId,
+    seq: ingest.seq,
+    hash: ingest.hash,
   });
 }

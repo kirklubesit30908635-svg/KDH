@@ -7,13 +7,16 @@ import {
   ArrowRight,
   CircleAlert,
   CircleCheckBig,
+  CreditCard,
   Lock,
   LogIn,
+  Mail,
   ReceiptText,
   RefreshCw,
   Shield,
   Sparkles,
 } from "lucide-react";
+import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
 
 type Confidence = "High" | "Medium" | "Low";
 
@@ -99,6 +102,23 @@ const FACE_ROUTES: Record<string, string | null> = {
   dealership: null,
   washbay: "/washbay",
 };
+
+const FLOW_STEPS: Array<{ label: string; href?: string }> = [
+  { label: "event" },
+  { label: "obligation" },
+  { label: "command", href: "/command" },
+  { label: "closure" },
+  { label: "receipt", href: "/receipts" },
+  { label: "integrity", href: "/integrity" },
+];
+
+function normalizeAppPath(value: string | null | undefined) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/command";
+  }
+
+  return value;
+}
 
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
@@ -267,12 +287,19 @@ function SurfaceLink({
 }
 
 export default function HomePage() {
+  const supabase = useMemo(() => createBrowserSupabaseClient(), []);
   const [integrity, setIntegrity] = useState<IntegrityStats | null>(null);
   const [command, setCommand] = useState<CommandRow[]>([]);
   const [receipts, setReceipts] = useState<ReceiptRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [errors, setErrors] = useState<string[]>([]);
   const [authLocked, setAuthLocked] = useState(false);
+  const [email, setEmail] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [nextPath, setNextPath] = useState("/command");
+  const [authQueryError, setAuthQueryError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -329,11 +356,47 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => {
+      void load();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [load]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(normalizeAppPath(params.get("redirect") ?? params.get("next") ?? "/command"));
+    setAuthQueryError(params.get("detail") ?? params.get("error"));
+  }, []);
+
+  async function handleMagicLink(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthSubmitting(true);
+    setAuthError(null);
+    setAuthMessage(null);
+
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      });
+
+      if (error) throw error;
+
+      setAuthMessage("Check your email for the AutoKirk access link.");
+    } catch (error) {
+      setAuthError(error instanceof Error ? error.message : "Unable to send access link.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  }
 
   const queue = useMemo(() => sortCommands(command).slice(0, 5), [command]);
   const recentReceipts = useMemo(() => receipts.slice(0, 4), [receipts]);
+  const accessSetupHref = `/subscribe?redirect=${encodeURIComponent(nextPath)}`;
   const domains = useMemo(() => {
     return [...(integrity?.domains ?? [])].sort((a, b) => {
       if (a.integrity_score !== b.integrity_score) return a.integrity_score - b.integrity_score;
@@ -347,7 +410,7 @@ export default function HomePage() {
       ? `${integrity.open_obligations} live obligation${integrity.open_obligations === 1 ? "" : "s"} require attention.`
       : "No open obligations. The system is operating cleanly."
     : authLocked
-      ? "Authenticate to load governed state."
+      ? "Sign in to load governed state."
       : loading
         ? "Pulling system state..."
         : "Live state unavailable.";
@@ -363,8 +426,8 @@ export default function HomePage() {
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#050816]/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">AutoKirk · Operator Console</div>
-            <div className="mt-1 text-sm text-slate-300">System · Command · Enforcement · Proof</div>
+            <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">AutoKirk · Operator Entry</div>
+            <div className="mt-1 text-sm text-slate-300">Sign in · Activate · Enter the operator surface</div>
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
@@ -394,33 +457,34 @@ export default function HomePage() {
           <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
               <Sparkles className="h-3.5 w-3.5" />
-              Governed operator surface
+              Operator entry
             </div>
 
             <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Know the state. Resolve the duty. Seal the proof.
+              Open the machine. See what needs action.
             </h1>
 
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              AutoKirk should feel like one governed machine, not a pile of screens. The landing page must tell the operator
-              three things immediately: the current state, the live pressure, and the proof that the system is actually
-              closing work.
+              AutoKirk is where the operator sees the current state, the open duty, and the proof that work actually closed.
+              Sign in to enter the live machine, activate access if needed, and move straight into command, receipts, and integrity.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2 text-sm text-slate-300">
-              {[
-                "event",
-                "obligation",
-                "command",
-                "closure",
-                "receipt",
-                "integrity",
-              ].map((step, index) => (
-                <div key={step} className="flex items-center gap-2">
-                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200">
-                    {step}
-                  </span>
-                  {index < 5 && <ArrowRight className="h-4 w-4 text-slate-500" />}
+              {FLOW_STEPS.map((step, index) => (
+                <div key={step.label} className="flex items-center gap-2">
+                  {step.href ? (
+                    <Link
+                      href={step.href}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+                    >
+                      {step.label}
+                    </Link>
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-slate-200">
+                      {step.label}
+                    </span>
+                  )}
+                  {index < FLOW_STEPS.length - 1 && <ArrowRight className="h-4 w-4 text-slate-500" />}
                 </div>
               ))}
             </div>
@@ -448,11 +512,11 @@ export default function HomePage() {
                 View receipts
               </Link>
               <Link
-                href="/login"
+                href="#operator-sign-in"
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-transparent px-5 py-3 text-sm font-medium text-slate-300 transition hover:border-white/20 hover:bg-white/5"
               >
                 <LogIn className="h-4 w-4" />
-                Authenticate
+                Sign in
               </Link>
             </div>
           </div>
@@ -501,16 +565,84 @@ export default function HomePage() {
 
             {authLocked ? (
               <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                <div className="flex items-start gap-3">
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
-                    <Lock className="h-5 w-5 text-slate-200" />
+                <div className="flex flex-col gap-5">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                      <Lock className="h-5 w-5 text-slate-200" />
+                    </div>
+                    <div>
+                      <div className="text-lg font-medium text-white">Sign in or activate operator access.</div>
+                      <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
+                        Sign in to load live system state, queue pressure, and receipts. If this operator still needs paid access,
+                        continue into the activation path after sign-in.
+                      </p>
+                      {authQueryError ? (
+                        <div className="mt-3 rounded-2xl border border-rose-300/15 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+                          {authQueryError}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-lg font-medium text-white">Live governed data is protected.</div>
-                    <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-                      This page is ready to act as the real system entry point. Once authenticated, it will pull integrity,
-                      queue pressure, and receipts from the governed API surfaces already in the app.
-                    </p>
+
+                  <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+                    <form id="operator-sign-in" onSubmit={handleMagicLink} className="rounded-[24px] border border-white/10 bg-[#080c17] p-4">
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                        <Mail className="h-3.5 w-3.5" />
+                        Operator sign-in
+                      </div>
+                      <div className="mt-3 text-xl font-semibold text-white">Send a secure access link</div>
+                      <p className="mt-2 text-sm leading-6 text-slate-400">
+                        Use the work email that owns this operator seat. AutoKirk will return you to the live console after sign-in.
+                      </p>
+                      <label className="mt-4 block">
+                        <span className="sr-only">Email</span>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(event) => setEmail(event.target.value)}
+                          placeholder="you@company.com"
+                          autoComplete="email"
+                          className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-white/20 focus:bg-white/10"
+                          required
+                        />
+                      </label>
+                      {authError ? (
+                        <div className="mt-3 rounded-2xl border border-rose-300/15 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+                          {authError}
+                        </div>
+                      ) : null}
+                      {authMessage ? (
+                        <div className="mt-3 rounded-2xl border border-emerald-300/15 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100">
+                          {authMessage}
+                        </div>
+                      ) : null}
+                      <button
+                        type="submit"
+                        disabled={authSubmitting}
+                        className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:translate-y-[-1px] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <LogIn className="h-4 w-4" />
+                        {authSubmitting ? "Sending access link..." : "Send access link"}
+                      </button>
+                    </form>
+
+                    <div className="rounded-[24px] border border-[#f2c47e]/20 bg-[#f2c47e]/10 p-4">
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-[#f4d3a4]">
+                        <CreditCard className="h-3.5 w-3.5" />
+                        Access setup
+                      </div>
+                      <div className="mt-3 text-xl font-semibold text-white">Set up paid access</div>
+                      <p className="mt-2 text-sm leading-6 text-slate-200/80">
+                        Stripe activation comes after sign-in so the subscription binds to the right operator account.
+                      </p>
+                      <Link
+                        href={accessSetupHref}
+                        className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#f2c47e]/30 bg-[#f2c47e]/16 px-5 py-3 text-sm font-medium text-[#fff2d6] transition hover:border-[#f2c47e]/45 hover:bg-[#f2c47e]/22"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Open access setup
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -570,8 +702,8 @@ export default function HomePage() {
 
             <div className="mt-5 space-y-3">
               {authLocked && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                  Authenticate to load the live command queue.
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5">
+                  <div className="text-sm text-slate-300">Sign in above to open the live queue.</div>
                 </div>
               )}
 
@@ -632,8 +764,8 @@ export default function HomePage() {
 
             <div className="mt-5 space-y-3">
               {authLocked && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                  Authenticate to load receipts.
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5">
+                  <div className="text-sm text-slate-300">Sign in above to open the proof record.</div>
                 </div>
               )}
 
@@ -680,8 +812,8 @@ export default function HomePage() {
 
             <div className="mt-5 grid gap-3">
               {authLocked && (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5 text-sm text-slate-400">
-                  Authenticate to see face-level live ranking.
+                <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5">
+                  <div className="text-sm text-slate-300">Sign in above to rank live sectors by pressure.</div>
                 </div>
               )}
 
@@ -728,27 +860,27 @@ export default function HomePage() {
           <div className="space-y-6">
             <SurfaceLink
               eyebrow="System"
-              title="Judgment"
-              body="The machine's current truth. Integrity is where the operator learns whether governance is clean, degraded, or at risk."
+              title="System state"
+              body="Open the machine's current condition. Integrity tells the operator what is clean, what is degrading, and what needs attention."
               href="/integrity"
             />
             <SurfaceLink
               eyebrow="Command"
-              title="Action"
-              body="Open duty, oldest first. The queue should compress uncertainty and make the next required move unmistakable."
+              title="Open queue"
+              body="Oldest duty first. This is where the operator sees what still needs action and who needs to move it."
               href="/command"
             />
             <SurfaceLink
               eyebrow="Proof"
-              title="Memory"
-              body="Every sealed obligation leaves a receipt. Proof turns work into institutional memory instead of disappearing activity."
+              title="Receipt record"
+              body="Every sealed obligation leaves a record. Receipts turn finished work into proof the business can point back to."
               href="/receipts"
             />
             <SurfaceLink
-              eyebrow="Kernel"
-              title="Dealership enforcement"
-              body="The face exists in the system grammar, but the dedicated surface is not publicly exposed in this app structure yet."
-              locked
+              eyebrow="Access"
+              title="Paid access setup"
+              body="Operator identity comes first. Then the page continues into Stripe checkout with the correct account attached."
+              href="/subscribe"
             />
           </div>
         </section>

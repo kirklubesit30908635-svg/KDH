@@ -5,7 +5,7 @@ export const CLASS_RULES = {
     allowedObligations: ["follow_up", "qualify", "close_lost"],
   },
   invoice: {
-    allowedPostures: ["direct_revenue", "revenue_recovery"],
+    allowedPostures: ["direct_revenue", "revenue_recovery", "cost_exposure"],
     defaultObligation: "collect_payment",
     allowedObligations: [
       "collect_payment",
@@ -16,6 +16,19 @@ export const CLASS_RULES = {
       "review_invoice_update",
       "track_finalized_invoice",
       "write_off_review",
+      "fund_active_period",
+      "justify_spend",
+    ],
+  },
+  subscription: {
+    allowedPostures: ["cost_exposure"],
+    defaultObligation: "review_plan",
+    allowedObligations: [
+      "fund_active_period",
+      "review_plan",
+      "justify_spend",
+      "downgrade_unused",
+      "confirm_dependency",
     ],
   },
   job: {
@@ -74,7 +87,7 @@ export function assertValidClassPosture(
     throw new Error(`unknown kernel_class: ${kernelClass}`);
   }
 
-  if (!rule.allowedPostures.includes(economicPosture as any)) {
+  if (!(rule.allowedPostures as readonly string[]).includes(economicPosture)) {
     throw new Error(
       `invalid kernel_class/economic_posture: ${kernelClass}/${economicPosture}`
     );
@@ -92,7 +105,7 @@ export function assertValidObligationForClass(
     throw new Error(`unknown kernel_class: ${kernelClass}`);
   }
 
-  if (!rule.allowedObligations.includes(obligationType as any)) {
+  if (!(rule.allowedObligations as readonly string[]).includes(obligationType)) {
     throw new Error(
       `invalid obligation_type for ${kernelClass}: ${obligationType}`
     );

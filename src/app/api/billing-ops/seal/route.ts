@@ -23,15 +23,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { obligation, receipt } = await sealObligation(
+    const result = await sealObligation(
+      supabase,
       obligationId,
-      user.email ?? user.id
+      user.email ?? user.id,
+      {
+        metadata: {
+          surface: "billing_ops",
+          action: "seal",
+        },
+      }
     );
 
     return NextResponse.json({
       ok: true,
-      obligation_id: obligation.id,
-      receipt_id: receipt.id,
+      obligation_id: result.obligation_id,
+      ledger_event_id: result.ledger_event_id,
+      receipt_id: result.receipt_id,
+      event_seq: result.event_seq,
+      event_hash: result.event_hash,
+      receipt_seq: result.receipt_seq,
+      receipt_hash: result.receipt_hash,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

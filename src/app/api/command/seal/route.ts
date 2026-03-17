@@ -24,21 +24,27 @@ export async function POST(request: NextRequest) {
     }
 
     const action = body.action ?? "seal"; // "seal" | "quote"
-    const payload =
-      action === "quote"
-        ? { action: "mark_quote_sent", sealed_at: new Date().toISOString() }
-        : { sealed: true };
-
-    const { obligation, receipt } = await sealObligation(
+    const result = await sealObligation(
+      supabase,
       obligationId,
       user.email ?? user.id,
-      payload
+      {
+        metadata:
+          action === "quote"
+            ? { surface: "command", action: "mark_quote_sent" }
+            : { surface: "command", action: "seal" },
+      }
     );
 
     return NextResponse.json({
       ok: true,
-      obligation_id: obligation.id,
-      receipt_id: receipt.id,
+      obligation_id: result.obligation_id,
+      ledger_event_id: result.ledger_event_id,
+      receipt_id: result.receipt_id,
+      event_seq: result.event_seq,
+      event_hash: result.event_hash,
+      receipt_seq: result.receipt_seq,
+      receipt_hash: result.receipt_hash,
       action,
     });
   } catch (error) {

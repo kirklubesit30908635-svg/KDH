@@ -324,7 +324,7 @@ export default function IntegrityPage() {
                   <span className="text-xs font-extrabold tracking-[0.2em]" style={{ color: scoreInfo.color }}>
                     {scoreInfo.label}
                   </span>
-                  <span className="text-white/20">┬╖</span>
+                  <span className="text-white/20">·</span>
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-extrabold tracking-wide"
                     style={{
@@ -349,7 +349,7 @@ export default function IntegrityPage() {
                 </div>
 
                 <div className="mt-3 text-[11px] text-white/20">
-                  {stats.total_obligations} obligations sampled ┬╖ {new Date(stats.computed_at).toLocaleTimeString()} ┬╖{" "}
+                  {stats.total_obligations} obligations sampled · {new Date(stats.computed_at).toLocaleTimeString()} ·{" "}
                   <button onClick={loadStats} className="text-white/30 hover:text-white/60 transition">Refresh</button>
                 </div>
               </div>
@@ -418,7 +418,7 @@ export default function IntegrityPage() {
                   <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">EVENT COVERAGE</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.event_coverage}%</div>
                   <div className="mt-1 text-[11px] text-white/30">
-                    {stats.covered_events} processed ┬╖ {stats.events_awaiting} awaiting
+                    {stats.covered_events} processed · {stats.events_awaiting} awaiting
                   </div>
                   <MiniBar pct={stats.event_coverage} color={c} />
                 </AkPanel>

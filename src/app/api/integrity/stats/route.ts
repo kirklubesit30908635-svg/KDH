@@ -53,48 +53,35 @@ export async function GET() {
 
   try {
     const [
-      totalRes, sealedCountRes, openRes, breachRes,
-      stripeRes, coveredRes, latencyRowsRes,
-      sealedIdsRes, receiptIdsRes, allObsRes, allBreachRes, openObsRes,
+      summaryRes,
+      breachRowsRes,
+      receiptRowsRes,
+      openActionRowsRes,
     ] = await Promise.all([
-      supabaseAdmin.schema("core").from("obligations").select("id", { count: "exact", head: true }),
-      supabaseAdmin.schema("core").from("obligations").select("id", { count: "exact", head: true }).eq("status", "sealed"),
-      supabaseAdmin.schema("core").from("obligations").select("id", { count: "exact", head: true }).eq("status", "open"),
-      supabaseAdmin.schema("core").from("v_next_actions").select("obligation_id", { count: "exact", head: true }).eq("is_breach", true),
-      supabaseAdmin.schema("ingest").from("stripe_events").select("id", { count: "exact", head: true }),
-      supabaseAdmin.schema("core").from("obligations").select("id", { count: "exact", head: true }).not("source_event_id", "is", null),
-      supabaseAdmin.schema("core").from("obligations").select("created_at, sealed_at").eq("status", "sealed").not("sealed_at", "is", null).limit(500),
-      supabaseAdmin.schema("core").from("obligations").select("id").eq("status", "sealed"),
-      supabaseAdmin.schema("core").from("receipts").select("obligation_id").not("obligation_id", "is", null),
-      supabaseAdmin.schema("core").from("obligations").select("face, status"),
-      supabaseAdmin.schema("core").from("v_next_actions").select("face, obligation_id").eq("is_breach", true),
-      supabaseAdmin.schema("core").from("obligations").select("created_at").eq("status", "open").limit(500),
+      supabaseAdmin
+        .schema("signals")
+        .from("v_integrity_summary")
+        .select("*")
+        .eq("workspace_id", process.env.NEXT_PUBLIC_DEFAULT_WORKSPACE_ID ?? "")
+        .maybeSingle(),
+      supabaseAdmin.schema("core").from("v_operator_next_actions").select("obligation_id, face").eq("is_overdue", true),
+      supabaseAdmin.schema("core").from("v_recent_receipts").select("obligation_id, face"),
+      supabaseAdmin.schema("core").from("v_operator_next_actions").select("obligation_id, face, created_at, is_overdue"),
     ]);
 
-    const total  = totalRes.count       ?? 0;
-    const sealed = sealedCountRes.count ?? 0;
-    const open   = openRes.count        ?? 0;
-    const breach = breachRes.count      ?? 0;
+    const summary = summaryRes.data;
+    const total = summary?.total_obligations ?? 0;
+    const sealed = summary?.sealed_obligations ?? 0;
+    const open = summary?.open_obligations ?? 0;
+    const breachRows = breachRowsRes.data ?? [];
+    const breach = breachRows.length;
+    const closure_rate = summary?.closure_rate ?? 100;
+    const avg_closure_hours = summary?.avg_closure_hours ?? null;
+    const latency_score = summary?.latency_score ?? latencyToScore(avg_closure_hours);
+    const speed_mult = speedMultiplier(avg_closure_hours);
+    const closure_quality = Math.min(100, Math.round(closure_rate * speed_mult));
 
-    const closure_rate_base = total > 0 ? (sealed / total) * 100 : 100;
-
-    const latencyRows = latencyRowsRes.data ?? [];
-    const avg_closure_hours =
-      latencyRows.length > 0
-        ? latencyRows.reduce((sum, r) => {
-            const ms = new Date(r.sealed_at as string).getTime() - new Date(r.created_at as string).getTime();
-            return sum + ms / (1000 * 3600);
-          }, 0) / latencyRows.length
-        : null;
-
-    const latency_score = latencyToScore(avg_closure_hours);
-    const speed_mult    = speedMultiplier(avg_closure_hours);
-
-    // Closure Rate = raw completion %; Closure Quality = rate adjusted for speed
-    const closure_rate    = Math.round(closure_rate_base);
-    const closure_quality = Math.min(100, Math.round(closure_rate_base * speed_mult));
-
-    const openObs       = openObsRes.data ?? [];
+    const openObs = (openActionRowsRes.data ?? []).map((row) => ({ created_at: row.created_at as string }));
     const aging_penalty = agingPenalty(openObs);
     const aging_count   = openObs.filter(o => {
       const h = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 3600);
@@ -102,15 +89,19 @@ export async function GET() {
     }).length;
 
     const breach_rate    = open > 0 ? Math.round((breach / open) * 100) : 0;
-    const stripe_total   = stripeRes.count  ?? 0;
-    const covered_count  = coveredRes.count ?? 0;
-    const event_coverage = stripe_total > 0 ? Math.round((covered_count / stripe_total) * 100) : 100;
-    const events_awaiting = Math.max(0, stripe_total - covered_count);
-
-    const sealedIds    = new Set((sealedIdsRes.data  ?? []).map((r) => r.id));
-    const receiptedIds = new Set((receiptIdsRes.data ?? []).map((r) => r.obligation_id).filter(Boolean));
-    const proof_lag    = [...sealedIds].filter((id) => !receiptedIds.has(id)).length;
-    const proof_score  = sealed > 0 ? Math.max(0, Math.round((1 - proof_lag / sealed) * 100)) : 100;
+    const receiptedIds = new Set<string>();
+    const receiptRows = receiptRowsRes.data ?? [];
+    for (const row of receiptRows) {
+      if (typeof row.obligation_id === "string" && row.obligation_id.length > 0) {
+        receiptedIds.add(row.obligation_id);
+      }
+    }
+    const stripe_total = summary?.stripe_events ?? 0;
+    const covered_count = summary?.covered_events ?? 0;
+    const event_coverage = summary?.event_coverage ?? 100;
+    const events_awaiting = summary?.events_awaiting ?? Math.max(0, stripe_total - covered_count);
+    const proof_lag = summary?.proof_lag ?? Math.max(0, sealed - receiptedIds.size);
+    const proof_score = summary?.proof_score ?? (sealed > 0 ? Math.max(0, Math.round((1 - proof_lag / sealed) * 100)) : 100);
 
     const raw_score =
       0.30 * closure_quality +
@@ -141,18 +132,26 @@ export async function GET() {
     if (events_awaiting > 0) delta_log.push({ direction: "down",  label: `${events_awaiting} events uncovered` });
     if (delta_log.length === 0) delta_log.push({ direction: "neutral", label: "All signals stable" });
 
-    const allObs        = allObsRes.data    ?? [];
-    const allBreachRows = allBreachRes.data ?? [];
+    const openActionRows = openActionRowsRes.data ?? [];
 
     const domains = ENFORCEMENT_DOMAINS.map(({ face, label }) => {
-      const faceObs     = allObs.filter((o) => o.face === face);
-      const faceTotal   = faceObs.length;
-      const faceSealed  = faceObs.filter((o) => o.status === "sealed").length;
-      const faceBreaches = allBreachRows.filter((b) => b.face === face).length;
-      const faceOpen    = faceObs.filter((o) => o.status === "open").length;
+      const faceOpen = openActionRows.filter((o) => o.face === face).length;
+      const faceSealed = receiptRows.filter((r) => r.face === face).length;
+      const faceTotal = faceOpen + faceSealed;
+      const faceBreaches = breachRows.filter((b) => b.face === face).length;
       const cr = faceTotal > 0 ? (faceSealed / faceTotal) * 100 : 100;
       const br = faceOpen  > 0 ? (faceBreaches / faceOpen) * 100 : 0;
-      return { face, label, score: domainScore(cr, br), total: faceTotal, sealed: faceSealed, breaches: faceBreaches };
+      return {
+        face,
+        label,
+        total: faceTotal,
+        sealed: faceSealed,
+        open: faceOpen,
+        breach_count: faceBreaches,
+        closure_rate: Math.round(cr),
+        breach_rate: Math.round(br),
+        integrity_score: domainScore(cr, br),
+      };
     });
 
     return NextResponse.json({
@@ -165,11 +164,13 @@ export async function GET() {
       proof_score,
       avg_closure_hours,
       total_obligations: total,
-      sealed_count: sealed,
-      open_count: open,
+      sealed_obligations: sealed,
+      open_obligations: open,
       breach_count: breach,
       proof_lag,
       events_awaiting,
+      stripe_events: stripe_total,
+      covered_events: covered_count,
       aging_penalty,
       speed_mult,
       pts_closure,
@@ -177,7 +178,8 @@ export async function GET() {
       pts_coverage,
       pts_latency,
       pts_proof,
-      confidence,
+      confidence: (summary?.confidence as "High" | "Medium" | "Low" | undefined) ?? confidence,
+      computed_at: summary?.computed_at ?? new Date().toISOString(),
       delta_log,
       domains,
     });

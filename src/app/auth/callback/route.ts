@@ -2,10 +2,18 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
+function normalizeNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/command";
+  }
+
+  return value;
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/command";
+  const next = normalizeNextPath(searchParams.get("next"));
 
   if (code) {
     // Build the redirect response first so we can set cookies on it

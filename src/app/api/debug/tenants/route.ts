@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { debugRoutesEnabled } from "@/lib/debug-access";
 
 export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
+  if (!debugRoutesEnabled()) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const adminKey = req.headers.get("x-ak-admin-key");
   if (!adminKey || adminKey !== process.env.AK_ADMIN_KEY) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -23,8 +28,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ tenants: data });
   } catch (err) {
     console.error("[debug/tenants] unhandled:", err);
+    const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json(
-      { err: String((err as any)?.message ?? err) },
+      { err: message },
       { status: 500 }
     );
   }
