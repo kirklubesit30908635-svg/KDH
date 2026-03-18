@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { ensureFounderRouteAccess } from "@/lib/founder-console/auth"
 import { getFounderSupabase } from "@/lib/founder-console/server"
 import { getFounderContext } from "@/lib/founder-console/context"
 
@@ -19,6 +20,11 @@ type SummaryObligationRow = {
 }
 
 export async function GET() {
+  const access = await ensureFounderRouteAccess("/founder/builder-costs")
+  if (!access.ok) {
+    return access.response
+  }
+
   try {
     const { workspaceId } = getFounderContext()
     const supabase = getFounderSupabase()

@@ -2,6 +2,19 @@ import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+type WorkspaceRef = {
+  name: string | null;
+  slug: string | null;
+};
+
+type MembershipRow = {
+  operator_id: string;
+  role: string;
+  created_at: string;
+  workspace_id: string;
+  workspaces: WorkspaceRef | WorkspaceRef[] | null;
+};
+
 export async function GET() {
   const supabase = await supabaseServer();
   const {
@@ -42,11 +55,11 @@ export async function GET() {
     }
 
     const membershipsByOperator: Record<string, { workspace_id: string; workspace_name: string; workspace_slug: string; role: string; joined_at: string }[]> = {};
-    for (const m of memberships ?? []) {
+    for (const m of (memberships ?? []) as MembershipRow[]) {
       if (!membershipsByOperator[m.operator_id]) {
         membershipsByOperator[m.operator_id] = [];
       }
-      const ws = m.workspaces as any;
+      const ws = Array.isArray(m.workspaces) ? m.workspaces[0] ?? null : m.workspaces;
       membershipsByOperator[m.operator_id].push({
         workspace_id: m.workspace_id,
         workspace_name: ws?.name ?? m.workspace_id,

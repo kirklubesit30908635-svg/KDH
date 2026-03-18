@@ -74,51 +74,79 @@ export default function SubscribePage() {
 
   const returnToSubscribe = `/subscribe?redirect=${encodeURIComponent(redirectPath)}`;
   const loginHref = `/login?redirect=${encodeURIComponent(returnToSubscribe)}`;
+  const seatBenefits = [
+    "Governed command queue for open obligations",
+    "Receipt-backed proof surface for closed work",
+    "Integrity and enforcement domain visibility",
+  ];
 
   return (
-    <div className="min-h-screen bg-neutral-950 px-4 py-10 text-white">
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-5xl items-center justify-center">
-        <div className="grid w-full gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-          <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-8 shadow-[0_30px_90px_rgba(0,0,0,0.34)]">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-emerald-200">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Operator access setup
+    <div className="min-h-screen bg-[#081019] px-4 py-8 text-white sm:px-6 lg:px-8 lg:py-10">
+      <div className="mx-auto max-w-[88rem] space-y-8">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <Link href="/" className="inline-flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-white">
+              AK
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.32em] text-white/35">AutoKirk</div>
+              <div className="mt-1 text-sm text-white/70">Access activation</div>
+            </div>
+          </Link>
+
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/"
+              className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/80 transition hover:border-white/20 hover:bg-white/[0.08]"
+            >
+              Overview
+            </Link>
+            <Link
+              href={loginHref}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/80 transition hover:border-white/20 hover:bg-white/[0.08]"
+            >
+              Operator sign-in
+            </Link>
+          </div>
+        </header>
+
+        <section className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+          <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-8 shadow-[0_30px_90px_rgba(0,0,0,0.34)] sm:p-10">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.22em] text-emerald-200">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Operator seat activation
+              </div>
+
+              <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                Activate the operator seat.
+              </h1>
+
+              <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
+                Start the paid access path through Stripe, then return the operator directly to the governed AutoKirk surface.
+                Identity comes first so the subscription binds to the correct account and workspace flow.
+              </p>
             </div>
 
-            <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Activate access for this operator.
-            </h1>
-
-            <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
-              Activate operator access through Stripe. The operator identity must already exist so the subscription can bind
-              back to the correct account and return to the right AutoKirk surface.
-            </p>
-
-            <div className="mt-8 space-y-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase tracking-[0.24em] text-white/35">Step 1</div>
-                <div className="mt-2 text-lg font-medium text-white">Sign in as the operator</div>
-                <div className="mt-2 text-sm leading-6 text-white/60">
-                  Use the work email that should own the AutoKirk access.
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase tracking-[0.24em] text-white/35">Step 2</div>
-                <div className="mt-2 text-lg font-medium text-white">Open Stripe checkout</div>
-                <div className="mt-2 text-sm leading-6 text-white/60">
-                  Stripe activates the paid access path for that operator account.
-                </div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] uppercase tracking-[0.24em] text-white/35">Step 3</div>
-                <div className="mt-2 text-lg font-medium text-white">Return to the operator surface</div>
-                <div className="mt-2 text-sm leading-6 text-white/60">
-                  After checkout, AutoKirk returns the operator to the working console.
-                </div>
-              </div>
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              <StepCard
+                step="Step 1"
+                title="Sign in as the operator"
+                body="Use the work email that should own the AutoKirk access."
+              />
+              <StepCard
+                step="Step 2"
+                title="Activate in Stripe"
+                body="Stripe turns on the paid operator seat for that account."
+              />
+              <StepCard
+                step="Step 3"
+                title="Return to the live console"
+                body="After checkout, AutoKirk returns the operator to the surface that triggered activation."
+              />
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3 text-sm">
+            <div className="mt-10 flex flex-wrap gap-3 text-sm">
               <Link
                 href={loginHref}
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-3 text-white transition hover:border-white/20 hover:bg-white/[0.08]"
@@ -135,20 +163,31 @@ export default function SubscribePage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
+          <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(145,226,255,0.08),rgba(255,255,255,0.03))] p-8 xl:sticky xl:top-28">
             <div className="inline-flex items-center gap-2">
               <div className="grid h-8 w-8 place-items-center rounded-lg bg-white text-xs font-extrabold text-neutral-950">AK</div>
               <span className="text-sm font-extrabold tracking-[0.2em] text-white">AUTOKIRK</span>
             </div>
 
-            <div className="mt-8 text-[10px] font-extrabold tracking-[0.28em] text-white/35">OPERATOR ACCESS</div>
+            <div className="mt-8 text-[10px] font-extrabold tracking-[0.28em] text-white/35">OPERATOR SEAT</div>
             <h2 className="mt-3 text-3xl font-extrabold leading-tight text-white">AutoKirk Access</h2>
             <div className="mt-3 text-5xl font-extrabold text-white">
               $50<span className="ml-1 text-lg font-semibold text-white/40">/mo</span>
             </div>
             <p className="mt-3 text-sm leading-6 text-white/50">
-              Full access to the operator surface: integrity, command, receipts, and billing enforcement.
+              Full access to the governed operator surface: integrity, command, receipts, users, and active enforcement domains.
             </p>
+
+            <div className="mt-6 grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-[#09111a]/80 p-5">
+                <div className="text-sm font-medium text-white">Included in the seat</div>
+                <ul className="mt-3 space-y-2 text-sm leading-6 text-white/65">
+                  {seatBenefits.map((item) => (
+                    <li key={item}>• {item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
             {checkingAuth ? (
               <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-4 text-sm text-white/60">
@@ -196,11 +235,29 @@ export default function SubscribePage() {
             </button>
 
             <p className="mt-4 text-center text-[11px] text-white/25">
-              Secure checkout via Stripe · access binds to the signed-in operator
+              Secure Stripe checkout · seat binds to the signed-in operator
             </p>
           </div>
-        </div>
+        </section>
       </div>
+    </div>
+  );
+}
+
+function StepCard({
+  step,
+  title,
+  body,
+}: {
+  step: string;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+      <div className="text-[10px] uppercase tracking-[0.24em] text-white/35">{step}</div>
+      <div className="mt-3 text-lg font-medium text-white">{title}</div>
+      <div className="mt-3 text-sm leading-6 text-white/60">{body}</div>
     </div>
   );
 }

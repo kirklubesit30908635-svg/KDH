@@ -145,7 +145,7 @@ export default function InboxPage() {
   }
 
   return (
-    <AkShell title="Command" subtitle="Your next actions — oldest first.">
+    <AkShell title="Command" subtitle="Your next actions — oldest first." eyebrow="Governed Action Rail">
       {/* location filter */}
       <div className="mb-6 flex items-center gap-2 flex-wrap">
         {OSM_LOCATIONS.map((loc) => (

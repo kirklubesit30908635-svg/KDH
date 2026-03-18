@@ -272,7 +272,7 @@ export default function IntegrityPage() {
   const signals   = stats ? buildSignals(stats) : [];
 
   return (
-    <AkShell title="Integrity" subtitle="Five signals. One score. No hiding.">
+    <AkShell title="Integrity" subtitle="Five signals. One score. No hiding." eyebrow="System Integrity Signal">
 
       {/* -- Loading -------------------------------------------------------- */}
       {loading && (

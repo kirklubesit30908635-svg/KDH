@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server"
+import { ensureFounderRouteAccess } from "@/lib/founder-console/auth"
 import { getFounderSupabase } from "@/lib/founder-console/server"
 import { getFounderContext } from "@/lib/founder-console/context"
 
 export async function POST(request: Request) {
+  const access = await ensureFounderRouteAccess("/founder")
+  if (!access.ok) {
+    return access.response
+  }
+
   try {
     const { workspaceId, actorId } = getFounderContext()
     const body = await request.json()
@@ -27,7 +33,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, obligationId: data })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to open obligation" }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to open obligation" },
+      { status: 500 }
+    )
   }
 }

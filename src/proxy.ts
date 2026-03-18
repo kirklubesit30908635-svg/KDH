@@ -1,7 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED = ["/command", "/receipts", "/washbay", "/billing-ops", "/advertising", "/integrity"];
+const PROTECTED = ["/command", "/receipts", "/billing-ops", "/advertising", "/integrity", "/users", "/founder"];
+const FOUNDER_EMAIL = (
+  process.env.FOUNDER_EMAIL ||
+  process.env.NEXT_PUBLIC_FOUNDER_EMAIL ||
+  "kirklubesit30908635@gmail.com"
+).toLowerCase();
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -42,6 +47,10 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  if (pathname.startsWith("/founder") && user.email?.toLowerCase() !== FOUNDER_EMAIL) {
+    return NextResponse.redirect(new URL("/command", request.url));
   }
 
   return response;

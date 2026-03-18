@@ -149,7 +149,7 @@ export default function UsersPage() {
     : [];
 
   return (
-    <AkShell title="Users" subtitle="Registered operators, workspace memberships, and auth binding status.">
+    <AkShell title="Users" subtitle="Registered operators, workspace memberships, and auth binding status." eyebrow="Operator Identity Surface">
       {statCards.length > 0 && (
         <div className="grid grid-cols-2 gap-3 max-w-2xl mb-10 lg:grid-cols-4">
           {statCards.map(({ label, value, sub, icon: Icon, fill }) => (
@@ -279,10 +279,18 @@ export default function UsersPage() {
             </div>
           </div>
 
-          <div className="hidden lg:block">
+          <div>
             {selected ? (
-              <div className="sticky top-24 rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-6 space-y-3">
-                <div className="text-[9px] uppercase tracking-[0.3em] text-white/35">Operator detail</div>
+              <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-6 space-y-3 lg:sticky lg:top-24">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[9px] uppercase tracking-[0.3em] text-white/35">Operator detail</div>
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="text-[10px] uppercase tracking-[0.2em] text-white/30 transition hover:text-white/60"
+                  >
+                    Close
+                  </button>
+                </div>
 
                 <div className="flex items-center gap-3 pb-1">
                   <div className="h-12 w-12 rounded-xl border border-white/10 bg-white/[0.05] flex items-center justify-center text-base font-semibold text-white/70">
@@ -346,11 +354,9 @@ export default function UsersPage() {
                     <button onClick={() => setShowCreate(true)} className="mt-2 text-[10px] uppercase tracking-[0.15em] text-white/50 hover:text-white transition">+ Create one</button>
                   </div>
                 )}
-
-                <button onClick={() => setSelected(null)} className="text-[10px] uppercase tracking-[0.2em] text-white/30 hover:text-white/60 transition pt-1">Back</button>
               </div>
             ) : (
-              <div className="sticky top-24 rounded-[1.4rem] border border-white/8 bg-white/[0.015] p-8 text-center">
+              <div className="hidden rounded-[1.4rem] border border-white/8 bg-white/[0.015] p-8 text-center lg:sticky lg:top-24 lg:block">
                 <div className="text-[10px] uppercase tracking-[0.2em] text-white/25">Select an operator</div>
               </div>
             )}

@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { requireFounderPageAccess } from "@/lib/founder-console/auth"
 import { getFounderSupabase } from "@/lib/founder-console/server"
 import { getFounderContext } from "@/lib/founder-console/context"
 
@@ -36,6 +37,8 @@ function fmtDate(value: string) {
 }
 
 export default async function BuilderCostsPage() {
+  await requireFounderPageAccess("/founder/builder-costs")
+
   const { workspaceId } = getFounderContext()
   const supabase = getFounderSupabase()
 

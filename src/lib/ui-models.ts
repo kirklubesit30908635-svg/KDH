@@ -26,7 +26,7 @@ export interface ReceiptRow {
   economic_ref_type: EconomicRefType | string | null;
   economic_ref_id: string | null;
   ledger_event_id: string | null;
-  payload: any | null;
+  payload: unknown;
 }
 
 export interface RevenueStateModel {

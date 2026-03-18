@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-page-custom-font, @next/next/no-html-link-for-pages, react/jsx-no-comment-textnodes */
 'use client'
 
 import { useEffect, useRef } from 'react'
@@ -22,8 +23,8 @@ export default function HomePage() {
     window.addEventListener('resize', resize)
 
     const chars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    let cols = Math.floor(canvas.width / 18)
-    let drops = Array(cols).fill(1)
+    const cols = Math.floor(canvas.width / 18)
+    const drops = Array(cols).fill(1)
 
     const draw = () => {
       ctx.fillStyle = 'rgba(0,0,0,0.05)'
@@ -83,10 +84,10 @@ export default function HomePage() {
     const addHover = () => {
       document.querySelectorAll('a, button').forEach(el => {
         el.addEventListener('mouseenter', () => {
-          if (ring) { ring.style.width = '44px'; ring.style.height = '44px'; (ring.style as any).borderColor = 'rgba(0,255,65,.8)' }
+          if (ring) { ring.style.width = '44px'; ring.style.height = '44px'; ring.style.borderColor = 'rgba(0,255,65,.8)' }
         })
         el.addEventListener('mouseleave', () => {
-          if (ring) { ring.style.width = '32px'; ring.style.height = '32px'; (ring.style as any).borderColor = 'rgba(0,255,65,.3)' }
+          if (ring) { ring.style.width = '32px'; ring.style.height = '32px'; ring.style.borderColor = 'rgba(0,255,65,.3)' }
         })
       })
     }

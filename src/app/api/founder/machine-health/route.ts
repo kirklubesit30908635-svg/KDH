@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server"
+import { ensureFounderRouteAccess } from "@/lib/founder-console/auth"
 import { getFounderSupabase } from "@/lib/founder-console/server"
 import { getFounderContext } from "@/lib/founder-console/context"
 import type { MachineHealth } from "@/lib/founder-console/types"
 
+type ResolvedObligationRow = {
+  terminal_action: string | null
+  resolved_at: string | null
+  resolved_by_actor_id: string | null
+}
+
 export async function GET() {
+  const access = await ensureFounderRouteAccess("/founder")
+  if (!access.ok) {
+    return access.response
+  }
+
   try {
     const { workspaceId } = getFounderContext()
     const supabase = getFounderSupabase()
@@ -32,21 +44,24 @@ export async function GET() {
       return NextResponse.json({ error: firstError.message }, { status: 500 })
     }
 
-    const resolved = resolvedRes.data || []
+    const resolved = (resolvedRes.data || []) as ResolvedObligationRow[]
 
     const payload: MachineHealth = {
       workspaceId,
       checks: {
         governedClassPostureMatrixPresent: (matrixRes.count || 0) > 0,
-        resolvedObligationsCarryTerminalData: resolved.every((row: any) => !!row.terminal_action),
+        resolvedObligationsCarryTerminalData: resolved.every((row) => !!row.terminal_action),
         receiptsDoNotExceedEvents: (receiptsRes.count || 0) <= (eventsRes.count || 0),
-        noResolvedObligationWithoutActor: resolved.every((row: any) => !!row.resolved_by_actor_id),
-        noResolvedObligationWithoutTimestamp: resolved.every((row: any) => !!row.resolved_at),
+        noResolvedObligationWithoutActor: resolved.every((row) => !!row.resolved_by_actor_id),
+        noResolvedObligationWithoutTimestamp: resolved.every((row) => !!row.resolved_at),
       },
     }
 
     return NextResponse.json(payload)
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to load founder machine health" }, { status: 500 })
+  } catch (error: unknown) {
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to load founder machine health" },
+      { status: 500 }
+    )
   }
 }

@@ -121,6 +121,7 @@ export default function BillingOpsPage() {
     <AkShell
       title="Billing Enforcement"
       subtitle="Stripe intake → obligations → closure → receipts"
+      eyebrow="Enforcement Domain"
     >
       {loading && (
         <div className="flex items-center gap-3 text-sm text-white/35">

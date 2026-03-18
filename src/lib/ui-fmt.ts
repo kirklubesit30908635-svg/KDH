@@ -14,7 +14,7 @@ export function fmtDue(dueAtIso: string | null | undefined): string | null {
   return d.toLocaleString();
 }
 
-export function safeStr(v: any): string {
+export function safeStr(v: unknown): string {
   if (v === null || v === undefined) return "";
   return String(v);
 }

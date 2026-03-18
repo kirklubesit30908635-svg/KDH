@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server"
+import { ensureFounderRouteAccess } from "@/lib/founder-console/auth"
 import { getFounderSupabase } from "@/lib/founder-console/server"
 import { getFounderContext } from "@/lib/founder-console/context"
 import type { MachineState } from "@/lib/founder-console/types"
 
 export async function GET() {
+  const access = await ensureFounderRouteAccess("/founder")
+  if (!access.ok) {
+    return access.response
+  }
+
   try {
     const { workspaceId, actorId, mode } = getFounderContext()
     const supabase = getFounderSupabase()

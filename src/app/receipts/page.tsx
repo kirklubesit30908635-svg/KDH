@@ -94,6 +94,7 @@ export default function ReceiptsPage() {
     <AkShell
       title="Receipts"
       subtitle="Institutional proof records — every sealed obligation leaves a cryptographic receipt on the ledger."
+      eyebrow="Proof Layer"
     >
       {/* Search */}
       <div className="mb-8 max-w-xl">
@@ -102,7 +103,7 @@ export default function ReceiptsPage() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/25 pointer-events-none" />
           <AkInput
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onChange={setQ}
             placeholder="receipt id · obligation · operator · ledger pointer…"
             className="pl-9"
           />
@@ -238,11 +239,19 @@ export default function ReceiptsPage() {
           </div>
 
           {/* Detail panel */}
-          <div className="hidden lg:block">
+          <div>
             {selected ? (
-              <div className="sticky top-24 rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-6">
-                <div className="text-[9px] uppercase tracking-[0.3em] text-white/35 mb-5">
-                  Receipt detail
+              <div className="rounded-[1.4rem] border border-white/10 bg-white/[0.03] p-6 lg:sticky lg:top-24">
+                <div className="mb-5 flex items-center justify-between gap-3">
+                  <div className="text-[9px] uppercase tracking-[0.3em] text-white/35">
+                    Receipt detail
+                  </div>
+                  <button
+                    onClick={() => setSelected(null)}
+                    className="text-[10px] uppercase tracking-[0.2em] text-white/30 transition hover:text-white/60"
+                  >
+                    Close
+                  </button>
                 </div>
 
                 <div className="flex items-center gap-3 mb-6">
@@ -303,16 +312,9 @@ export default function ReceiptsPage() {
                     </div>
                   )}
                 </div>
-
-                <button
-                  onClick={() => setSelected(null)}
-                  className="mt-5 text-[10px] uppercase tracking-[0.2em] text-white/30 hover:text-white/60 transition"
-                >
-                  ← Deselect
-                </button>
               </div>
             ) : (
-              <div className="sticky top-24 rounded-[1.4rem] border border-white/8 bg-white/[0.015] p-8 text-center">
+              <div className="hidden rounded-[1.4rem] border border-white/8 bg-white/[0.015] p-8 text-center lg:sticky lg:top-24 lg:block">
                 <div className="text-white/15 text-3xl mb-3">◎</div>
                 <div className="text-[10px] uppercase tracking-[0.2em] text-white/25">
                   Select a receipt

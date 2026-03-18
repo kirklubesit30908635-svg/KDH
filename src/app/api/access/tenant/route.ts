@@ -44,10 +44,12 @@ export async function GET(req: NextRequest) {
       entitled: data.status === "active",
       env,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[access/tenant] unhandled:", err);
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack ?? null : null;
     return NextResponse.json(
-      { err: String(err?.message ?? err), stack: err?.stack ?? null },
+      { err: message, stack },
       { status: 500 }
     );
   }

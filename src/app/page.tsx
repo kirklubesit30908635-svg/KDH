@@ -3,11 +3,10 @@
 import Link from "next/link";
 import {
   useEffect,
-  useEffectEvent,
   useMemo,
-  useRef,
   useState,
 } from "react";
+import type { ReactNode } from "react";
 import { Cormorant_Garamond } from "next/font/google";
 import {
   Building2,
@@ -17,8 +16,6 @@ import {
   ReceiptText,
   ShieldCheck,
   Siren,
-  Volume2,
-  VolumeX,
   Wallet,
   Workflow,
 } from "lucide-react";
@@ -183,17 +180,10 @@ const displayStages = [
 
 export default function HomePage() {
   const [tick, setTick] = useState(0);
-  const [audioOn, setAudioOn] = useState(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
 
   const scenarioIndex = Math.floor(tick / displayStages.length) % SCENARIOS.length;
   const stageIndex = tick % displayStages.length;
   const scenario = useMemo(() => SCENARIOS[scenarioIndex], [scenarioIndex]);
-
-  const playCurrentTone = useEffectEvent((stage: number) => {
-    if (!audioOn) return;
-    playTone(audioCtxRef, stage);
-  });
 
   useEffect(() => {
     const id = window.setInterval(() => {
@@ -201,11 +191,6 @@ export default function HomePage() {
     }, 2200);
     return () => window.clearInterval(id);
   }, []);
-
-  useEffect(() => {
-    if (tick === 0) return;
-    playCurrentTone(stageIndex);
-  }, [stageIndex, tick]);
 
   return (
     <div className={`${display.variable} min-h-screen overflow-hidden bg-[#0a1015] text-stone-100`}>
@@ -225,28 +210,25 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div>
             <div className="text-[11px] uppercase tracking-[0.34em] text-stone-500">AutoKirk</div>
-            <div className="mt-1 text-sm text-stone-300">Operator surface / page one</div>
+            <div className="mt-1 text-sm text-stone-300">Revenue accountability system</div>
           </div>
           <div className="hidden items-center gap-2 md:flex">
             <Link href="/login" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-stone-200 transition hover:border-white/20 hover:bg-white/[0.08]">
               Operator entry
             </Link>
-            <Link href="/command" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-stone-200 transition hover:border-white/20 hover:bg-white/[0.08]">
-              Command
+            <Link href="/subscribe" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-stone-200 transition hover:border-white/20 hover:bg-white/[0.08]">
+              Access setup
             </Link>
-            <Link href="/integrity" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-stone-200 transition hover:border-white/20 hover:bg-white/[0.08]">
-              Integrity
-            </Link>
-            <Link href="/founder" className="rounded-full border border-[#f2c47e]/25 bg-[#f2c47e]/10 px-4 py-2 text-sm text-[#f5d7a9] transition hover:border-[#f2c47e]/40 hover:bg-[#f2c47e]/16">
-              Founder control
+            <Link href="#how-it-works" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-stone-200 transition hover:border-white/20 hover:bg-white/[0.08]">
+              How it works
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-7xl space-y-20 px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-        <section className="grid gap-8 xl:grid-cols-[1.04fr_0.96fr]">
-          <div className="rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_36px_110px_rgba(0,0,0,0.34)] sm:p-9">
+      <main className="relative mx-auto max-w-[88rem] space-y-10 px-4 py-8 sm:px-6 lg:px-8 lg:space-y-12 lg:py-12">
+        <section className="grid gap-6 2xl:grid-cols-[1.06fr_0.94fr]">
+          <div className="rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-8 shadow-[0_36px_110px_rgba(0,0,0,0.34)] sm:p-10">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#91e2ff]/18 bg-[#91e2ff]/10 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-[#d8f4ff]">
               <ShieldCheck className="h-3.5 w-3.5" />
               Stop losing money in the handoff
@@ -265,14 +247,14 @@ export default function HomePage() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/login" className="rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:translate-y-[-1px]">
-                See AutoKirk
+                Open operator entry
               </Link>
-              <Link href="/founder" className="rounded-full border border-[#f2c47e]/25 bg-[#f2c47e]/10 px-5 py-3 text-sm font-medium text-[#f5d7a9] transition hover:border-[#f2c47e]/40 hover:bg-[#f2c47e]/16">
-                Founder control
+              <Link href="/subscribe" className="rounded-full border border-[#91e2ff]/25 bg-[#91e2ff]/10 px-5 py-3 text-sm font-medium text-[#d8f4ff] transition hover:border-[#91e2ff]/40 hover:bg-[#91e2ff]/16">
+                Set up access
               </Link>
             </div>
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            <div className="mt-12 grid gap-4 sm:grid-cols-3">
               <QuickPoint
                 title="See what is still open"
                 body="Not just activity. The real work that still has money tied to it."
@@ -288,29 +270,20 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-[36px] border border-white/10 bg-[#0c141b]/92 p-6 shadow-[0_34px_100px_rgba(0,0,0,0.36)] sm:p-7">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">AutoKirk board</div>
-                <div className="mt-2 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea]">
-                  Work. Ownership. Proof.
+          <div className="rounded-[36px] border border-white/10 bg-[#0c141b]/92 p-7 shadow-[0_34px_100px_rgba(0,0,0,0.36)] sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">AutoKirk board</div>
+                  <div className="mt-2 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea]">
+                    Work. Ownership. Proof.
+                  </div>
+                </div>
+                <div className="rounded-full border border-[#91e2ff]/18 bg-[#91e2ff]/10 px-4 py-2 text-xs uppercase tracking-[0.18em] text-[#d8f4ff]">
+                  Revenue accountability walkthrough
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !audioOn;
-                  setAudioOn(next);
-                  if (next) playTone(audioCtxRef, stageIndex);
-                }}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs uppercase tracking-[0.18em] text-stone-300 transition hover:border-white/20 hover:bg-white/[0.08]"
-              >
-                {audioOn ? <Volume2 className="h-4 w-4 text-[#91e2ff]" /> : <VolumeX className="h-4 w-4 text-stone-500" />}
-                {audioOn ? "Audio on" : "Audio off"}
-              </button>
-            </div>
 
-            <div className="mt-5 rounded-[26px] border border-white/10 bg-[#0d151c] p-5">
+            <div className="mt-6 rounded-[28px] border border-white/10 bg-[#0d151c] p-6">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[10px] uppercase tracking-[0.24em] text-stone-500">{scenario.sector}</div>
@@ -378,33 +351,27 @@ export default function HomePage() {
           />
         </section>
 
-        <section className="rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-7 sm:p-8">
-          <div className="max-w-3xl">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">What AutoKirk actually does</div>
-            <h2 className="mt-4 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea] sm:text-5xl">
-              It is not another dashboard.
-              <span className="block text-[#91e2ff]">It makes the follow-through visible.</span>
-            </h2>
-          </div>
+        <SectionFrame id="how-it-works">
+          <SectionIntro
+            eyebrow="What AutoKirk actually does"
+            title="It is not another dashboard."
+            accent="It makes the follow-through visible."
+            body="The operator experience is organized around a short accountable chain: movement, obligation, command, closure, and proof."
+          />
 
-          <div className="mt-8 grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {HOW_IT_WORKS.map((item) => (
               <HowCard key={item.title} title={item.title} body={item.body} icon={item.icon} />
             ))}
           </div>
-        </section>
+        </SectionFrame>
 
-        <section className="space-y-6">
-          <div className="max-w-4xl">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">How the machine is built</div>
-            <h2 className="mt-4 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea] sm:text-5xl">
-              Kernel first. Watchdog next. Learning after proof.
-            </h2>
-            <p className="mt-4 text-base leading-7 text-stone-300">
-              AutoKirk is not one loose stack of screens. The Kernel holds truth. Watchdog watches committed truth for risk and lag.
-              Learning studies receipts and outcomes to improve judgment without getting mutation authority.
-            </p>
-          </div>
+        <SectionFrame>
+          <SectionIntro
+            eyebrow="How the machine is built"
+            title="Kernel first. Watchdog next. Learning after proof."
+            body="The product is organized as a governed core with observation and advisory layers around it, not as a loose pile of dashboards."
+          />
 
           <div className="grid gap-4 lg:grid-cols-3">
             {SYSTEM_LAYERS.map((layer) => (
@@ -415,15 +382,14 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </section>
+        </SectionFrame>
 
-        <section className="space-y-6">
-          <div className="max-w-3xl">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">Where this matters</div>
-            <h2 className="mt-4 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea] sm:text-5xl">
-              Anywhere money movement creates responsibility.
-            </h2>
-          </div>
+        <SectionFrame>
+          <SectionIntro
+            eyebrow="Where this matters"
+            title="Anywhere money movement creates responsibility."
+            body="The same structure works across companies, organizations, donations, funding, service work, and internal spend."
+          />
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {SECTORS.map(([name, body, Icon]) => (
@@ -439,19 +405,14 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </section>
+        </SectionFrame>
 
-        <section className="space-y-6">
-          <div className="max-w-4xl">
-            <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">What every company build needs</div>
-            <h2 className="mt-4 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea] sm:text-5xl">
-              Every AutoKirk category needs the same four things.
-            </h2>
-            <p className="mt-4 text-base leading-7 text-stone-300">
-              The sector changes. The structure does not. Every future company or market face needs clear accountability,
-              human oversight, transparency, and fairness built into the experience.
-            </p>
-          </div>
+        <SectionFrame>
+          <SectionIntro
+            eyebrow="What every company build needs"
+            title="Every AutoKirk category needs the same four things."
+            body="The sector changes. The build rules do not: accountability, human oversight, transparency, and fairness."
+          />
 
           <div className="grid gap-4 xl:grid-cols-2">
             {CATEGORY_ROWS.map((category) => (
@@ -468,9 +429,9 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </section>
+        </SectionFrame>
 
-        <section className="rounded-[38px] border border-white/10 bg-[linear-gradient(180deg,rgba(145,226,255,0.10),rgba(255,255,255,0.03))] p-7 shadow-[0_30px_90px_rgba(0,0,0,0.28)] sm:p-9">
+        <section id="access" className="rounded-[38px] border border-white/10 bg-[linear-gradient(180deg,rgba(145,226,255,0.10),rgba(255,255,255,0.03))] p-8 shadow-[0_30px_90px_rgba(0,0,0,0.28)] sm:p-10">
           <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
             <div>
               <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">The line that matters</div>
@@ -490,9 +451,9 @@ export default function HomePage() {
                 <div className="text-[10px] uppercase tracking-[0.24em] text-slate-600">Operator entry</div>
                 <div className="mt-2 text-xl font-semibold">Open the operator side</div>
               </Link>
-              <Link href="/founder" className="rounded-[24px] border border-[#f2c47e]/25 bg-[#f2c47e]/10 px-5 py-5 text-[#f5d7a9] transition hover:translate-y-[-1px]">
-                <div className="text-[10px] uppercase tracking-[0.24em] text-[#f4d3a4]">Founder control</div>
-                <div className="mt-2 text-xl font-semibold">Open founder control</div>
+              <Link href="/subscribe" className="rounded-[24px] border border-[#91e2ff]/25 bg-[#91e2ff]/10 px-5 py-5 text-[#d8f4ff] transition hover:translate-y-[-1px]">
+                <div className="text-[10px] uppercase tracking-[0.24em] text-[#d8f4ff]">Access setup</div>
+                <div className="mt-2 text-xl font-semibold">Activate an operator seat</div>
               </Link>
             </div>
           </div>
@@ -504,9 +465,9 @@ export default function HomePage() {
 
 function QuickPoint({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[22px] border border-white/10 bg-[#0d151c] p-4">
+    <div className="rounded-[22px] border border-white/10 bg-[#0d151c] p-5">
       <div className="text-lg font-medium text-white">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-stone-400">{body}</div>
+      <div className="mt-3 text-sm leading-6 text-stone-400">{body}</div>
     </div>
   );
 }
@@ -564,7 +525,7 @@ function ContrastPanel({
       : "border-rose-300/16 bg-rose-300/8";
 
   return (
-    <div className={`rounded-[34px] border p-6 ${theme}`}>
+    <div className={`rounded-[34px] border p-7 ${theme}`}>
       <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">{eyebrow}</div>
       <div className="mt-3 font-[var(--font-display)] text-4xl leading-none text-[#fff7ea]">{title}</div>
       <div className="mt-5 space-y-3">
@@ -588,7 +549,7 @@ function HowCard({
   icon: typeof Wallet;
 }) {
   return (
-    <div className="rounded-[22px] border border-white/10 bg-[#0d151c] p-5">
+    <div className="rounded-[22px] border border-white/10 bg-[#0d151c] p-6">
       <Icon className="h-5 w-5 text-[#98ecff]" />
       <div className="mt-4 text-xl font-medium text-white">{title}</div>
       <div className="mt-2 text-sm leading-6 text-stone-400">{body}</div>
@@ -596,33 +557,42 @@ function HowCard({
   );
 }
 
-function playTone(audioCtxRef: React.MutableRefObject<AudioContext | null>, stage: number) {
-  if (typeof window === "undefined") return;
+function SectionFrame({
+  children,
+  id,
+}: {
+  children: ReactNode;
+  id?: string;
+}) {
+  return (
+    <section
+      id={id}
+      className="space-y-8 rounded-[36px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.03))] p-8 shadow-[0_26px_80px_rgba(0,0,0,0.24)] sm:p-9"
+    >
+      {children}
+    </section>
+  );
+}
 
-  const AudioCtor =
-    window.AudioContext ||
-    (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-
-  if (!AudioCtor) return;
-
-  const ctx = audioCtxRef.current ?? new AudioCtor();
-  audioCtxRef.current = ctx;
-
-  if (ctx.state === "suspended") {
-    void ctx.resume();
-  }
-
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-
-  osc.type = stage === 3 ? "sine" : "triangle";
-  osc.frequency.value = [210, 290, 360, 510][stage] ?? 280;
-  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(stage === 3 ? 0.04 : 0.02, ctx.currentTime + 0.02);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.2);
+function SectionIntro({
+  eyebrow,
+  title,
+  accent,
+  body,
+}: {
+  eyebrow: string;
+  title: string;
+  accent?: string;
+  body?: string;
+}) {
+  return (
+    <div className="max-w-4xl space-y-4">
+      <div className="text-[10px] uppercase tracking-[0.28em] text-stone-500">{eyebrow}</div>
+      <h2 className="font-[var(--font-display)] text-4xl leading-none text-[#fff7ea] sm:text-5xl">
+        {title}
+        {accent ? <span className="block text-[#91e2ff]">{accent}</span> : null}
+      </h2>
+      {body ? <p className="max-w-3xl text-base leading-7 text-stone-300">{body}</p> : null}
+    </div>
+  );
 }

@@ -5,6 +5,30 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 // 2=nack  3=error  4=commit  7=job_completed  12=obligation_closed
 const CLOSING_TYPES = [2, 3, 4, 7, 12];
 
+type EventRef = {
+  created_at: string | null;
+  event_type_id?: number | string | null;
+};
+
+type ReceiptLagRow = {
+  created_at: string;
+  events: EventRef | EventRef[] | null;
+};
+
+type RecentReceiptRow = {
+  id: string;
+  created_at: string;
+  event_id: string | null;
+  receipt_type_id: number | null;
+  chain_key: string | null;
+  events: EventRef | EventRef[] | null;
+};
+
+function unwrapRelation<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value ?? null;
+}
+
 // Public endpoint — no auth required (aggregated kernel health stats)
 export async function GET() {
   try {
@@ -53,13 +77,13 @@ export async function GET() {
 
     // ── proof_lag ─────────────────────────────────────────────────────────────
     // avg minutes from event.created_at → receipt.created_at for closing receipts
-    const lagRows = lagRes.data ?? [];
+    const lagRows = (lagRes.data ?? []) as ReceiptLagRow[];
     let proof_lag_minutes: number | null = null;
     if (lagRows.length > 0) {
       let total = 0;
       let count = 0;
       for (const r of lagRows) {
-        const ev = (r as any).events;
+        const ev = unwrapRelation(r.events);
         if (!ev?.created_at) continue;
         const ms = new Date(r.created_at).getTime() - new Date(ev.created_at).getTime();
         if (ms >= 0) { total += ms / 60000; count++; }
@@ -68,7 +92,8 @@ export async function GET() {
     }
 
     // ── recent_receipt ───────────────────────────────────────────────────────
-    const rec = (recentReceiptRes.data ?? [])[0] ?? null;
+    const rec = ((recentReceiptRes.data ?? []) as RecentReceiptRow[])[0] ?? null;
+    const recentEvent = rec ? unwrapRelation(rec.events) : null;
     const recent_receipt = rec
       ? {
           id:               rec.id,
@@ -76,8 +101,8 @@ export async function GET() {
           event_id:         rec.event_id,
           chain_key:        rec.chain_key,
           receipt_type_id:  rec.receipt_type_id,
-          event_created_at: (rec as any).events?.created_at ?? null,
-          event_type_id:    (rec as any).events?.event_type_id ?? null,
+          event_created_at: recentEvent?.created_at ?? null,
+          event_type_id:    recentEvent?.event_type_id ?? null,
         }
       : null;
 

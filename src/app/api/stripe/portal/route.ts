@@ -29,7 +29,7 @@ export async function POST() {
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-11-17.clover" as any,
+    apiVersion: "2025-11-17.clover",
   });
 
   const session = await stripe.billingPortal.sessions.create({

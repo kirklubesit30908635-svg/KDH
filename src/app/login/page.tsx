@@ -96,11 +96,11 @@ class ApiError extends Error {
   }
 }
 
-const FACE_ROUTES: Record<string, string | null> = {
+const DOMAIN_ROUTES: Record<string, string | null> = {
   billing: "/billing-ops",
   advertising: "/advertising",
   dealership: null,
-  washbay: "/washbay",
+  washbay: null,
 };
 
 const FLOW_STEPS: Array<{ label: string; href?: string }> = [
@@ -109,8 +109,23 @@ const FLOW_STEPS: Array<{ label: string; href?: string }> = [
   { label: "command", href: "/command" },
   { label: "closure" },
   { label: "receipt", href: "/receipts" },
-  { label: "integrity", href: "/integrity" },
+  { label: "integrity signal", href: "/integrity" },
 ];
+
+const SYSTEM_DOCTRINE = [
+  {
+    label: "Kernel authority",
+    body: "The Kernel remains the sole mutation authority. Operators submit intent; the truth engine decides and records.",
+  },
+  {
+    label: "Read membrane",
+    body: "Live operator reads flow through authenticated route handlers instead of direct browser access to core truth.",
+  },
+  {
+    label: "Receipt consequence",
+    body: "Closure is not considered finished until a receipt exists that integrity and leadership can point back to later.",
+  },
+] as const;
 
 function normalizeAppPath(value: string | null | undefined) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -268,7 +283,7 @@ function SurfaceLink({
   locked?: boolean;
 }) {
   const content = (
-    <div className="group rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5 transition hover:border-white/20 hover:bg-white/[0.06]">
+    <div className="group flex min-h-[11.5rem] flex-col justify-between rounded-3xl border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-6 transition hover:border-white/20 hover:bg-white/[0.06]">
       <div className="flex items-center justify-between gap-4">
         <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{eyebrow}</div>
         <div className="text-sm text-slate-400">{locked ? "Not exposed yet" : "Open"}</div>
@@ -398,11 +413,13 @@ export default function HomePage() {
   const recentReceipts = useMemo(() => receipts.slice(0, 4), [receipts]);
   const accessSetupHref = `/subscribe?redirect=${encodeURIComponent(nextPath)}`;
   const domains = useMemo(() => {
-    return [...(integrity?.domains ?? [])].sort((a, b) => {
-      if (a.integrity_score !== b.integrity_score) return a.integrity_score - b.integrity_score;
-      if (a.open !== b.open) return b.open - a.open;
-      return a.label.localeCompare(b.label);
-    });
+    return [...(integrity?.domains ?? [])]
+      .filter((domain) => domain.face !== "washbay")
+      .sort((a, b) => {
+        if (a.integrity_score !== b.integrity_score) return a.integrity_score - b.integrity_score;
+        if (a.open !== b.open) return b.open - a.open;
+        return a.label.localeCompare(b.label);
+      });
   }, [integrity]);
 
   const pulseCopy = integrity
@@ -427,7 +444,7 @@ export default function HomePage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div>
             <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">AutoKirk · Operator Entry</div>
-            <div className="mt-1 text-sm text-slate-300">Sign in · Activate · Enter the operator surface</div>
+            <div className="mt-1 text-sm text-slate-300">Sign in · Activate · Cross the auth membrane</div>
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
@@ -452,24 +469,26 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-7xl space-y-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-8">
+      <main className="relative mx-auto max-w-[88rem] space-y-10 px-4 py-8 sm:px-6 lg:px-8 lg:space-y-12 lg:py-12">
+        <section className="grid gap-8 2xl:grid-cols-[1.12fr_0.88fr]">
+          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-9">
             <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-200">
               <Sparkles className="h-3.5 w-3.5" />
               Operator entry
             </div>
 
             <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Open the machine. See what needs action.
+              Cross the auth membrane.
+              <span className="block">Enter the receipt-backed operating layer.</span>
             </h1>
 
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              AutoKirk is where the operator sees the current state, the open duty, and the proof that work actually closed.
-              Sign in to enter the live machine, activate access if needed, and move straight into command, receipts, and integrity.
+              AutoKirk is where the operator reads governed state, sees the oldest open duty, and verifies that closure actually
+              produced proof. Sign in to cross into the live machine, then move between command, receipts, integrity, and the
+              active enforcement domains.
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-2 text-sm text-slate-300">
+            <div className="mt-10 flex flex-wrap gap-2 text-sm text-slate-300">
               {FLOW_STEPS.map((step, index) => (
                 <div key={step.label} className="flex items-center gap-2">
                   {step.href ? (
@@ -489,7 +508,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-10 flex flex-wrap gap-3">
               <Link
                 href="/integrity"
                 className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:translate-y-[-1px]"
@@ -519,13 +538,22 @@ export default function HomePage() {
                 Sign in
               </Link>
             </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {SYSTEM_DOCTRINE.map((item) => (
+                <div key={item.label} className="rounded-[1.5rem] border border-white/10 bg-[#08101a] p-5">
+                  <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{item.label}</div>
+                  <div className="mt-3 text-sm leading-6 text-slate-300">{item.body}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <div className="grid gap-4">
-            <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(7,11,21,0.92),rgba(7,11,21,0.72))] p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+          <div className="grid gap-6">
+            <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(7,11,21,0.92),rgba(7,11,21,0.72))] p-7 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
               <div className="flex flex-wrap items-start justify-between gap-6">
                 <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">System pulse</div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Integrity signal</div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
                     {integrity ? gradeLabel(integrity.integrity_score) : authLocked ? "Authentication required" : "Loading state"}
                   </div>
@@ -564,8 +592,8 @@ export default function HomePage() {
             </div>
 
             {authLocked ? (
-              <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                <div className="flex flex-col gap-5">
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6">
+                <div className="flex flex-col gap-6">
                   <div className="flex items-start gap-3">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
                       <Lock className="h-5 w-5 text-slate-200" />
@@ -573,8 +601,8 @@ export default function HomePage() {
                     <div>
                       <div className="text-lg font-medium text-white">Sign in or activate operator access.</div>
                       <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-                        Sign in to load live system state, queue pressure, and receipts. If this operator still needs paid access,
-                        continue into the activation path after sign-in.
+                        Sign in to open the governed read surfaces. If this operator still needs paid access, continue into the
+                        activation path after the identity is established.
                       </p>
                       {authQueryError ? (
                         <div className="mt-3 rounded-2xl border border-rose-300/15 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
@@ -585,7 +613,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
-                    <form id="operator-sign-in" onSubmit={handleMagicLink} className="rounded-[24px] border border-white/10 bg-[#080c17] p-4">
+                    <form id="operator-sign-in" onSubmit={handleMagicLink} className="rounded-[24px] border border-white/10 bg-[#080c17] p-5">
                       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
                         <Mail className="h-3.5 w-3.5" />
                         Operator sign-in
@@ -626,7 +654,7 @@ export default function HomePage() {
                       </button>
                     </form>
 
-                    <div className="rounded-[24px] border border-[#f2c47e]/20 bg-[#f2c47e]/10 p-4">
+                    <div className="rounded-[24px] border border-[#f2c47e]/20 bg-[#f2c47e]/10 p-5">
                       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-[#f4d3a4]">
                         <CreditCard className="h-3.5 w-3.5" />
                         Access setup
@@ -648,7 +676,7 @@ export default function HomePage() {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6">
                   <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Live command pressure</div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{command.length}</div>
                   <div className="mt-1 text-sm text-slate-400">items currently requiring operator action</div>
@@ -666,7 +694,7 @@ export default function HomePage() {
                     )}
                   </div>
                 </div>
-                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
+                <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-6">
                   <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Recent proof</div>
                   <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{receipts.length}</div>
                   <div className="mt-1 text-sm text-slate-400">receipts currently available in the proof layer</div>
@@ -678,7 +706,7 @@ export default function HomePage() {
         </section>
 
         {errors.length > 0 && (
-          <section className="rounded-3xl border border-rose-300/15 bg-rose-300/10 p-4 text-sm text-rose-100">
+          <section className="rounded-3xl border border-rose-300/15 bg-rose-300/10 p-5 text-sm text-rose-100">
             <div className="font-medium">Some live surfaces failed to load.</div>
             <ul className="mt-2 space-y-1 text-rose-100/80">
               {errors.map((error) => (
@@ -688,8 +716,8 @@ export default function HomePage() {
           </section>
         )}
 
-        <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-6">
+        <section className="grid gap-6 2xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-7">
             <div className="flex items-end justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Command preview</div>
@@ -751,7 +779,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-6">
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-7">
             <div className="flex items-end justify-between gap-4">
               <div>
                 <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Proof surface</div>
@@ -798,12 +826,12 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-6">
+        <section className="grid gap-6 2xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-7">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Enforcement sectors</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Faces ranked by real pressure.</h2>
+                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Enforcement domains</div>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Domains ranked by real pressure.</h2>
               </div>
               <Link href="/integrity" className="text-sm text-slate-300 transition hover:text-white">
                 Full system state →
@@ -825,13 +853,13 @@ export default function HomePage() {
 
               {!authLocked &&
                 domains.map((domain) => {
-                  const route = FACE_ROUTES[domain.face] ?? null;
+                  const route = DOMAIN_ROUTES[domain.face] ?? null;
                   const accent = scoreColor(domain.integrity_score);
                   const content = (
                     <div className="rounded-2xl border border-white/10 bg-[#080c17] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{domain.face}</div>
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Enforcement domain</div>
                           <div className="mt-2 text-lg font-medium text-white">{domain.label}</div>
                           <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-400">
                             <span>{domain.open} open</span>
@@ -857,31 +885,41 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <SurfaceLink
-              eyebrow="System"
-              title="System state"
-              body="Open the machine's current condition. Integrity tells the operator what is clean, what is degrading, and what needs attention."
-              href="/integrity"
-            />
-            <SurfaceLink
-              eyebrow="Command"
-              title="Open queue"
-              body="Oldest duty first. This is where the operator sees what still needs action and who needs to move it."
-              href="/command"
-            />
-            <SurfaceLink
-              eyebrow="Proof"
-              title="Receipt record"
-              body="Every sealed obligation leaves a record. Receipts turn finished work into proof the business can point back to."
-              href="/receipts"
-            />
-            <SurfaceLink
-              eyebrow="Access"
-              title="Paid access setup"
-              body="Operator identity comes first. Then the page continues into Stripe checkout with the correct account attached."
-              href="/subscribe"
-            />
+          <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-7">
+            <div className="max-w-md">
+              <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Next surfaces</div>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Move through the operator stack in a cleaner order.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                The entry page should lead operators into live state, action, proof, and access setup without forcing them to hunt for the next surface.
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              <SurfaceLink
+                eyebrow="System"
+                title="System state"
+                body="Open the machine's current condition. Integrity tells the operator what is clean, what is degrading, and what needs attention."
+                href="/integrity"
+              />
+              <SurfaceLink
+                eyebrow="Command"
+                title="Open queue"
+                body="Oldest duty first. This is where the operator sees what still needs action and who needs to move it."
+                href="/command"
+              />
+              <SurfaceLink
+                eyebrow="Proof"
+                title="Receipt record"
+                body="Every sealed obligation leaves a record. Receipts turn finished work into proof the business can point back to."
+                href="/receipts"
+              />
+              <SurfaceLink
+                eyebrow="Access"
+                title="Paid access setup"
+                body="Operator identity comes first. Then the page continues into Stripe checkout with the correct account attached."
+                href="/subscribe"
+              />
+            </div>
           </div>
         </section>
       </main>

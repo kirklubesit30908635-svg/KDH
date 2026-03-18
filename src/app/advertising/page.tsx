@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { NextActionRow, SeverityGroup } from "@/lib/ui-models";
 import { fmtDue, fmtFace, safeStr } from "@/lib/ui-fmt";
@@ -48,30 +48,37 @@ export default function AdvertisingPage() {
   const activeGroups = GROUPS.filter((g) => grouped[g.key].length > 0);
   const totalOpen = obligations.length;
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch("/api/advertising/feed");
-        if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
-          throw new Error(j.error ?? `HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        setObligations(data.obligations ?? []);
-        setReceipts(data.receipts ?? []);
-      } catch (e) {
-        setErr(e instanceof Error ? e.message : String(e));
-      } finally {
-        setLoading(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setErr(null);
+
+    try {
+      const res = await fetch("/api/advertising/feed");
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? `HTTP ${res.status}`);
       }
+      const data = await res.json();
+      setObligations(data.obligations ?? []);
+      setReceipts(data.receipts ?? []);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setObligations([]);
+      setReceipts([]);
+    } finally {
+      setLoading(false);
     }
-    load();
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <AkShell
       title="Advertising Enforcement"
       subtitle="Spend → Lead → Follow-Up → Sale → Margin → Renewal Gate"
+      eyebrow="Enforcement Domain"
     >
       {loading && (
         <div className="flex items-center gap-3 text-sm text-white/35">
@@ -84,15 +91,29 @@ export default function AdvertisingPage() {
         <AkPanel className="p-6">
           <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
           <div className="text-sm text-white/60">{err}</div>
+          <button
+            onClick={() => void load()}
+            className="mt-4 text-xs font-bold text-white/60 transition hover:text-white hover:underline"
+          >
+            Retry →
+          </button>
         </AkPanel>
       )}
 
       {!loading && !err && (
         <>
           {/* summary bar */}
-          <div className="mb-8 flex items-center gap-3">
-            <span className="text-3xl font-extrabold text-white">{totalOpen}</span>
-            <span className="text-sm text-white/35">open obligations</span>
+          <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-extrabold text-white">{totalOpen}</span>
+              <span className="text-sm text-white/35">open obligations</span>
+            </div>
+            <button
+              onClick={() => void load()}
+              className="text-xs font-bold text-white/35 transition hover:text-white"
+            >
+              Refresh
+            </button>
           </div>
 
           {/* all clear */}
