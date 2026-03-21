@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { ingestStripeEventCanonical } from "@/lib/stripe-canonical-ingest";
+import { openSubscriptionObligationFromEvent } from "@/lib/stripe-subscription-bridge";
 
 export const runtime = "nodejs";
 
@@ -52,6 +53,11 @@ export async function POST(req: NextRequest) {
   try {
     const ingest = await ingestStripeEventCanonical(event);
 
+    // Open a governed obligation for subscription lifecycle events.
+    // Runs after ingest so ledger truth exists first.
+    // Errors are non-fatal: ingest already succeeded.
+    const obligationId = await openSubscriptionObligationFromEvent(event);
+
     return NextResponse.json({
       ok: true,
       type: event.type,
@@ -61,6 +67,7 @@ export async function POST(req: NextRequest) {
       receipt_id: ingest.receiptId,
       seq: ingest.seq,
       hash: ingest.hash,
+      ...(obligationId ? { obligation_id: obligationId } : {}),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
