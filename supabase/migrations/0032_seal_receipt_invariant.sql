@@ -32,11 +32,11 @@ BEGIN;
 --    without manual preconditions.
 -- ---------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION core.try_parse_timestamptz(p_input text)
+CREATE OR REPLACE FUNCTION core.try_parse_timestamptz(p_value text)
 RETURNS timestamptz
 LANGUAGE plpgsql STABLE AS $$
 BEGIN
-  RETURN p_input::timestamptz;
+  RETURN p_value::timestamptz;
 EXCEPTION WHEN OTHERS THEN
   RETURN NULL;
 END;
@@ -476,116 +476,31 @@ END;
 $$;
 
 -- ---------------------------------------------------------------
--- 7. core.v_recent_receipts — add DISTINCT ON deduplication so
---    any already-committed duplicate receipts don't surface in the
---    UI as double rows.
+-- 7. core.v_recent_receipts — reset-safe placeholder
+--    The founder-era receipt projection depends on core.objects and
+--    founder-era obligation columns that no longer exist at this
+--    point in the replayed chain. Later founder-console migrations
+--    recreate the real projection from canonical kernel truth.
 -- ---------------------------------------------------------------
 
 CREATE OR REPLACE VIEW core.v_recent_receipts AS
-WITH deduped AS (
-  -- Take the lowest-seq (earliest) receipt per obligation chain.
-  SELECT DISTINCT ON (r.chain_key)
-    r.id,
-    r.workspace_id,
-    r.event_id,
-    r.receipt_type_id,
-    r.chain_key,
-    r.seq,
-    r.payload,
-    r.created_at
-  FROM ledger.receipts r
-  ORDER BY r.chain_key, r.seq ASC
-),
-projected AS (
-  SELECT
-    d.workspace_id,
-    d.id                   AS receipt_id,
-    o.id::text             AS obligation_id,
-    o.object_id,
-    rt.name                AS receipt_type,
-    COALESCE(
-      core.try_parse_timestamptz(d.payload ->> 'resolved_at'),
-      o.resolved_at,
-      d.created_at
-    )                      AS created_at,
-    COALESCE(
-      NULLIF(d.payload ->> 'actor_id', ''),
-      NULLIF(o.resolved_by_actor_id, ''),
-      NULLIF(o.opened_by_actor_id, '')
-    )                      AS actor_user_id,
-    d.event_id,
-    d.payload,
-    COALESCE(
-      core.try_parse_timestamptz(d.payload ->> 'resolved_at'),
-      o.resolved_at,
-      d.created_at
-    )                      AS sealed_at,
-    COALESCE(
-      NULLIF(d.payload ->> 'actor_id', ''),
-      NULLIF(o.resolved_by_actor_id, ''),
-      NULLIF(o.opened_by_actor_id, '')
-    )                      AS sealed_by,
-    o.metadata             AS obligation_metadata,
-    obj.metadata           AS object_metadata,
-    obj.kernel_class,
-    COALESCE(
-      NULLIF(o.metadata ->> 'stripe_type', ''),
-      NULLIF(obj.metadata ->> 'stripe_type', '')
-    )                      AS stripe_type,
-    COALESCE(
-      NULLIF(o.metadata ->> 'source_ref', ''),
-      NULLIF(obj.metadata ->> 'source_ref', '')
-    )                      AS source_ref,
-    COALESCE(
-      NULLIF(o.metadata ->> 'surface', ''),
-      NULLIF(obj.metadata ->> 'surface', '')
-    )                      AS source_surface,
-    d.event_id             AS ledger_event_id
-  FROM deduped d
-  JOIN ledger.events         e   ON e.id   = d.event_id
-  JOIN registry.event_types  et  ON et.id  = e.event_type_id
-  JOIN registry.receipt_types rt  ON rt.id  = d.receipt_type_id
-  JOIN core.obligations       o   ON d.chain_key = 'obligation:' || o.id::text
-  JOIN core.objects           obj ON obj.id = o.object_id
-  WHERE et.name = 'obligation.resolved'
-)
 SELECT
-  workspace_id,
-  receipt_id,
-  obligation_id,
-  object_id,
-  receipt_type,
-  created_at,
-  actor_user_id,
-  event_id,
-  payload,
-  sealed_at,
-  sealed_by,
-  COALESCE(
-    NULLIF(obligation_metadata ->> 'face', ''),
-    NULLIF(object_metadata ->> 'face', ''),
-    CASE
-      WHEN source_surface = 'stripe_webhook' OR stripe_type IS NOT NULL THEN 'billing'
-      ELSE NULL
-    END,
-    'unknown'
-  )                        AS face,
-  COALESCE(
-    NULLIF(obligation_metadata ->> 'economic_ref_type', ''),
-    NULLIF(object_metadata ->> 'economic_ref_type', ''),
-    kernel_class,
-    'unknown'
-  )                        AS economic_ref_type,
-  COALESCE(
-    NULLIF(obligation_metadata ->> 'economic_ref_id', ''),
-    NULLIF(object_metadata ->> 'economic_ref_id', ''),
-    source_ref,
-    NULLIF(object_metadata ->> 'period_key', ''),
-    NULLIF(object_metadata ->> 'subscription_key', ''),
-    object_id::text
-  )                        AS economic_ref_id,
-  ledger_event_id
-FROM projected;
+  NULL::uuid        AS workspace_id,
+  NULL::uuid        AS receipt_id,
+  NULL::text        AS obligation_id,
+  NULL::uuid        AS object_id,
+  NULL::text        AS receipt_type,
+  NULL::timestamptz AS created_at,
+  NULL::text        AS actor_user_id,
+  NULL::uuid        AS event_id,
+  NULL::jsonb       AS payload,
+  NULL::timestamptz AS sealed_at,
+  NULL::text        AS sealed_by,
+  NULL::text        AS face,
+  NULL::text        AS economic_ref_type,
+  NULL::text        AS economic_ref_id,
+  NULL::uuid        AS ledger_event_id
+WHERE false;
 
 GRANT SELECT ON core.v_recent_receipts TO authenticated, service_role;
 
@@ -608,6 +523,26 @@ DECLARE
     v_idempotency_evt text;
     v_idempotency_rct text;
 BEGIN
+    IF to_regclass('core.objects') IS NULL
+       OR NOT EXISTS (
+           SELECT 1
+             FROM information_schema.columns
+            WHERE table_schema = 'core'
+              AND table_name = 'obligations'
+              AND column_name = 'state'
+       )
+       OR NOT EXISTS (
+           SELECT 1
+             FROM information_schema.columns
+            WHERE table_schema = 'core'
+              AND table_name = 'obligations'
+              AND column_name = 'receipt_id'
+       ) THEN
+        RAISE NOTICE
+            'Skipping 0032 founder-era receipt backfill during reset; founder obligation schema is not present yet.';
+        RETURN;
+    END IF;
+
     SELECT id INTO v_event_type_id
       FROM registry.event_types WHERE name = 'obligation.resolved';
 
