@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       receipt_id: ingest.receiptId,
       seq: ingest.seq,
       hash: ingest.hash,
+      ...(ingest.obligationId != null && { obligation_id: ingest.obligationId }),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -24,6 +24,7 @@ export type CanonicalStripeIngestResult = {
   receiptId: string | null;
   seq: number | null;
   hash: string | null;
+  obligationId?: string | null;
 };
 
 export function canonicalStripeEventType(eventType: string) {
@@ -45,6 +46,42 @@ export function resolveStripeProviderAccountId(event: Pick<Stripe.Event, "accoun
 
 function serializeStripeEvent(event: Stripe.Event): Record<string, unknown> {
   return JSON.parse(JSON.stringify(event)) as Record<string, unknown>;
+}
+
+/**
+ * After ingesting a customer.subscription.created event, opens an
+ * operationalize_subscription obligation via the governed RPC.
+ * Errors are non-fatal — ingest success is not gated on this call.
+ */
+async function openSubscriptionObligation(
+  event: Stripe.Event,
+  providerAccountId: string
+): Promise<string | null> {
+  const sub = event.data.object as Stripe.Subscription;
+  const subscriptionId = sub.id;
+  const customerId =
+    typeof sub.customer === "string" ? sub.customer : sub.customer?.id ?? "";
+
+  const { data, error } = await supabaseAdmin
+    .schema("api")
+    .rpc("open_subscription_obligation", {
+      p_provider_account_id:    providerAccountId,
+      p_stripe_event_id:        event.id,
+      p_stripe_subscription_id: subscriptionId,
+      p_stripe_customer_id:     customerId,
+      p_livemode:               event.livemode,
+      p_metadata:               {},
+    });
+
+  if (error) {
+    console.error(
+      "[stripe-subscription-bridge] open_subscription_obligation failed:",
+      error.message
+    );
+    return null;
+  }
+
+  return (data as string) ?? null;
 }
 
 export async function ingestStripeEventCanonical(
@@ -73,6 +110,12 @@ export async function ingestStripeEventCanonical(
     throw new Error(`ingest_stripe_event returned no row for ${event.id}`);
   }
 
+  // Bridge: open an obligation for new subscriptions.
+  let obligationId: string | null = null;
+  if (event.type === "customer.subscription.created") {
+    obligationId = await openSubscriptionObligation(event, providerAccountId);
+  }
+
   return {
     providerAccountId,
     stripeType: event.type,
@@ -86,5 +129,6 @@ export async function ingestStripeEventCanonical(
     receiptId: row.receipt_id,
     seq: row.seq,
     hash: row.hash,
+    obligationId,
   };
 }
