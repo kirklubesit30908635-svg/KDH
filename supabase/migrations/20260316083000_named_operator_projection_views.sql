@@ -1,5 +1,4 @@
 begin;
-
 create or replace view core.v_operator_next_actions as
 with projected as (
   select
@@ -100,7 +99,6 @@ select
     nullif(object_metadata ->> 'location', '')
   ) as location
 from projected;
-
 create or replace view core.v_recent_receipts as
 select
   r.workspace_id,
@@ -161,7 +159,6 @@ join core.obligations o
 join core.objects obj
   on obj.id = o.object_id
 where et.name = 'obligation.resolved';
-
 create or replace view signals.v_integrity_summary as
 with workspace_set as (
   select distinct workspace_id from core.obligations
@@ -331,7 +328,6 @@ select
   )::int as integrity_score,
   now() as computed_at
 from joined;
-
 create or replace view core.v_next_actions as
 select
   obligation_id,
@@ -347,7 +343,6 @@ select
   economic_ref_id,
   location
 from core.v_operator_next_actions;
-
 create or replace view core.v_receipts as
 select
   receipt_id,
@@ -360,18 +355,15 @@ select
   ledger_event_id,
   payload
 from core.v_recent_receipts;
-
 grant select on core.v_operator_next_actions to authenticated, service_role;
 grant select on core.v_recent_receipts to authenticated, service_role;
 grant select on signals.v_integrity_summary to authenticated, service_role;
 grant select on core.v_next_actions to authenticated, service_role;
 grant select on core.v_receipts to authenticated, service_role;
-
 comment on view core.v_operator_next_actions is
   'Disposable operator-action projection derived from governed obligation truth.';
 comment on view core.v_recent_receipts is
   'Disposable receipt projection derived from committed obligation-resolution receipts.';
 comment on view signals.v_integrity_summary is
   'Workspace-scoped integrity summary derived from kernel truth and projection counts.';
-
 commit;

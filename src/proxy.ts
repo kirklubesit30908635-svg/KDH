@@ -1,17 +1,46 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import {
+  getStripeFirstWedgeRouteGate,
+  isWedgeProtectedPath,
+} from "@/lib/stripe_first_wedge_closure";
 
-const PROTECTED = ["/command", "/receipts", "/billing-ops", "/advertising", "/integrity", "/users", "/founder"];
-const FOUNDER_EMAIL = (
-  process.env.FOUNDER_EMAIL ||
-  process.env.NEXT_PUBLIC_FOUNDER_EMAIL ||
-  "kirklubesit30908635@gmail.com"
-).toLowerCase();
+function blockedSurfaceResponse(
+  request: NextRequest,
+  classification: "deferred" | "dead",
+  reason: string,
+) {
+  const status = classification === "deferred" ? 409 : 410;
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      {
+        error: `${classification} surface`,
+        classification,
+        reason,
+      },
+      { status },
+    );
+  }
+
+  return new NextResponse(`${classification.toUpperCase()}: ${reason}`, {
+    status,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+    },
+  });
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const routeGate = getStripeFirstWedgeRouteGate(pathname, request.method);
+  if (
+    routeGate.classification === "deferred" ||
+    routeGate.classification === "dead"
+  ) {
+    return blockedSurfaceResponse(request, routeGate.classification, routeGate.reason ?? "Closed");
+  }
 
-  const isProtected = PROTECTED.some((path) => pathname.startsWith(path));
+  const isProtected = isWedgeProtectedPath(pathname);
   if (!isProtected) {
     return NextResponse.next();
   }
@@ -47,10 +76,6 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  if (pathname.startsWith("/founder") && user.email?.toLowerCase() !== FOUNDER_EMAIL) {
-    return NextResponse.redirect(new URL("/command", request.url));
   }
 
   return response;

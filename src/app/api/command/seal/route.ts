@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server";
+import { requireOperatorRouteContext } from "@/lib/operator-access";
 import { sealObligation } from "@/lib/obligation-store";
 
 export async function POST(request: NextRequest) {
-  const supabase = await supabaseServer();
-  const {
-    data: { user },
-    error: authErr,
-  } = await supabase.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireOperatorRouteContext();
+  if (!access.ok) {
+    return access.response;
   }
 
   try {
+    const { supabase, user, defaultWorkspaceId } = access.context;
     const body = await request.json();
     const obligationId = body.obligation_id;
 
@@ -31,8 +28,8 @@ export async function POST(request: NextRequest) {
       {
         metadata:
           action === "quote"
-            ? { surface: "command", action: "mark_quote_sent" }
-            : { surface: "command", action: "seal" },
+            ? { surface: "command", action: "mark_quote_sent", workspace_id: defaultWorkspaceId }
+            : { surface: "command", action: "seal", workspace_id: defaultWorkspaceId },
       }
     );
 

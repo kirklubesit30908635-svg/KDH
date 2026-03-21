@@ -1,9 +1,20 @@
 export type SeverityGroup = "critical" | "at_risk" | "due_today" | "queue";
-export type FaceOrigin = "dealership" | "advertising" | "contractor" | "unknown";
-export type EconomicRefType = "invoice" | "lead" | "campaign" | "customer" | "unknown";
+export type FaceOrigin = "billing" | "dealership" | "advertising" | "contractor" | "unknown";
+export type EconomicRefType =
+  | "invoice"
+  | "payment"
+  | "lead"
+  | "campaign"
+  | "customer"
+  | "subscription"
+  | "unknown";
 
 export interface NextActionRow {
   obligation_id: string;
+  object_id?: string | null;
+  kind?: string | null;
+  status?: string | null;
+  priority?: SeverityGroup | string | null;
   title: string;
   why: string | null;
   face: FaceOrigin | string | null;
@@ -20,6 +31,9 @@ export interface NextActionRow {
 export interface ReceiptRow {
   receipt_id: string;
   obligation_id: string;
+  object_id?: string | null;
+  receipt_type?: string | null;
+  actor_user_id?: string | null;
   sealed_at: string;
   sealed_by: string | null;
   face: FaceOrigin | string | null;

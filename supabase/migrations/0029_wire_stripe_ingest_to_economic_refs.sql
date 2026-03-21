@@ -56,7 +56,5 @@ begin
 
 end;
 $$;
-
 revoke all on function api.ingest_stripe_event(uuid, text, jsonb) from public;
-
 grant execute on function api.ingest_stripe_event(uuid, text, jsonb) to service_role;

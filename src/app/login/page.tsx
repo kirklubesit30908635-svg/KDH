@@ -7,7 +7,6 @@ import {
   ArrowRight,
   CircleAlert,
   CircleCheckBig,
-  CreditCard,
   Lock,
   LogIn,
   Mail,
@@ -97,10 +96,7 @@ class ApiError extends Error {
 }
 
 const DOMAIN_ROUTES: Record<string, string | null> = {
-  billing: "/billing-ops",
-  advertising: "/advertising",
-  dealership: null,
-  washbay: null,
+  billing: "/command",
 };
 
 const FLOW_STEPS: Array<{ label: string; href?: string }> = [
@@ -108,8 +104,8 @@ const FLOW_STEPS: Array<{ label: string; href?: string }> = [
   { label: "obligation" },
   { label: "command", href: "/command" },
   { label: "closure" },
-  { label: "receipt", href: "/receipts" },
-  { label: "integrity signal", href: "/integrity" },
+  { label: "receipt", href: "/command/receipts" },
+  { label: "integrity signal", href: "/command/integrity" },
 ];
 
 const SYSTEM_DOCTRINE = [
@@ -291,7 +287,7 @@ function SurfaceLink({
       <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-50">{title}</div>
       <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">{body}</p>
       <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-slate-100">
-        {locked ? "Held inside kernel" : "Enter sector"}
+        {locked ? "Held inside kernel" : "Open surface"}
         <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
       </div>
     </div>
@@ -411,10 +407,8 @@ export default function HomePage() {
 
   const queue = useMemo(() => sortCommands(command).slice(0, 5), [command]);
   const recentReceipts = useMemo(() => receipts.slice(0, 4), [receipts]);
-  const accessSetupHref = `/subscribe?redirect=${encodeURIComponent(nextPath)}`;
   const domains = useMemo(() => {
     return [...(integrity?.domains ?? [])]
-      .filter((domain) => domain.face !== "washbay")
       .sort((a, b) => {
         if (a.integrity_score !== b.integrity_score) return a.integrity_score - b.integrity_score;
         if (a.open !== b.open) return b.open - a.open;
@@ -448,13 +442,13 @@ export default function HomePage() {
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
-            <Link href="/integrity" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
+            <Link href="/command/integrity" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
               System
             </Link>
             <Link href="/command" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
               Command
             </Link>
-            <Link href="/receipts" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
+            <Link href="/command/receipts" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
               Receipts
             </Link>
             <button
@@ -485,7 +479,7 @@ export default function HomePage() {
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
               AutoKirk is where the operator reads governed state, sees the oldest open duty, and verifies that closure actually
               produced proof. Sign in to cross into the live machine, then move between command, receipts, integrity, and the
-              active enforcement domains.
+              frozen Stripe billing wedge.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-2 text-sm text-slate-300">
@@ -510,7 +504,7 @@ export default function HomePage() {
 
             <div className="mt-10 flex flex-wrap gap-3">
               <Link
-                href="/integrity"
+                href="/command/integrity"
                 className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:translate-y-[-1px]"
               >
                 <Shield className="h-4 w-4" />
@@ -524,7 +518,7 @@ export default function HomePage() {
                 Go to command
               </Link>
               <Link
-                href="/receipts"
+                href="/command/receipts"
                 className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
               >
                 <ReceiptText className="h-4 w-4" />
@@ -599,10 +593,9 @@ export default function HomePage() {
                       <Lock className="h-5 w-5 text-slate-200" />
                     </div>
                     <div>
-                      <div className="text-lg font-medium text-white">Sign in or activate operator access.</div>
+                      <div className="text-lg font-medium text-white">Sign in to open the operator runtime.</div>
                       <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-                        Sign in to open the governed read surfaces. If this operator still needs paid access, continue into the
-                        activation path after the identity is established.
+                        Sign in to open the governed read surfaces for the live Stripe billing wedge.
                       </p>
                       {authQueryError ? (
                         <div className="mt-3 rounded-2xl border border-rose-300/15 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
@@ -612,7 +605,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+                  <div className="grid gap-4">
                     <form id="operator-sign-in" onSubmit={handleMagicLink} className="rounded-[24px] border border-white/10 bg-[#080c17] p-5">
                       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
                         <Mail className="h-3.5 w-3.5" />
@@ -653,24 +646,6 @@ export default function HomePage() {
                         {authSubmitting ? "Sending access link..." : "Send access link"}
                       </button>
                     </form>
-
-                    <div className="rounded-[24px] border border-[#f2c47e]/20 bg-[#f2c47e]/10 p-5">
-                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-[#f4d3a4]">
-                        <CreditCard className="h-3.5 w-3.5" />
-                        Access setup
-                      </div>
-                      <div className="mt-3 text-xl font-semibold text-white">Set up paid access</div>
-                      <p className="mt-2 text-sm leading-6 text-slate-200/80">
-                        Stripe activation comes after sign-in so the subscription binds to the right operator account.
-                      </p>
-                      <Link
-                        href={accessSetupHref}
-                        className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#f2c47e]/30 bg-[#f2c47e]/16 px-5 py-3 text-sm font-medium text-[#fff2d6] transition hover:border-[#f2c47e]/45 hover:bg-[#f2c47e]/22"
-                      >
-                        <CreditCard className="h-4 w-4" />
-                        Open access setup
-                      </Link>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -785,7 +760,7 @@ export default function HomePage() {
                 <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Proof surface</div>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Institutional memory, not activity feed.</h2>
               </div>
-              <Link href="/receipts" className="text-sm text-slate-300 transition hover:text-white">
+              <Link href="/command/receipts" className="text-sm text-slate-300 transition hover:text-white">
                 Open receipts →
               </Link>
             </div>
@@ -830,10 +805,10 @@ export default function HomePage() {
           <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-7">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Enforcement domains</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Domains ranked by real pressure.</h2>
+                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Active wedge</div>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">The live billing wedge ranked by pressure.</h2>
               </div>
-              <Link href="/integrity" className="text-sm text-slate-300 transition hover:text-white">
+              <Link href="/command/integrity" className="text-sm text-slate-300 transition hover:text-white">
                 Full system state →
               </Link>
             </div>
@@ -841,7 +816,7 @@ export default function HomePage() {
             <div className="mt-5 grid gap-3">
               {authLocked && (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5">
-                  <div className="text-sm text-slate-300">Sign in above to rank live sectors by pressure.</div>
+                  <div className="text-sm text-slate-300">Sign in above to load the live billing wedge.</div>
                 </div>
               )}
 
@@ -859,7 +834,7 @@ export default function HomePage() {
                     <div className="rounded-2xl border border-white/10 bg-[#080c17] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Enforcement domain</div>
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Active wedge</div>
                           <div className="mt-2 text-lg font-medium text-white">{domain.label}</div>
                           <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-400">
                             <span>{domain.open} open</span>
@@ -890,7 +865,7 @@ export default function HomePage() {
               <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Next surfaces</div>
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Move through the operator stack in a cleaner order.</h2>
               <p className="mt-3 text-sm leading-6 text-slate-400">
-                The entry page should lead operators into live state, action, proof, and access setup without forcing them to hunt for the next surface.
+                The entry page should lead operators into live state, action, and proof without forcing them to hunt for the next surface.
               </p>
             </div>
 
@@ -899,7 +874,7 @@ export default function HomePage() {
                 eyebrow="System"
                 title="System state"
                 body="Open the machine's current condition. Integrity tells the operator what is clean, what is degrading, and what needs attention."
-                href="/integrity"
+                href="/command/integrity"
               />
               <SurfaceLink
                 eyebrow="Command"
@@ -911,13 +886,7 @@ export default function HomePage() {
                 eyebrow="Proof"
                 title="Receipt record"
                 body="Every sealed obligation leaves a record. Receipts turn finished work into proof the business can point back to."
-                href="/receipts"
-              />
-              <SurfaceLink
-                eyebrow="Access"
-                title="Paid access setup"
-                body="Operator identity comes first. Then the page continues into Stripe checkout with the correct account attached."
-                href="/subscribe"
+                href="/command/receipts"
               />
             </div>
           </div>

@@ -1,5 +1,4 @@
 begin;
-
 create or replace view core.v_operator_next_actions as
 with projected as (
   select
@@ -128,7 +127,6 @@ select
     nullif(object_metadata ->> 'location', '')
   ) as location
 from projected;
-
 create or replace view core.v_recent_receipts as
 with projected as (
   select
@@ -226,13 +224,10 @@ select
   ) as economic_ref_id,
   ledger_event_id
 from projected;
-
 grant select on core.v_operator_next_actions to authenticated, service_role;
 grant select on core.v_recent_receipts to authenticated, service_role;
-
 comment on view core.v_operator_next_actions is
   'Disposable operator-action projection with normalized Stripe-derived labels from committed truth.';
 comment on view core.v_recent_receipts is
   'Disposable receipt projection with normalized Stripe-derived labels from committed truth.';
-
 commit;

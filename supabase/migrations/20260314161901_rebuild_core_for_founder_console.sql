@@ -9,18 +9,15 @@
 -- =====================================================
 
 BEGIN;
-
 -- 1. Drop dependent views
 DROP VIEW IF EXISTS core.v_next_actions CASCADE;
 DROP VIEW IF EXISTS core.v_receipts CASCADE;
-
 -- 2. Drop old tables (FK order)
 DROP TABLE IF EXISTS core.receipts CASCADE;
 DROP TABLE IF EXISTS core.obligations CASCADE;
 DROP TABLE IF EXISTS core.objects CASCADE;
 DROP TABLE IF EXISTS core.object_class_postures CASCADE;
 DROP TABLE IF EXISTS core.reason_codes CASCADE;
-
 -- =====================================================
 -- VOCAB
 -- =====================================================
@@ -30,13 +27,11 @@ CREATE TABLE core.object_class_postures (
     economic_posture text NOT NULL,
     PRIMARY KEY (kernel_class, economic_posture)
 );
-
 CREATE TABLE core.reason_codes (
     code      text PRIMARY KEY,
     category  text NOT NULL,
     is_active boolean NOT NULL DEFAULT true
 );
-
 INSERT INTO core.reason_codes (code, category) VALUES
   ('customer_declined',       'sales'),
   ('unqualified',             'sales'),
@@ -47,7 +42,6 @@ INSERT INTO core.reason_codes (code, category) VALUES
   ('external_loss',           'external'),
   ('client_routed_elsewhere', 'external')
 ON CONFLICT DO NOTHING;
-
 -- =====================================================
 -- OBJECTS
 -- =====================================================
@@ -68,7 +62,6 @@ CREATE TABLE core.objects (
         status IN ('acknowledged','under_governance','terminal_resolution_recorded')
     )
 );
-
 -- =====================================================
 -- OBLIGATIONS
 -- =====================================================
@@ -96,7 +89,6 @@ CREATE TABLE core.obligations (
         OR terminal_action IS NULL
     )
 );
-
 -- =====================================================
 -- RLS
 -- =====================================================
@@ -105,14 +97,12 @@ ALTER TABLE core.object_class_postures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE core.reason_codes          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE core.objects               ENABLE ROW LEVEL SECURITY;
 ALTER TABLE core.obligations           ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "service_role_all_postures"    ON core.object_class_postures FOR ALL TO service_role USING (true);
 CREATE POLICY "service_role_all_reason"      ON core.reason_codes          FOR ALL TO service_role USING (true);
 CREATE POLICY "service_role_all_objects"     ON core.objects               FOR ALL TO service_role USING (true);
 CREATE POLICY "service_role_all_obligations" ON core.obligations           FOR ALL TO service_role USING (true);
 CREATE POLICY "auth_read_objects"            ON core.objects      FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_read_obligations"        ON core.obligations  FOR SELECT TO authenticated USING (true);
-
 -- =====================================================
 -- GRANTS
 -- =====================================================
@@ -120,14 +110,12 @@ CREATE POLICY "auth_read_obligations"        ON core.obligations  FOR SELECT TO 
 GRANT USAGE  ON SCHEMA core   TO service_role;
 GRANT USAGE  ON SCHEMA api    TO service_role;
 GRANT USAGE  ON SCHEMA ledger TO service_role;
-
 GRANT SELECT ON core.objects               TO service_role, authenticated;
 GRANT SELECT ON core.obligations           TO service_role, authenticated;
 GRANT SELECT ON core.object_class_postures TO service_role;
 GRANT SELECT ON core.reason_codes          TO service_role;
 GRANT SELECT ON ledger.events              TO service_role;
 GRANT SELECT ON ledger.receipts            TO service_role;
-
 -- =====================================================
 -- RPCs
 -- =====================================================
@@ -161,7 +149,6 @@ BEGIN
     RETURN v_object_id;
 END;
 $$;
-
 CREATE OR REPLACE FUNCTION api.open_obligation(
     p_workspace_id    uuid,
     p_object_id       uuid,
@@ -183,7 +170,6 @@ BEGIN
     RETURN v_obligation_id;
 END;
 $$;
-
 CREATE OR REPLACE FUNCTION api.resolve_obligation(
     p_obligation_id   uuid,
     p_terminal_action text,
@@ -208,11 +194,9 @@ BEGIN
     END IF;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION api.acknowledge_object(uuid,text,text,text,text,jsonb) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION api.open_obligation(uuid,uuid,text,text,text,jsonb)    TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION api.resolve_obligation(uuid,text,text,text,text,jsonb) TO authenticated, service_role;
-
 -- =====================================================
 -- SEED posture matrix
 -- =====================================================
@@ -228,5 +212,4 @@ INSERT INTO core.object_class_postures (kernel_class, economic_posture) VALUES
   ('payment',    'direct_revenue'),
   ('payment',    'revenue_recovery')
 ON CONFLICT DO NOTHING;
-
 COMMIT;

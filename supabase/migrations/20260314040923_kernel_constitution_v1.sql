@@ -7,13 +7,11 @@ create table if not exists core.object_class_postures (
     economic_posture text not null,
     primary key (kernel_class, economic_posture)
 );
-
 create table if not exists core.reason_codes (
     code text primary key,
     category text not null,
     is_active boolean not null default true
 );
-
 insert into core.reason_codes (code, category) values
 ('customer_declined','sales'),
 ('unqualified','sales'),
@@ -24,7 +22,6 @@ insert into core.reason_codes (code, category) values
 ('external_loss','external'),
 ('client_routed_elsewhere','external')
 on conflict do nothing;
-
 -- =========================================
 -- OBJECTS
 -- =========================================
@@ -56,7 +53,6 @@ create table if not exists core.objects (
             'terminal_resolution_recorded'
         ))
 );
-
 -- =========================================
 -- OBLIGATIONS
 -- =========================================
@@ -94,7 +90,6 @@ create table if not exists core.obligations (
     constraint obligation_terminal_action_check
         check (terminal_action in ('closed','terminated','eliminated') or terminal_action is null)
 );
-
 -- =========================================
 -- EVENTS LEDGER
 -- =========================================
@@ -121,7 +116,6 @@ create table if not exists ledger.events (
     prev_event_hash text,
     event_hash text not null unique
 );
-
 -- =========================================
 -- RECEIPTS LEDGER
 -- =========================================

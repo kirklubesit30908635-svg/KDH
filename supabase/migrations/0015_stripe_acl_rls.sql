@@ -41,11 +41,9 @@
 REVOKE EXECUTE ON FUNCTION api.ingest_stripe_event(
   text, text, text, boolean, text, timestamptz, jsonb
 ) FROM PUBLIC;
-
 GRANT EXECUTE ON FUNCTION api.ingest_stripe_event(
   text, text, text, boolean, text, timestamptz, jsonb
 ) TO authenticated;
-
 -- ---------------------------------------------------------------
 -- core.set_updated_at (introduced in 0012)
 -- Internal trigger function. Already revoked from PUBLIC in 0012.
@@ -59,4 +57,4 @@ GRANT EXECUTE ON FUNCTION api.ingest_stripe_event(
 -- chain_key is a free-text scoping key, not a registry reference.
 -- Using the event type name as the chain_key scopes each Stripe
 -- event family to its own chain within the workspace ledger.
--- ---------------------------------------------------------------
+-- ---------------------------------------------------------------;

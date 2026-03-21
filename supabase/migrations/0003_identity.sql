@@ -14,7 +14,6 @@ CREATE TABLE core.tenants (
   name       text        NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
 CREATE TABLE core.workspaces (
   id         uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id  uuid        NOT NULL REFERENCES core.tenants (id),
@@ -23,7 +22,6 @@ CREATE TABLE core.workspaces (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (tenant_id, slug)
 );
-
 CREATE TABLE core.departments (
   id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid        NOT NULL REFERENCES core.workspaces (id),
@@ -32,7 +30,6 @@ CREATE TABLE core.departments (
   created_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, slug)
 );
-
 -- ---------------------------------------------------------------
 -- Operators and Memberships
 -- ---------------------------------------------------------------
@@ -44,7 +41,6 @@ CREATE TABLE core.operators (
   handle     text        NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-
 CREATE TABLE core.memberships (
   id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   operator_id  uuid        NOT NULL REFERENCES core.operators (id),
@@ -54,7 +50,6 @@ CREATE TABLE core.memberships (
   created_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (operator_id, workspace_id)
 );
-
 -- ---------------------------------------------------------------
 -- core.current_operator_id
 -- Resolves the core.operators row for the current Supabase auth
@@ -66,7 +61,6 @@ RETURNS uuid
 LANGUAGE sql STABLE AS $$
   SELECT id FROM core.operators WHERE auth_uid = auth.uid();
 $$;
-
 -- ---------------------------------------------------------------
 -- core.is_member
 -- Returns TRUE when the session operator holds any membership in
@@ -83,7 +77,6 @@ LANGUAGE sql STABLE AS $$
        AND workspace_id = p_workspace_id
   );
 $$;
-
 -- ---------------------------------------------------------------
 -- core.assert_member
 -- Raises an exception when the session operator is not a member.

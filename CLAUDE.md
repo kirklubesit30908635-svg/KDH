@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A pure PostgreSQL/Supabase kernel — no application code, only SQL migrations. Everything is schema, tables, triggers, RLS policies, and SECURITY DEFINER functions deployed via the Supabase CLI.
+This is a mixed application + database repository. The canonical database lives under `supabase/` and is still a migration-first Supabase/Postgres kernel, but the repo also contains a Next.js app, server routes, helper libraries, and tests that operationalize kernel truth. Do not assume this repo is SQL-only.
+
+## Active structure
+
+- `supabase/migrations` — authoritative migration chain. Migrations run in filename order, including the timestamped migrations after `0100_ingest.sql`.
+- `supabase/config.toml` — local Supabase configuration. `db.seed.sql_paths` points to `./seed.sql`; that file exists as a no-op placeholder so `supabase db reset` is self-contained.
+- `supabase/archive` — historical `.bak` files preserving superseded bodies of `0019` and `0020`. They are reference artifacts, not part of reset.
+- `src/app` — Next.js pages and route handlers.
+- `src/lib` — Supabase helpers, canonical Stripe ingest, obligation helpers, and projection helpers.
+- `tests` — app/runtime verification, including Stripe-first wedge coverage.
+- `fix_dealership_fn.sql` — quarantined legacy out-of-band SQL that still references `ak_kernel`. It is not part of canonical resetability and must not be applied to current kernel databases.
 
 ## Commands
 
@@ -12,91 +22,74 @@ A pure PostgreSQL/Supabase kernel — no application code, only SQL migrations. 
 # Start local Supabase stack (Postgres :54322, API :54321, Studio :54323)
 supabase start
 
-# Re-run all migrations from scratch + apply seed.sql
+# Re-run the full migration chain from scratch
 supabase db reset
 
-# Create a new numbered migration file
+# Lint the resulting database for broken SQL references
+supabase db lint
+
+# Create a new migration file
 supabase migration new <name>
 
 # Push migrations to remote (confirm before running)
 supabase db push
+
+# Run the app test suite currently checked into this repo
+npm test
 
 supabase stop
 ```
 
 Studio is at http://127.0.0.1:54323 when the local stack is running.
 
-There are no test commands — correctness is validated by running `supabase db reset` and verifying migrations apply cleanly.
+The DB validation contract is now:
 
-## Migration file order
+1. `supabase db reset` succeeds from repo contents alone
+2. `supabase db lint` is clean
+3. `npm test` stays green for the checked-in app/runtime path
 
-Migrations run in filename order. The current sequence:
+Reset success alone is not sufficient.
 
-| File | Purpose |
-|------|---------|
-| `0001_extensions.sql` | `pgcrypto` extension |
-| `0002_schemas.sql` | Schema declarations + `ledger._deny_mutation` + `ledger.sha256_hex` |
-| `0003_identity.sql` | `core` tables (tenants, workspaces, departments, operators, memberships) + identity helpers |
-| `0004_registry.sql` | `registry` catalogues (event_types, receipt_types) + seed rows |
-| `0005_ledger.sql` | `ledger` tables (chain_heads, events, receipt_heads, receipts) + chaining triggers |
-| `0006_api.sql` | `api.append_event` + `api.emit_receipt` SECURITY DEFINER RPCs |
-| `0007_rls.sql` | Full ACL: RLS enables, policies, REVOKE ALL, GRANT SELECT, REVOKE/GRANT EXECUTE |
-| `0008_intelligence.sql` | `ak_intelligence` schema (see below) |
-| `0100_ingest.sql` | `ingest.raw_events` + `ingest.trusted_events` staging tables + their own ACL |
+## Migration authority
 
-`fix_dealership_fn.sql` in the repo root is an out-of-band fixup script for an external `dealership` schema that references a legacy `ak_kernel` schema name. It is **not** a numbered migration and must be applied manually when needed.
+The live chain currently breaks into these eras:
 
-## Schema Doctrine
+- `0001`–`0007` — kernel bootstrap: extensions, schemas, identity, registry, ledger, canonical API write surface, and baseline ACL/RLS
+- `0008`–`0031` — knowledge, Stripe ingest, jobs/obligations, economic refs, and tenant hierarchy work
+- `0100` — append-only ingest staging
+- `20260307...` onward — governance and signals runtime, founder-console object/obligation pivot, canonical Stripe/service-role changes, projection rebuilds, receipt linking, and stripe-first wedge closure views
 
-Kernel schemas must be institutional and product-agnostic. Allowed schemas:
+Important authority notes:
 
-```
-core, governance, receipts, signals, knowledge, api, ingest, ledger, registry
-```
+- The current files in `supabase/migrations` are the canonical reset chain.
+- `0019_core_grants_and_operator_views.sql` and `0020_obligations_and_receipts.sql` were rewritten in place earlier in the repo's life; `supabase/archive/*.bak` preserves older bodies for audit, not execution.
+- `20260314161901_rebuild_core_for_founder_console.sql` is the major structural pivot in the chain. It drops and recreates `core.objects`, `core.obligations`, related vocabulary tables, and compatibility views.
 
-Product-prefixed schemas are forbidden in the kernel (e.g. `ak_*`, `autokirk_*`). Vertical/industry faces may introduce their own schemas (e.g. `marine`, `dealership`, `service`), but the kernel itself must remain neutral.
+## Canonical live DB surfaces
 
+- `api.append_event(...)` and `api.emit_receipt(...)` remain the canonical ledger writers.
+- Canonical Stripe ingest is `api.ingest_stripe_event(text, text, text, boolean, text, timestamptz, jsonb)`.
+- Governed operator mutations use `api.command_touch_obligation(...)` and `api.command_resolve_obligation(...)`.
+- Receipt proof reconciliation uses `api.reconcile_obligation_proof(...)` and `api.link_receipt_to_obligation(...)`.
+- Operator-facing reads come from `core.v_operator_next_actions`, `core.v_recent_receipts`, `core.v_stripe_first_wedge_integrity_summary`, and compatibility aliases in `core`.
 
 ## Architecture
 
 ### Multi-tenancy model
 
-`core.tenants` → `core.workspaces` → `core.departments`. All data is workspace-scoped. `core.operators` are users (soft-linked to `auth.users` via `auth_uid`). `core.memberships` maps operators to workspaces with a role (`owner/admin/member/viewer`).
+`core.tenants` → `core.workspaces` → `core.departments`. `core.operators` are users (soft-linked to `auth.users` via `auth_uid`). `core.memberships` controls workspace access and tenure. Workspace membership remains the main read/write guard for live operator surfaces.
 
 ### Hash-chained append-only ledger
 
-`ledger.events` and `ledger.receipts` are immutable chains. Each row is assigned `seq`, `prev_hash`, and `hash` by a BEFORE INSERT trigger (`ledger._events_before_insert` / `ledger._receipts_before_insert`). The trigger also advances the mutable head pointer (`ledger.chain_heads` / `ledger.receipt_heads`) under a `FOR UPDATE` lock for atomicity. A separate `_deny_mutation` trigger blocks UPDATE/DELETE on all append-only tables. Idempotency is workspace-scoped: duplicate `idempotency_key` within the same workspace is silently suppressed.
+`ledger.events` and `ledger.receipts` are immutable chains. `ledger._events_before_insert` and `ledger._receipts_before_insert` assign `seq`, `prev_hash`, and `hash` while advancing mutable head pointers under lock. `_deny_mutation` blocks direct UPDATE/DELETE on append-only tables.
 
-### Write surface: SECURITY DEFINER RPCs only
+### Founder-console obligation model
 
-No client role (`anon`, `authenticated`) may write directly to any kernel table. All writes go through:
-- `api.append_event(workspace_id, chain_key, event_type, payload, idempotency_key)` — sole write path to `ledger.events`
-- `api.emit_receipt(workspace_id, event_id, chain_key, receipt_type, payload)` — sole write path to `ledger.receipts`
+The active obligation surface is the post-rebuild `core.objects` + `core.obligations` model introduced and then fixed in the March 2026 founder-console migrations. Later migrations restore operator projections and add receipt-proof linkage on top of that model.
 
-Both functions call `core.assert_member()` first to enforce workspace membership.
+### Known drift / caution
 
-### ACL model (0007_rls.sql)
-
-- `REVOKE ALL` on every kernel table from `anon` and `authenticated`.
-- Selective `GRANT SELECT` re-opened on `ledger.events`, `ledger.receipts`, `core.operators`, `core.memberships`, and both registry catalogues — required so RLS USING clauses can evaluate.
-- RLS policies on every table. Ledger read policies use `core.is_member(workspace_id)`. Identity read policies use `auth.uid()` self-checks.
-- Internal functions (`_deny_mutation`, `_events_before_insert`, `_receipts_before_insert`, `sha256_hex`, `assert_member`) have `REVOKE EXECUTE FROM PUBLIC`. Only `core.current_operator_id()` and `core.is_member()` are re-granted to `authenticated` (needed inside RLS expressions).
-
-### Intelligence layer (knowledge)
-
-`0008_intelligence.sql` implements a governed AI subsystem. Doctrine: **AI may observe, interpret, simulate, and propose — it may not directly mutate domain reality.**
-
-Key tables:
-- `findings` — evidence-backed claims produced by detectors
-- `recommendations` — proposal drafts authored by AI (not mutations; feed into the normal proposal/approval path)
-- `simulation_runs` — counterfactual/forecast outputs
-- `memory_patterns` — institutional memory distilled from repeated findings
-- `outcome_comparisons` — expected vs actual learning loop
-- `review_actions` — human interaction trail
-- `founder_briefs` — cross-face strategic summaries
-
-All `ak_intelligence` RLS policies currently use `USING (true)` — they are placeholders to be replaced with proper tenant-membership checks.
-
-### Ingest pipeline
-
-`ingest.raw_events` receives all inbound events from any source. Validated/classified events are promoted to `ingest.trusted_events`. Both tables are append-only with `_deny_mutation` triggers. No authenticated read path exists; these are internal pipeline tables only.
+- Broad placeholder RLS still exists in `knowledge`, `governance`, and `signals`; those surfaces remain audit-sensitive.
+- Legacy `ak_*` naming survives in comments, indexes, triggers, and policy names inside `0008_intelligence.sql`. Treat those as drift, not doctrine.
+- `fix_dealership_fn.sql` is historical contamination, not a valid current kernel extension point.
+- Do not resurrect archived washbay RPC assumptions without reviewing the founder-console rebuild, receipt linker, and current projection migrations together.

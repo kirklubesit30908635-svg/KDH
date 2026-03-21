@@ -23,7 +23,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- core.v_job_summary
 -- ---------------------------------------------------------------
@@ -157,17 +156,14 @@ SELECT
 
 FROM core.jobs j
 LEFT JOIN core.operators op ON op.id = j.operator_id;
-
 -- ---------------------------------------------------------------
 -- Grants
 -- ---------------------------------------------------------------
 GRANT SELECT ON core.v_job_summary TO authenticated, service_role;
-
 COMMENT ON VIEW core.v_job_summary IS
   'Flattened operator/founder read surface for the job domain. '
   'Includes derived economic metrics (variance, leakage flag), '
   'obligation health counts, and receipt chain depth. '
   'RLS enforced via core.jobs (workspace member gate). '
   'All API routes read through this view via supabaseAdmin.';
-
 COMMIT;

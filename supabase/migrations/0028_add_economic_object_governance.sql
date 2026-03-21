@@ -27,29 +27,21 @@ create table if not exists core.economic_refs (
 
   unique (workspace_id, ref_type, ref_key)
 );
-
 create index if not exists idx_economic_refs_workspace
   on core.economic_refs(workspace_id);
-
 create index if not exists idx_economic_refs_type_key
   on core.economic_refs(workspace_id, ref_type, ref_key);
-
 alter table core.economic_refs
   add constraint economic_refs_state_check
   check (state in ('open','active','sealed','breached','canceled','superseded','abandoned'));
-
 alter table core.obligations
   add column if not exists economic_ref_id uuid null references core.economic_refs(id);
-
 alter table ledger.receipts
   add column if not exists economic_ref_id uuid null references core.economic_refs(id);
-
 create index if not exists idx_core_obligations_economic_ref_id
   on core.obligations(economic_ref_id);
-
 create index if not exists idx_ledger_receipts_economic_ref_id
   on ledger.receipts(economic_ref_id);
-
 create or replace function api.resolve_economic_ref(
   p_workspace_id uuid,
   p_ref_type text,
@@ -108,11 +100,9 @@ begin
   return v_id;
 end;
 $$;
-
 revoke all on function api.resolve_economic_ref(
   uuid, text, text, text, text, text, text, bigint, text, jsonb
 ) from public;
-
 grant execute on function api.resolve_economic_ref(
   uuid, text, text, text, text, text, text, bigint, text, jsonb
 ) to service_role;

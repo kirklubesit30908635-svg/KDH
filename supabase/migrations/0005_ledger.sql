@@ -20,7 +20,6 @@ CREATE TABLE ledger.chain_heads (
   updated_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, chain_key)
 );
-
 -- ---------------------------------------------------------------
 -- ledger.events
 -- Append-only, hash-chained ledger of business events.
@@ -39,13 +38,11 @@ CREATE TABLE ledger.events (
   created_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, chain_key, seq)
 );
-
 -- Workspace-scoped idempotency: prevents cross-workspace key
 -- collision and data-leak via the idempotency fallback path.
 CREATE UNIQUE INDEX events_idempotency_key_uidx
   ON ledger.events (workspace_id, idempotency_key)
   WHERE idempotency_key IS NOT NULL;
-
 -- ---------------------------------------------------------------
 -- ledger._events_before_insert
 -- Assigns seq, prev_hash, hash; enforces workspace-scoped
@@ -105,15 +102,12 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
 CREATE TRIGGER events_before_insert
   BEFORE INSERT ON ledger.events
   FOR EACH ROW EXECUTE FUNCTION ledger._events_before_insert();
-
 CREATE TRIGGER events_deny_mutation
   BEFORE UPDATE OR DELETE ON ledger.events
   FOR EACH ROW EXECUTE FUNCTION ledger._deny_mutation();
-
 -- ---------------------------------------------------------------
 -- ledger.receipt_heads
 -- Mutable pointer: current head of each (workspace, chain) receipt
@@ -128,7 +122,6 @@ CREATE TABLE ledger.receipt_heads (
   updated_at   timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, chain_key)
 );
-
 -- ---------------------------------------------------------------
 -- ledger.receipts
 -- Append-only, hash-chained receipts table.
@@ -146,7 +139,6 @@ CREATE TABLE ledger.receipts (
   created_at      timestamptz NOT NULL DEFAULT now(),
   UNIQUE (workspace_id, chain_key, seq)
 );
-
 -- ---------------------------------------------------------------
 -- ledger._receipts_before_insert
 -- Assigns seq, prev_hash, hash; advances receipt_heads atomically.
@@ -190,11 +182,9 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
 CREATE TRIGGER receipts_before_insert
   BEFORE INSERT ON ledger.receipts
   FOR EACH ROW EXECUTE FUNCTION ledger._receipts_before_insert();
-
 CREATE TRIGGER receipts_deny_mutation
   BEFORE UPDATE OR DELETE ON ledger.receipts
   FOR EACH ROW EXECUTE FUNCTION ledger._deny_mutation();

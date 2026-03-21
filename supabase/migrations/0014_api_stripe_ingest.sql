@@ -168,7 +168,6 @@ BEGIN
   RETURN QUERY SELECT v_event_id, v_receipt_id, v_seq, v_hash;
 END;
 $$;
-
 GRANT EXECUTE ON FUNCTION api.ingest_stripe_event(
   text, text, text, boolean, text, timestamptz, jsonb
 ) TO authenticated;

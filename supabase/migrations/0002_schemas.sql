@@ -8,7 +8,6 @@ CREATE SCHEMA IF NOT EXISTS registry;
 CREATE SCHEMA IF NOT EXISTS ledger;
 CREATE SCHEMA IF NOT EXISTS ingest;
 CREATE SCHEMA IF NOT EXISTS api;
-
 -- ---------------------------------------------------------------
 -- ledger._deny_mutation
 -- Raise on UPDATE/DELETE; attached as BEFORE trigger on all
@@ -23,7 +22,6 @@ BEGIN
     TG_TABLE_NAME, TG_OP;
 END;
 $$;
-
 -- ---------------------------------------------------------------
 -- ledger.sha256_hex
 -- SHA-256 hex digest of any text input.
@@ -32,8 +30,6 @@ $$;
 -- ---------------------------------------------------------------
 CREATE OR REPLACE FUNCTION ledger.sha256_hex(input text)
 RETURNS text
-LANGUAGE sql IMMUTABLE STRICT
-SET search_path = pg_catalog, extensions
-AS $$
+LANGUAGE sql IMMUTABLE STRICT AS $$
   SELECT encode(digest(input, 'sha256'), 'hex');
 $$;

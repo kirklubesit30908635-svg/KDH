@@ -1,0 +1,1 @@
+-- helper moved earlier in migration chain to satisfy projection dependencies

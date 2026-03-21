@@ -1,11 +1,9 @@
 -- ── Tenant hierarchy ──────────────────────────────────────────────────────────
 ALTER TABLE core.tenants
   ADD COLUMN IF NOT EXISTS parent_tenant_id uuid REFERENCES core.tenants(id);
-
 CREATE INDEX IF NOT EXISTS idx_tenants_parent_id
   ON core.tenants (parent_tenant_id)
   WHERE parent_tenant_id IS NOT NULL;
-
 -- ── KDH corporate hierarchy ───────────────────────────────────────────────────
 
 -- Root: Kirk Digital Holdings LLC
@@ -16,7 +14,6 @@ VALUES (
   'Kirk Digital Holdings LLC'
 )
 ON CONFLICT (slug) DO NOTHING;
-
 -- Child: AutoKirk IP Holdings LLC
 INSERT INTO core.tenants (id, slug, name, parent_tenant_id)
 VALUES (
@@ -26,7 +23,6 @@ VALUES (
   'a0000000-0000-0000-0000-000000000001'
 )
 ON CONFLICT (slug) DO NOTHING;
-
 -- Grandchild: AutoKirk Systems
 INSERT INTO core.tenants (id, slug, name, parent_tenant_id)
 VALUES (
@@ -36,7 +32,6 @@ VALUES (
   'a0000000-0000-0000-0000-000000000002'
 )
 ON CONFLICT (slug) DO NOTHING;
-
 -- ── Workspaces ────────────────────────────────────────────────────────────────
 
 INSERT INTO core.workspaces (id, tenant_id, slug, name)
@@ -47,7 +42,6 @@ VALUES (
   'KDH Operations'
 )
 ON CONFLICT (tenant_id, slug) DO NOTHING;
-
 INSERT INTO core.workspaces (id, tenant_id, slug, name)
 VALUES (
   'b0000000-0000-0000-0000-000000000002',
@@ -56,7 +50,6 @@ VALUES (
   'AK Systems Operations'
 )
 ON CONFLICT (tenant_id, slug) DO NOTHING;
-
 -- ── Memberships — founder as owner on both workspaces ─────────────────────────
 -- Resolves operator by email via auth.users join.
 -- No-op if operator not yet provisioned (first login creates the row).

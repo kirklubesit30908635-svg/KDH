@@ -20,7 +20,6 @@
 -- =============================================================
 
 begin;
-
 -- ---------------------------------------------------------------
 -- api.run_signal_detector
 --
@@ -240,10 +239,8 @@ begin
   return query select v_run_id, v_candidates_total, v_new_signals, v_reaffirmed;
 end;
 $$;
-
 -- Accessible to authenticated operators; membership guard is
 -- enforced inside the function via core.assert_member().
 grant execute on function api.run_signal_detector(uuid, uuid, timestamptz, timestamptz, text)
   to authenticated;
-
 commit;

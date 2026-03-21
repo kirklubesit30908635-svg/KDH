@@ -1,5 +1,9 @@
 import Stripe from "stripe";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  classifyStripeFirstWedgeSourceEvent,
+  type StripeFirstWedgeDisposition,
+} from "@/lib/stripe_first_wedge_contract";
 
 type StripeIngestRow = {
   event_id: string | null;
@@ -12,6 +16,10 @@ export type CanonicalStripeIngestResult = {
   providerAccountId: string;
   stripeType: string;
   canonicalType: string;
+  wedgeDisposition: StripeFirstWedgeDisposition;
+  movementType: string | null;
+  obligationType: string | null;
+  requiredReceiptType: string | null;
   eventId: string | null;
   receiptId: string | null;
   seq: number | null;
@@ -44,6 +52,7 @@ export async function ingestStripeEventCanonical(
 ): Promise<CanonicalStripeIngestResult> {
   const providerAccountId = resolveStripeProviderAccountId(event);
   const canonicalType = canonicalStripeEventType(event.type);
+  const contract = classifyStripeFirstWedgeSourceEvent(canonicalType);
 
   const { data, error } = await supabaseAdmin.schema("api").rpc("ingest_stripe_event", {
     p_provider_account_id: providerAccountId,
@@ -68,6 +77,11 @@ export async function ingestStripeEventCanonical(
     providerAccountId,
     stripeType: event.type,
     canonicalType,
+    wedgeDisposition: contract.disposition,
+    movementType: contract.row?.movement_type ?? null,
+    obligationType: contract.row?.obligation_type ?? null,
+    requiredReceiptType:
+      contract.disposition === "supported" ? contract.row?.required_receipt_type ?? null : null,
     eventId: row.event_id,
     receiptId: row.receipt_id,
     seq: row.seq,

@@ -51,7 +51,7 @@ function asRpcClient(client: unknown): RpcClient {
 
 async function runJsonRpc(
   client: unknown,
-  fn: "command_touch_obligation" | "command_resolve_obligation",
+  fn: "command_resolve_obligation",
   args: Record<string, unknown>
 ): Promise<GovernedMutationResult> {
   const { data, error } = await asRpcClient(client).schema("api").rpc(fn, args);
@@ -65,19 +65,6 @@ async function runJsonRpc(
   }
 
   return data as GovernedMutationResult;
-}
-
-export async function touchObligation(
-  client: unknown,
-  obligationId: string,
-  actorId: string,
-  metadata?: Record<string, unknown>
-): Promise<GovernedMutationResult> {
-  return runJsonRpc(client, "command_touch_obligation", {
-    p_obligation_id: obligationId,
-    p_actor_id: actorId,
-    p_metadata: metadata ?? {},
-  });
 }
 
 export async function sealObligation(

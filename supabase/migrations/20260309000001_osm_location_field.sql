@@ -7,15 +7,12 @@
 -- =============================================================
 
 BEGIN;
-
 -- Add location to obligations
 ALTER TABLE core.obligations
   ADD COLUMN IF NOT EXISTS location text;
-
 -- Add location to washbay_jobs
 ALTER TABLE core.washbay_jobs
   ADD COLUMN IF NOT EXISTS location text;
-
 -- Rebuild v_next_actions to include location
 CREATE OR REPLACE VIEW core.v_next_actions AS
 SELECT
@@ -33,7 +30,5 @@ SELECT
   o.location
 FROM core.obligations o
 WHERE o.status = 'open';
-
 GRANT SELECT ON core.v_next_actions TO authenticated, service_role;
-
 COMMIT;

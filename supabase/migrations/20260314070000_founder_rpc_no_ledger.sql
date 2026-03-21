@@ -40,8 +40,6 @@ begin
     return v_object_id;
 end;
 $$;
-
-
 create or replace function api.open_obligation(
     p_workspace_id uuid,
     p_object_id uuid,
@@ -69,8 +67,6 @@ begin
     return v_obligation_id;
 end;
 $$;
-
-
 create or replace function api.resolve_obligation(
     p_obligation_id uuid,
     p_terminal_action text,

@@ -4,35 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NextActionRow } from "@/lib/ui-models";
 import { fmtDue, safeStr } from "@/lib/ui-fmt";
-import {
-  AkShell,
-  AkPanel,
-  AkBadge,
-  AkButton,
-  AkSectionHeader,
-} from "@/components/ak/ak-ui";
-
-const OSM_LOCATIONS = ["All Locations", "Downtown", "Marina Bay", "Westside"] as const;
-type LocationFilter = (typeof OSM_LOCATIONS)[number];
-
-function getActionKind(row: NextActionRow): "touch" | "quote" | "seal" {
-  const ref = (row.economic_ref_type ?? "").toLowerCase();
-  if (ref === "lead") return "touch";
-  if (ref === "quote") return "quote";
-  return "seal";
-}
-
-function fmtAge(ageHours: number | null): string {
-  if (ageHours == null) return "";
-  if (ageHours < 24) return `${Math.round(ageHours)}h old`;
-  return `${Math.round(ageHours / 24)}d old`;
-}
-
-interface SealedReceipt {
-  receipt_id: string;
-  obligation_id: string;
-  action: "touch" | "quote" | "seal";
-}
+import { AkBadge, AkButton, AkPanel, AkSectionHeader, AkShell } from "@/components/ak/ak-ui";
 
 class ApiError extends Error {
   status: number;
@@ -44,26 +16,46 @@ class ApiError extends Error {
   }
 }
 
-export default function InboxPage() {
+interface SealedReceipt {
+  receipt_id: string;
+  obligation_id: string;
+  label: string;
+}
+
+function fmtAge(ageHours: number | null): string {
+  if (ageHours == null) return "";
+  if (ageHours < 24) return `${Math.round(ageHours)}h old`;
+  return `${Math.round(ageHours / 24)}d old`;
+}
+
+function primaryActionLabel(kind: string | null | undefined) {
+  switch (kind) {
+    case "record_revenue":
+      return "Seal revenue recorded";
+    case "recover_payment":
+      return "Seal recovery outcome";
+    case "respond_to_dispute":
+      return "Seal dispute outcome";
+    case "process_refund":
+      return "Seal refund completion";
+    default:
+      return "Seal closure";
+  }
+}
+
+function riskTone(row: NextActionRow): "danger" | "gold" | "muted" {
+  if (row.is_breach || row.severity === "critical") return "danger";
+  if (row.severity === "at_risk" || row.severity === "due_today") return "gold";
+  return "muted";
+}
+
+export default function CommandPage() {
   const [rows, setRows] = useState<NextActionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [authLocked, setAuthLocked] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [locationFilter, setLocationFilter] = useState<LocationFilter>("All Locations");
   const [sealedReceipt, setSealedReceipt] = useState<SealedReceipt | null>(null);
-
-  const filtered = useMemo(() => {
-    let list = [...rows].sort((a, b) => {
-      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return ta - tb;
-    });
-    if (locationFilter !== "All Locations") {
-      list = list.filter((r) => (r.location ?? "") === locationFilter);
-    }
-    return list;
-  }, [rows, locationFilter]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -89,42 +81,30 @@ export default function InboxPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
-  async function handleTouch(obligationId: string) {
-    setActingId(obligationId);
-    try {
-      const res = await fetch("/api/command/touch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ obligation_id: obligationId }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        alert(`Touch failed: ${json.error ?? "Unknown error"}`);
-      } else {
-        setSealedReceipt({
-          receipt_id: json.receipt_id,
-          obligation_id: obligationId,
-          action: "touch",
-        });
-        await loadData();
-      }
-    } catch (e) {
-      alert(`Touch failed: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setActingId(null);
-    }
-  }
+  const counts = useMemo(() => {
+    const late = rows.filter((row) => row.is_breach).length;
+    const atRisk = rows.filter(
+      (row) => !row.is_breach && (row.severity === "critical" || row.severity === "at_risk"),
+    ).length;
+    const dueSoon = rows.filter((row) => row.severity === "due_today").length;
+    return {
+      total: rows.length,
+      late,
+      atRisk,
+      dueSoon,
+    };
+  }, [rows]);
 
-  async function handleSeal(obligationId: string, action: "quote" | "seal") {
-    setActingId(obligationId);
+  async function handleSeal(row: NextActionRow) {
+    setActingId(row.obligation_id);
     try {
       const res = await fetch("/api/command/seal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ obligation_id: obligationId, action }),
+        body: JSON.stringify({ obligation_id: row.obligation_id, action: "seal" }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -132,10 +112,10 @@ export default function InboxPage() {
       } else {
         setSealedReceipt({
           receipt_id: json.receipt_id,
-          obligation_id: obligationId,
-          action,
+          obligation_id: row.obligation_id,
+          label: primaryActionLabel(row.kind),
         });
-        setRows((prev) => prev.filter((r) => r.obligation_id !== obligationId));
+        setRows((prev) => prev.filter((item) => item.obligation_id !== row.obligation_id));
       }
     } catch (e) {
       alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -145,43 +125,56 @@ export default function InboxPage() {
   }
 
   return (
-    <AkShell title="Command" subtitle="Your next actions — oldest first." eyebrow="Governed Action Rail">
-      {/* location filter */}
-      <div className="mb-6 flex items-center gap-2 flex-wrap">
-        {OSM_LOCATIONS.map((loc) => (
-          <button
-            key={loc}
-            onClick={() => setLocationFilter(loc)}
-            className={[
-              "rounded-xl px-4 py-2 text-xs font-extrabold border transition",
-              locationFilter === loc
-                ? "bg-white text-neutral-950 border-white"
-                : "bg-white/[0.04] text-white/40 border-white/10 hover:text-white",
-            ].join(" ")}
-          >
-            {loc}
-          </button>
-        ))}
-        <button
-          onClick={loadData}
-          className="ml-auto text-xs font-bold text-white/35 hover:text-white transition"
-        >
+    <AkShell
+      title="Command"
+      subtitle="One governed queue for the frozen Stripe billing wedge. Resolve what is late first, then what is at risk, then what is still open."
+      eyebrow="Billing Wedge Action Rail"
+    >
+      <div className="grid gap-4 md:grid-cols-4">
+        <AkPanel className="p-5">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Needs action</div>
+          <div className="mt-3 text-3xl font-semibold text-white">{counts.total}</div>
+          <div className="mt-2 text-sm text-slate-400">Live governed obligations in the billing wedge.</div>
+        </AkPanel>
+        <AkPanel className="p-5">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Late</div>
+          <div className="mt-3 text-3xl font-semibold text-rose-200">{counts.late}</div>
+          <div className="mt-2 text-sm text-slate-400">Open obligations already past due.</div>
+        </AkPanel>
+        <AkPanel className="p-5">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">At risk</div>
+          <div className="mt-3 text-3xl font-semibold text-amber-100">{counts.atRisk}</div>
+          <div className="mt-2 text-sm text-slate-400">Critical or at-risk items not yet late.</div>
+        </AkPanel>
+        <AkPanel className="p-5">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Proved</div>
+          <div className="mt-3 text-lg font-semibold text-white">Receipt-backed</div>
+          <div className="mt-2 text-sm text-slate-400">Completed work must be visible in receipts.</div>
+          <Link href="/command/receipts" className="mt-4 inline-flex text-sm text-cyan-100 transition hover:text-white">
+            Open proof layer →
+          </Link>
+        </AkPanel>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <AkSectionHeader label="Billing queue" count={rows.length} />
+        <button onClick={() => void loadData()} className="text-sm text-slate-400 transition hover:text-white">
           Refresh
         </button>
       </div>
 
       {loading && (
         <div className="flex items-center gap-3 text-sm text-white/35">
-          <div className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-          Loading…
+          <div className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
+          Loading billing queue…
         </div>
       )}
 
       {!loading && authLocked && (
         <AkPanel className="p-6">
-          <div className="text-sm font-extrabold text-white mb-2">Sign in to load the command queue</div>
-          <div className="text-sm text-white/60 max-w-xl">
-            AutoKirk found the command surface, but there is no live authenticated operator session attached to this browser.
+          <div className="mb-2 text-sm font-extrabold text-white">Sign in to load the billing queue</div>
+          <div className="max-w-xl text-sm text-white/60">
+            This surface only reads the governed Stripe billing wedge for an authenticated operator session.
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
@@ -191,7 +184,7 @@ export default function InboxPage() {
               Sign in
             </Link>
             <button
-              onClick={loadData}
+              onClick={() => void loadData()}
               className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-extrabold text-white/70 transition hover:border-white/20 hover:text-white"
             >
               Retry
@@ -202,164 +195,90 @@ export default function InboxPage() {
 
       {!loading && err && (
         <AkPanel className="p-6">
-          <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
+          <div className="mb-2 text-sm font-extrabold text-red-400">Error</div>
           <div className="text-sm text-white/60">{err}</div>
           <button
-            onClick={loadData}
-            className="mt-4 text-xs font-bold text-white/60 hover:text-white hover:underline transition"
+            onClick={() => void loadData()}
+            className="mt-4 text-xs font-bold text-white/60 transition hover:text-white hover:underline"
           >
             Retry →
           </button>
         </AkPanel>
       )}
 
-      {!loading && !err && !authLocked && (
-        <>
-          <div className="mb-6 flex items-center gap-3">
-            <span className="text-3xl font-extrabold text-white">{filtered.length}</span>
-            <span className="text-sm text-white/35">
-              open item{filtered.length !== 1 ? "s" : ""}
-              {locationFilter !== "All Locations" ? ` · ${locationFilter}` : ""}
-            </span>
-          </div>
-
-          {filtered.length === 0 && (
-            <AkPanel className="p-10 text-center">
-              <div className="text-4xl mb-3">✓</div>
-              <div className="text-base font-extrabold text-white mb-1">All Clear</div>
-              <div className="text-sm text-white/35">
-                {locationFilter !== "All Locations"
-                  ? `No open items at ${locationFilter}.`
-                  : "No open items. Every duty has been logged."}
-              </div>
-            </AkPanel>
-          )}
-
-          {filtered.length > 0 && (
-            <div className="space-y-4">
-              <AkSectionHeader label="Open Items" count={filtered.length} />
-              <div className="mt-4 grid gap-4">
-                {filtered.map((row) => {
-                  const kind = getActionKind(row);
-                  const location = row.location;
-                  const isActing = actingId === row.obligation_id;
-
-                  return (
-                    <AkPanel key={row.obligation_id} className="p-5">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            {row.is_breach && <AkBadge tone="danger">OVERDUE</AkBadge>}
-                            {row.economic_ref_type && (
-                              <AkBadge tone="muted">
-                                {row.economic_ref_type.toUpperCase()}
-                              </AkBadge>
-                            )}
-                            {location && (
-                              <AkBadge tone="gold">{location}</AkBadge>
-                            )}
-                          </div>
-
-                          <div className="text-base font-extrabold text-white leading-snug">
-                            {safeStr(row.title)}
-                          </div>
-
-                          {row.why && (
-                            <div className="mt-1.5 text-sm text-white/45">{row.why}</div>
-                          )}
-
-                          <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/35">
-                            {row.due_at && (
-                              <span>
-                                Due:{" "}
-                                <span className={row.is_breach ? "text-red-400 font-bold" : "text-white/60"}>
-                                  {fmtDue(row.due_at)}
-                                </span>
-                              </span>
-                            )}
-                            {row.age_hours != null && (
-                              <span>{fmtAge(row.age_hours)}</span>
-                            )}
-                            {row.economic_ref_id && (
-                              <span>
-                                Ref:{" "}
-                                <span className="text-white/60 font-mono text-[11px]">
-                                  {safeStr(row.economic_ref_id)}
-                                </span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 flex gap-3">
-                        {kind === "touch" && (
-                          <AkButton
-                            tone="gold"
-                            disabled={isActing}
-                            onClick={() => handleTouch(row.obligation_id)}
-                          >
-                            {isActing ? "Logging…" : "Log Touch"}
-                          </AkButton>
-                        )}
-                        {kind === "quote" && (
-                          <AkButton
-                            tone="gold"
-                            disabled={isActing}
-                            onClick={() => handleSeal(row.obligation_id, "quote")}
-                          >
-                            {isActing ? "Marking…" : "Mark Quote Sent"}
-                          </AkButton>
-                        )}
-                        {kind === "seal" && (
-                          <AkButton
-                            tone="gold"
-                            disabled={isActing}
-                            onClick={() => handleSeal(row.obligation_id, "seal")}
-                          >
-                            {isActing ? "Sealing…" : "Seal Closure"}
-                          </AkButton>
-                        )}
-                      </div>
-                    </AkPanel>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </>
+      {!loading && !err && !authLocked && rows.length === 0 && (
+        <AkPanel className="p-10 text-center">
+          <div className="mb-3 text-4xl">✓</div>
+          <div className="mb-1 text-base font-extrabold text-white">Billing wedge clear</div>
+          <div className="text-sm text-white/35">No open Stripe billing obligations require action right now.</div>
+        </AkPanel>
       )}
 
-      {/* Receipt Confirmation Modal */}
+      {!loading && !err && !authLocked && rows.length > 0 && (
+        <div className="grid gap-4">
+          {rows.map((row) => {
+            const isActing = actingId === row.obligation_id;
+            const actionLabel = primaryActionLabel(row.kind);
+
+            return (
+              <AkPanel key={row.obligation_id} className="p-5">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <AkBadge tone={riskTone(row)}>
+                        {row.is_breach ? "Late" : safeStr(row.severity).replace(/_/g, " ")}
+                      </AkBadge>
+                      {row.kind ? <AkBadge tone="muted">{row.kind.replace(/_/g, " ")}</AkBadge> : null}
+                      {row.economic_ref_type ? (
+                        <AkBadge tone="gold">{safeStr(row.economic_ref_type).toUpperCase()}</AkBadge>
+                      ) : null}
+                    </div>
+
+                    <div className="text-base font-extrabold leading-snug text-white">{safeStr(row.title)}</div>
+                    {row.why ? <div className="mt-1.5 text-sm text-white/45">{row.why}</div> : null}
+
+                    <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/35">
+                      {row.due_at ? (
+                        <span>
+                          Due: <span className={row.is_breach ? "font-bold text-red-400" : "text-white/60"}>{fmtDue(row.due_at)}</span>
+                        </span>
+                      ) : null}
+                      {row.age_hours != null ? <span>{fmtAge(row.age_hours)}</span> : null}
+                      {row.economic_ref_id ? (
+                        <span>
+                          Ref: <span className="font-mono text-[11px] text-white/60">{safeStr(row.economic_ref_id)}</span>
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-start">
+                    <AkButton tone="gold" disabled={isActing} onClick={() => void handleSeal(row)}>
+                      {isActing ? "Sealing…" : actionLabel}
+                    </AkButton>
+                  </div>
+                </div>
+              </AkPanel>
+            );
+          })}
+        </div>
+      )}
+
       {sealedReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
-          <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setSealedReceipt(null)}
-          />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSealedReceipt(null)} />
           <div className="relative w-full max-w-sm">
             <AkPanel className="p-8 text-center">
-              <div className="text-5xl mb-4">
-                {sealedReceipt.action === "touch" ? "✋" : "✓"}
-              </div>
-              <div className="text-xl font-extrabold text-white mb-1">
-                {sealedReceipt.action === "touch"
-                  ? "Touch Logged"
-                  : sealedReceipt.action === "quote"
-                  ? "Quote Marked Sent"
-                  : "Sealed"}
-              </div>
-              <div className="mt-5 rounded-xl bg-white/[0.04] border border-white/10 p-4 text-left">
-                <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-2">
-                  RECEIPT ID
-                </div>
-                <div className="font-mono text-xs text-white/60 break-all">
-                  {sealedReceipt.receipt_id}
-                </div>
+              <div className="mb-4 text-5xl">✓</div>
+              <div className="mb-1 text-xl font-extrabold text-white">Receipt emitted</div>
+              <div className="text-sm text-white/55">{sealedReceipt.label}</div>
+              <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left">
+                <div className="mb-2 text-[10px] font-extrabold tracking-widest text-white/30">RECEIPT ID</div>
+                <div className="break-all font-mono text-xs text-white/60">{sealedReceipt.receipt_id}</div>
               </div>
               <button
                 onClick={() => setSealedReceipt(null)}
-                className="mt-6 w-full rounded-xl bg-white text-neutral-950 px-4 py-3 text-sm font-extrabold hover:bg-white/90 transition"
+                className="mt-6 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
               >
                 Done
               </button>

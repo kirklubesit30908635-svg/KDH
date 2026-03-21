@@ -6,10 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import {
   Activity,
   Gauge,
-  Megaphone,
   ReceiptText,
-  ShieldCheck,
-  Users,
 } from "lucide-react";
 
 const TONES = {
@@ -40,11 +37,8 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/command", label: "Command", icon: Activity },
-  { href: "/integrity", label: "Integrity", icon: Gauge },
-  { href: "/receipts", label: "Receipts", icon: ReceiptText },
-  { href: "/billing-ops", label: "Billing", icon: ShieldCheck },
-  { href: "/advertising", label: "Advertising", icon: Megaphone },
-  { href: "/users", label: "Users", icon: Users },
+  { href: "/command/integrity", label: "Integrity", icon: Gauge },
+  { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
 ];
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -95,7 +89,7 @@ export function AkShell({
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[11px] uppercase tracking-[0.34em] text-slate-500">AutoKirk</div>
-                <div className="truncate text-sm text-slate-300">Operator surfaces</div>
+                <div className="truncate text-sm text-slate-300">Stripe billing wedge</div>
               </div>
             </Link>
           </div>
@@ -127,12 +121,6 @@ export function AkShell({
               className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
             >
               Entry
-            </Link>
-            <Link
-              href="/founder"
-              className="rounded-full border border-amber-300/20 bg-amber-300/10 px-4 py-2 text-sm text-amber-100 transition hover:border-amber-300/35 hover:bg-amber-300/14"
-            >
-              Founder
             </Link>
           </div>
         </div>
@@ -184,8 +172,8 @@ export function AkShell({
               />
               <SurfacePulse
                 label="Proof posture"
-                value="Receipt-backed closure"
-                note="Every closure is expected to leave a consequence artifact that integrity can score and operators can audit."
+                value="Receipt-backed billing closure"
+                note="The live operator wedge is frozen to Stripe billing movements and their governed receipts."
               />
             </div>
           </div>

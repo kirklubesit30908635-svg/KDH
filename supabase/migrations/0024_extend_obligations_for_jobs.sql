@@ -20,7 +20,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- 1. Add job-domain columns to core.obligations
 -- ---------------------------------------------------------------
@@ -35,7 +34,8 @@ ALTER TABLE core.obligations
       uuid REFERENCES ledger.events(id),  -- causal event that opened this obligation
 
   ADD COLUMN IF NOT EXISTS satisfied_by_receipt_id
-      uuid REFERENCES ledger.receipts(id);  -- proof receipt from ledger
+      uuid REFERENCES ledger.receipts(id);
+-- proof receipt from ledger
 
 -- ---------------------------------------------------------------
 -- 2. Extend status CHECK constraint
@@ -46,7 +46,6 @@ ALTER TABLE core.obligations
 -- ---------------------------------------------------------------
 ALTER TABLE core.obligations
   DROP CONSTRAINT IF EXISTS obligations_status_check;
-
 ALTER TABLE core.obligations
   ADD CONSTRAINT obligations_status_check
     CHECK (status IN (
@@ -57,20 +56,16 @@ ALTER TABLE core.obligations
       'expired',     -- deadline passed without satisfaction
       'voided'       -- voided (e.g. job voided before work began)
     ));
-
 -- ---------------------------------------------------------------
 -- 3. Indexes for job-domain query patterns
 -- ---------------------------------------------------------------
 CREATE INDEX IF NOT EXISTS idx_obligations_job_id
   ON core.obligations (job_id)
   WHERE job_id IS NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_obligations_job_open
   ON core.obligations (job_id, obligation_type)
   WHERE job_id IS NOT NULL AND status = 'open';
-
 CREATE INDEX IF NOT EXISTS idx_obligations_workspace_open
   ON core.obligations (workspace_id, due_at)
   WHERE status = 'open';
-
 COMMIT;

@@ -1,6 +1,7 @@
 export function fmtFace(face: string | null | undefined): string {
   if (!face) return "Unknown";
   const f = face.toLowerCase();
+  if (f === "billing") return "Billing";
   if (f === "dealership") return "Dealership";
   if (f === "advertising") return "Advertising";
   if (f === "contractor") return "Contractor";
