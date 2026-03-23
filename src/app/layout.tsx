@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AutoKirk — Revenue Integrity Operating Layer",
-  description: "Governance kernel for revenue operations. Obligations, receipts, and enforcement in one system.",
+  title: "AutoKirk — Revenue Enforcement Operating System",
+  description: "The first enforcement operating system built to make revenue obligations impossible to lose, impossible to ignore, and impossible to dispute.",
 };
 
 export default function RootLayout({
@@ -27,6 +27,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         {children}
       </body>
