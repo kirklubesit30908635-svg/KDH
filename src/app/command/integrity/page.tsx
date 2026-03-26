@@ -60,7 +60,7 @@ function buildSignals(s: IntegrityStats): Signal[] {
   if (s.proof_lag > 0) {
     out.push({
       level: "critical",
-      message: `Proof lag: ${s.proof_lag} sealed obligation${s.proof_lag > 1 ? "s" : ""} without a receipt`,
+      message: `Proof lag: ${s.proof_lag} resolved obligation${s.proof_lag > 1 ? "s" : ""} without a receipt`,
     });
   }
 
@@ -90,7 +90,7 @@ function buildSignals(s: IntegrityStats): Signal[] {
     if (d.total > 0 && d.integrity_score < 70) {
       out.push({
         level: "warn",
-        message: `${d.label} integrity at ${d.integrity_score} -- needs attention`,
+        message: `${d.label} enforcement score at ${d.integrity_score} -- needs attention`,
       });
     }
   }
@@ -273,16 +273,16 @@ export default function IntegrityPage() {
 
   return (
     <AkShell
-      title="Integrity"
-      subtitle="Billing wedge integrity only. One score for the frozen Stripe movement-to-receipt rail."
-      eyebrow="Billing Wedge Integrity"
+      title="Signals"
+      subtitle="Signal layer for the billing enforcement domain. One score for how reliably movement becomes obligation, closure, and receipt."
+      eyebrow="Billing Signal Layer"
     >
 
       {/* -- Loading -------------------------------------------------------- */}
       {loading && (
         <div className="flex items-center gap-3 text-sm text-white/35">
           <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          Computing integrity score...
+          Computing enforcement score...
         </div>
       )}
 
@@ -310,7 +310,7 @@ export default function IntegrityPage() {
 
               <div className="flex-1 text-center md:text-left">
                 <div className="text-[10px] font-extrabold tracking-[0.32em] text-white/30 mb-4">
-                  SYSTEM INTEGRITY SCORE
+                  ENFORCEMENT SCORE
                 </div>
 
                 {/* Score + Grade */}
@@ -362,7 +362,7 @@ export default function IntegrityPage() {
 
           {/* == SYSTEM INTELLIGENCE SIGNALS (Section 19) ================== */}
           <div className="mb-6">
-            <AkSectionHeader label="System Intelligence" />
+            <AkSectionHeader label="Enforcement Signals" />
             <div className="mt-3 space-y-2">
               {signals.map((sig, i) => (
                 <div
@@ -395,7 +395,7 @@ export default function IntegrityPage() {
                 <AkPanel className="p-5">
                   <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">CLOSURE RATE</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.closure_rate}%</div>
-                  <div className="mt-1 text-[11px] text-white/30">{stats.sealed_obligations} of {stats.total_obligations} sealed</div>
+                  <div className="mt-1 text-[11px] text-white/30">{stats.sealed_obligations} of {stats.total_obligations} resolved with receipt</div>
                   <MiniBar pct={stats.closure_rate} color={c} />
                 </AkPanel>
               );
@@ -449,7 +449,7 @@ export default function IntegrityPage() {
                 <AkPanel className="p-5">
                   <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">PROOF LAG</div>
                   <div className="text-3xl font-extrabold" style={{ color: c }}>{stats.proof_lag}</div>
-                  <div className="mt-1 text-[11px] text-white/30">sealed without receipt</div>
+                  <div className="mt-1 text-[11px] text-white/30">resolved without receipt</div>
                   <MiniBar pct={stats.proof_score} color={c} />
                 </AkPanel>
               );
@@ -465,7 +465,7 @@ export default function IntegrityPage() {
                 pts={stats.pts_closure}
                 pct={stats.closure_rate}
                 color={metricColor(stats.closure_rate, 80, 60)}
-                rawLabel={`${stats.closure_rate}% sealed`}
+                rawLabel={`${stats.closure_rate}% with receipt`}
               />
               <BreakdownRow
                 label="BREACH"     weight="25%"
@@ -500,7 +500,7 @@ export default function IntegrityPage() {
 
           {/* == ENFORCEMENT DOMAINS (Section 17) ======================== */}
           <div className="mb-8">
-            <AkSectionHeader label="Active Wedge" />
+            <AkSectionHeader label="Active Enforcement Domain" />
             <div className="mt-4 grid gap-4 md:grid-cols-1">
               {stats.domains.map((d) => {
                 const { color } = scoreGrade(d.integrity_score);
@@ -510,7 +510,7 @@ export default function IntegrityPage() {
                   <AkPanel key={d.face} className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-4">
                       <div>
-                        <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">{d.face.toUpperCase()}</div>
+                        <div className="text-[10px] font-extrabold tracking-widest text-white/30 mb-1">ENFORCEMENT DOMAIN</div>
                         <div className="text-sm font-extrabold text-white/90 leading-snug">{d.label}</div>
                       </div>
                       <MiniRing score={d.integrity_score} color={color} />

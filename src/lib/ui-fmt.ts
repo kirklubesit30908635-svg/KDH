@@ -1,4 +1,6 @@
-export function fmtFace(face: string | null | undefined): string {
+export const REVENUE_ENFORCEMENT_CATEGORY = "Revenue Enforcement Infrastructure";
+
+export function fmtEnforcementDomain(face: string | null | undefined): string {
   if (!face) return "Unknown";
   const f = face.toLowerCase();
   if (f === "billing") return "Billing";
@@ -6,6 +8,46 @@ export function fmtFace(face: string | null | undefined): string {
   if (f === "advertising") return "Advertising";
   if (f === "contractor") return "Contractor";
   return face;
+}
+
+export function fmtFace(face: string | null | undefined): string {
+  return fmtEnforcementDomain(face);
+}
+
+export function fmtObligationType(kind: string | null | undefined): string {
+  if (!kind) return "Unknown obligation";
+
+  switch (kind) {
+    case "activate_operator_access":
+      return "Access activation";
+    case "record_revenue":
+      return "Revenue recording";
+    case "recover_payment":
+      return "Payment recovery";
+    case "respond_to_dispute":
+      return "Dispute response";
+    case "process_refund":
+      return "Refund completion";
+    default:
+      return kind.replace(/_/g, " ");
+  }
+}
+
+export function fmtResolutionAction(kind: string | null | undefined): string {
+  switch (kind) {
+    case "activate_operator_access":
+      return "Resolve access activation";
+    case "record_revenue":
+      return "Resolve revenue recording";
+    case "recover_payment":
+      return "Resolve payment recovery";
+    case "respond_to_dispute":
+      return "Resolve dispute response";
+    case "process_refund":
+      return "Resolve refund completion";
+    default:
+      return "Record closure";
+  }
 }
 
 export function fmtDue(dueAtIso: string | null | undefined): string | null {
