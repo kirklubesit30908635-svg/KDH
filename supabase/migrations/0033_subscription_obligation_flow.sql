@@ -1,4 +1,15 @@
--- =============================================================
+begin
+create table if not exists core.object_class_postures (
+    kernel_class text not null,
+    economic_posture text not null,
+    created_at timestamptz not null default now(),
+    primary key (kernel_class, economic_posture)
+);
+
+alter table core.object_class_postures enable row level security;
+
+grant select, insert, update, delete on core.object_class_postures to service_role;
+=============================================================
 -- 0033_subscription_obligation_flow.sql
 --
 -- Wires Stripe customer.subscription.created through the full
