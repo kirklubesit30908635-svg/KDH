@@ -21,7 +21,7 @@ export const CLASS_RULES = {
     ],
   },
   subscription: {
-    allowedPostures: ["cost_exposure"],
+    allowedPostures: ["cost_exposure", "direct_revenue"],
     defaultObligation: "review_plan",
     allowedObligations: [
       "fund_active_period",
@@ -29,6 +29,7 @@ export const CLASS_RULES = {
       "justify_spend",
       "downgrade_unused",
       "confirm_dependency",
+      "operationalize_subscription",
     ],
   },
   operator_access_subscription: {
