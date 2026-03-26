@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { FileCheck, Hash, Clock, Search } from "lucide-react";
 import { AkShell, AkPanel, AkSectionHeader, AkInput } from "@/components/ak/ak-ui";
 import type { ReceiptRow } from "@/lib/ui-models";
-import { safeStr } from "@/lib/ui-fmt";
+import { fmtEnforcementDomain, safeStr } from "@/lib/ui-fmt";
 
 class ApiError extends Error {
   status: number;
@@ -29,11 +29,6 @@ function fmtDate(iso: string) {
   } catch {
     return iso;
   }
-}
-
-function fmtFaceLabel(face: unknown): string {
-  if (!face || typeof face !== "string") return "—";
-  return face.replace(/_/g, " ").toLowerCase();
 }
 
 export default function ReceiptsPage() {
@@ -93,8 +88,8 @@ export default function ReceiptsPage() {
   return (
     <AkShell
       title="Receipts"
-      subtitle="Resolution proof for the frozen Stripe billing wedge. Finished work is not real until its receipt is visible here."
-      eyebrow="Billing Wedge Proof"
+      subtitle="Closure receipts for the billing enforcement domain. If it doesn't have a receipt, it didn't happen."
+      eyebrow="Billing Proof Layer"
     >
       {/* Search */}
       <div className="mb-8 max-w-xl">
@@ -104,7 +99,7 @@ export default function ReceiptsPage() {
           <AkInput
             value={q}
             onChange={setQ}
-            placeholder="receipt id · obligation · operator · billing ref…"
+            placeholder="receipt id · obligation · operator · revenue ref…"
             className="pl-9"
           />
         </div>
@@ -122,11 +117,11 @@ export default function ReceiptsPage() {
         <AkPanel className="px-6 py-5 max-w-lg">
           <div className="text-sm font-extrabold text-white mb-2">Sign in to load billing receipts</div>
           <div className="text-sm text-white/60">
-            AutoKirk found the receipts surface, but there is no live authenticated operator session attached to this browser.
+            AutoKirk found the proof layer, but there is no live authenticated operator session attached to this browser.
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
-              href="/login?redirect=%2Freceipts"
+              href="/login?redirect=%2Fcommand%2Freceipts"
               className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
             >
               Sign in
@@ -193,7 +188,9 @@ export default function ReceiptsPage() {
                     const refLabel = r.economic_ref_id
                       ? `${safeStr(r.economic_ref_type)} ${safeStr(r.economic_ref_id)}`.trim()
                       : null;
-                    const faceLabel = fmtFaceLabel(r.face);
+                    const domainLabel = fmtEnforcementDomain(
+                      typeof r.face === "string" ? r.face : null,
+                    );
 
                     return (
                       <button
@@ -216,7 +213,7 @@ export default function ReceiptsPage() {
                                 {refLabel ?? r.receipt_id.slice(0, 20) + "…"}
                               </div>
                               <div className="text-[10px] text-white/35 uppercase tracking-[0.1em] mt-0.5">
-                                {faceLabel}
+                                {domainLabel}
                                 <span className="mx-1.5 opacity-40">·</span>
                                 {fmtDate(r.sealed_at)}
                               </div>
@@ -224,7 +221,7 @@ export default function ReceiptsPage() {
                           </div>
                           <span className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[9px] uppercase tracking-[0.15em] text-emerald-300">
                             <span className="h-1 w-1 rounded-full bg-emerald-400" />
-                            Resolution receipt
+                            Closure receipt
                           </span>
                         </div>
                         <div className="mt-3 font-mono text-[9px] text-white/20 truncate">
@@ -260,10 +257,10 @@ export default function ReceiptsPage() {
                   </div>
                   <div>
                     <div className="text-base font-semibold text-white">
-                      {fmtFaceLabel(selected.face)}
+                      {fmtEnforcementDomain(typeof selected.face === "string" ? selected.face : null)}
                     </div>
                     <div className="text-[10px] text-emerald-400/70 uppercase tracking-[0.12em] mt-0.5">
-                      Resolution receipt
+                      Closure receipt
                     </div>
                   </div>
                 </div>
@@ -283,14 +280,14 @@ export default function ReceiptsPage() {
 
                   <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
                     <div className="text-[9px] uppercase tracking-[0.22em] text-white/30 mb-1 flex items-center gap-1.5">
-                      <Clock className="h-2.5 w-2.5" /> Sealed at
+                      <Clock className="h-2.5 w-2.5" /> Recorded at
                     </div>
                     <div className="text-white/60 text-xs">{fmtDate(selected.sealed_at)}</div>
                   </div>
 
                   {selected.sealed_by && (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
-                      <div className="text-[9px] uppercase tracking-[0.22em] text-white/30 mb-1">Sealed by</div>
+                      <div className="text-[9px] uppercase tracking-[0.22em] text-white/30 mb-1">Recorded by</div>
                       <div className="text-white/60 text-xs">{selected.sealed_by}</div>
                     </div>
                   )}

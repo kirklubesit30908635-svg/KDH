@@ -73,7 +73,7 @@ export async function GET() {
         .select("obligation_id, face, economic_ref_type")
         .eq("workspace_id", defaultWorkspaceId)
         .eq("face", ENFORCEMENT_DOMAIN.face)
-        .in("economic_ref_type", ["invoice", "payment"]),
+        .in("economic_ref_type", ["invoice", "payment", "subscription"]),
       supabase
         .schema("core")
         .from("v_operator_next_actions")
@@ -127,10 +127,11 @@ export async function GET() {
     }
 
     const stripe_total = summary?.stripe_events ?? total;
-    const covered_count = total;
+    const covered_count = summary?.covered_events ?? total;
     const event_coverage =
-      stripe_total > 0 ? Math.max(0, Math.min(100, Math.round((covered_count / stripe_total) * 100))) : 100;
-    const events_awaiting = Math.max(0, stripe_total - covered_count);
+      summary?.event_coverage ??
+      (stripe_total > 0 ? Math.max(0, Math.min(100, Math.round((covered_count / stripe_total) * 100))) : 100);
+    const events_awaiting = summary?.events_awaiting ?? Math.max(0, stripe_total - covered_count);
     const proof_lag = summary?.proof_lag ?? Math.max(0, sealed - receiptedIds.size);
     const proof_score =
       summary?.proof_score ??

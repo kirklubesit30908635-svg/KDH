@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { NextActionRow } from "@/lib/ui-models";
-import { fmtDue, safeStr } from "@/lib/ui-fmt";
+import { fmtDue, fmtObligationType, fmtResolutionAction, safeStr } from "@/lib/ui-fmt";
 import { AkBadge, AkButton, AkPanel, AkSectionHeader, AkShell } from "@/components/ak/ak-ui";
 
 class ApiError extends Error {
@@ -16,7 +16,7 @@ class ApiError extends Error {
   }
 }
 
-interface SealedReceipt {
+interface ClosureReceipt {
   receipt_id: string;
   obligation_id: string;
   label: string;
@@ -26,21 +26,6 @@ function fmtAge(ageHours: number | null): string {
   if (ageHours == null) return "";
   if (ageHours < 24) return `${Math.round(ageHours)}h old`;
   return `${Math.round(ageHours / 24)}d old`;
-}
-
-function primaryActionLabel(kind: string | null | undefined) {
-  switch (kind) {
-    case "record_revenue":
-      return "Seal revenue recorded";
-    case "recover_payment":
-      return "Seal recovery outcome";
-    case "respond_to_dispute":
-      return "Seal dispute outcome";
-    case "process_refund":
-      return "Seal refund completion";
-    default:
-      return "Seal closure";
-  }
 }
 
 function riskTone(row: NextActionRow): "danger" | "gold" | "muted" {
@@ -55,7 +40,7 @@ export default function CommandPage() {
   const [err, setErr] = useState<string | null>(null);
   const [authLocked, setAuthLocked] = useState(false);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [sealedReceipt, setSealedReceipt] = useState<SealedReceipt | null>(null);
+  const [closureReceipt, setClosureReceipt] = useState<ClosureReceipt | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -110,10 +95,10 @@ export default function CommandPage() {
       if (!res.ok) {
         alert(`Failed: ${json.error ?? "Unknown error"}`);
       } else {
-        setSealedReceipt({
+        setClosureReceipt({
           receipt_id: json.receipt_id,
           obligation_id: row.obligation_id,
-          label: primaryActionLabel(row.kind),
+          label: fmtResolutionAction(row.kind),
         });
         setRows((prev) => prev.filter((item) => item.obligation_id !== row.obligation_id));
       }
@@ -218,7 +203,7 @@ export default function CommandPage() {
         <div className="grid gap-4">
           {rows.map((row) => {
             const isActing = actingId === row.obligation_id;
-            const actionLabel = primaryActionLabel(row.kind);
+            const actionLabel = fmtResolutionAction(row.kind);
 
             return (
               <AkPanel key={row.obligation_id} className="p-5">
@@ -228,7 +213,7 @@ export default function CommandPage() {
                       <AkBadge tone={riskTone(row)}>
                         {row.is_breach ? "Late" : safeStr(row.severity).replace(/_/g, " ")}
                       </AkBadge>
-                      {row.kind ? <AkBadge tone="muted">{row.kind.replace(/_/g, " ")}</AkBadge> : null}
+                      {row.kind ? <AkBadge tone="muted">{fmtObligationType(row.kind)}</AkBadge> : null}
                       {row.economic_ref_type ? (
                         <AkBadge tone="gold">{safeStr(row.economic_ref_type).toUpperCase()}</AkBadge>
                       ) : null}
@@ -264,20 +249,20 @@ export default function CommandPage() {
         </div>
       )}
 
-      {sealedReceipt && (
+      {closureReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSealedReceipt(null)} />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setClosureReceipt(null)} />
           <div className="relative w-full max-w-sm">
             <AkPanel className="p-8 text-center">
               <div className="mb-4 text-5xl">✓</div>
-              <div className="mb-1 text-xl font-extrabold text-white">Receipt emitted</div>
-              <div className="text-sm text-white/55">{sealedReceipt.label}</div>
+              <div className="mb-1 text-xl font-extrabold text-white">Closure receipt emitted</div>
+              <div className="text-sm text-white/55">{closureReceipt.label}</div>
               <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left">
                 <div className="mb-2 text-[10px] font-extrabold tracking-widest text-white/30">RECEIPT ID</div>
-                <div className="break-all font-mono text-xs text-white/60">{sealedReceipt.receipt_id}</div>
+                <div className="break-all font-mono text-xs text-white/60">{closureReceipt.receipt_id}</div>
               </div>
               <button
-                onClick={() => setSealedReceipt(null)}
+                onClick={() => setClosureReceipt(null)}
                 className="mt-6 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
               >
                 Done
