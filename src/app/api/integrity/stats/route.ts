@@ -4,7 +4,7 @@ import { supportedStripeFirstWedgeObligationTypes } from "@/lib/stripe_first_wed
 
 const ENFORCEMENT_DOMAIN = {
   face: "billing",
-  label: "Stripe Billing Wedge",
+  label: "Billing Enforcement Domain",
 } as const;
 
 function latencyToScore(avgHours: number | null): number {
@@ -156,7 +156,9 @@ export async function GET() {
       total >= 20 ? "High" : total >= 5 ? "Medium" : "Low";
 
     const delta_log: { direction: "up" | "down" | "neutral"; label: string }[] = [];
-    if (sealed > 0) delta_log.push({ direction: "up", label: `${sealed} obligations sealed` });
+    if (sealed > 0) {
+      delta_log.push({ direction: "up", label: `${sealed} obligations resolved with receipt` });
+    }
     if (breach > 0) delta_log.push({ direction: "down", label: `${breach} breach${breach > 1 ? "es" : ""} in queue` });
     if (aging_count > 0) {
       delta_log.push({
@@ -177,7 +179,7 @@ export async function GET() {
       });
     }
     if (proof_lag > 0) {
-      delta_log.push({ direction: "down", label: `${proof_lag} sealed without receipt` });
+      delta_log.push({ direction: "down", label: `${proof_lag} resolved without receipt` });
     }
     if (events_awaiting > 0) {
       delta_log.push({ direction: "down", label: `${events_awaiting} events uncovered` });

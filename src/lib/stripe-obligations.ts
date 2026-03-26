@@ -39,6 +39,15 @@ function obligationShapeForRow(
   const amountRefunded = formatMoney(obj.amount_refunded);
 
   switch (row.obligation_type) {
+    case "activate_operator_access":
+      return {
+        title: `Activate operator access: ${String(obj.subscription ?? obj.id ?? "unknown")}`,
+        why: "Paid subscription checkout completed and requires receipt-backed operator access activation.",
+        severity: "critical",
+        dueAtHours: 1,
+        economic_ref_type: "subscription",
+        economic_ref_id: String(obj.subscription ?? obj.id ?? ""),
+      };
     case "record_revenue":
       return {
         title: `Record revenue: ${invoiceNumber}`,

@@ -8,6 +8,10 @@ import {
   remainingStripeFirstWedgeLegacyReadonlyPaths,
   stripe_first_wedge_closure,
 } from "../src/lib/stripe_first_wedge_closure";
+import {
+  classifyStripeFirstWedgeSourceEvent,
+  supportedStripeFirstWedgeObligationTypes,
+} from "../src/lib/stripe_first_wedge_contract";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -61,6 +65,46 @@ test("supported operator wedge surfaces stay open", () => {
   assert.equal(gate.classification, "supported");
   assert.equal(gate.status, null);
   assert.equal(gate.source, "projection");
+});
+
+test("paid subscription activation is a supported wedge movement", () => {
+  const contract = classifyStripeFirstWedgeSourceEvent("stripe.checkout.session.completed");
+
+  assert.equal(contract.disposition, "supported");
+  assert.equal(contract.row?.object_class, "operator_access_subscription");
+  assert.equal(contract.row?.obligation_type, "activate_operator_access");
+  assert.ok(supportedStripeFirstWedgeObligationTypes.includes("activate_operator_access"));
+});
+
+test("deferred subscription lifecycle stays out of live wedge projection SQL", () => {
+  const migration = readFileSync(
+    path.join(
+      repoRoot,
+      "supabase/migrations/20260324170000_align_supported_wedge_projection_to_doctrine.sql",
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    migration,
+    /subscription lifecycle semantics are deferred outside the frozen billing wedge/,
+  );
+  assert.match(
+    migration,
+    /if p_stripe_type = 'stripe\.checkout\.session\.completed' and v_event_id is not null then/,
+  );
+  assert.match(
+    migration,
+    /where et\.name in \(\s*'stripe\.checkout\.session\.completed'\s*\)/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /if p_stripe_type in \(\s*'stripe\.checkout\.session\.completed',\s*'stripe\.customer\.subscription\.deleted'/,
+  );
+  assert.doesNotMatch(
+    migration,
+    /where et\.name in \(\s*'stripe\.checkout\.session\.completed',\s*'stripe\.customer\.subscription\.deleted'/,
+  );
 });
 
 test("deferred surfaces stay explicitly closed", () => {
@@ -135,6 +179,16 @@ test("root is redirect-only and no longer contains marketing content", () => {
     rootPage,
     /Service business|Donation flow|Grant \/ funding|Revenue accountability walkthrough/,
   );
+});
+
+test("layout metadata frames AutoKirk as revenue enforcement infrastructure", () => {
+  const layout = readFileSync(path.join(repoRoot, "src/app/layout.tsx"), "utf8");
+  const uiFmt = readFileSync(path.join(repoRoot, "src/lib/ui-fmt.ts"), "utf8");
+
+  assert.match(layout, /REVENUE_ENFORCEMENT_CATEGORY/);
+  assert.match(uiFmt, /export const REVENUE_ENFORCEMENT_CATEGORY = "Revenue Enforcement Infrastructure"/);
+  assert.doesNotMatch(layout, /Revenue Integrity Operating Layer/);
+  assert.doesNotMatch(uiFmt, /Revenue Integrity Operating Layer/);
 });
 
 test("integrity route reads from the wedge-specific summary view only", () => {

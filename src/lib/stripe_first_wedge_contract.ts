@@ -45,7 +45,7 @@ export type StripeFirstWedgeDisposition = "supported" | "deferred" | "unsupporte
 export const stripe_first_wedge_contract = {
   name: "stripe_first_wedge_contract",
   wedge_decision:
-    "The first wedge is frozen as Stripe billing movement governance for invoice collection and payment exception handling. Formally supported movements in this pass are invoice.paid, invoice.payment_failed, charge.dispute.created, and charge.refunded. customer.subscription.created and customer.subscription.deleted remain deferred until subscription lifecycle object semantics are formalized.",
+    "The first wedge is frozen as Stripe billing movement governance for invoice collection, paid operator-access activation, and payment exception handling. Formally supported movements in this pass are checkout.session.completed for paid subscription activation, invoice.paid, invoice.payment_failed, charge.dispute.created, and charge.refunded. customer.subscription.created and customer.subscription.deleted remain deferred until broader subscription lifecycle semantics are formalized.",
   contract_rows: [
     {
       movement_type: "invoice_paid",
@@ -121,6 +121,44 @@ export const stripe_first_wedge_contract = {
         "Fire when recover_payment resolves failed or canceled without an approved reason_code.",
       signal_on_unreceipted:
         "Fire when recover_payment leaves open state through a terminal resolution but no receipt is linked.",
+      unsupported_or_deferred: null,
+    },
+    {
+      movement_type: "checkout_session_completed",
+      source_event: "stripe.checkout.session.completed",
+      object_class: "operator_access_subscription",
+      object_identity_rule:
+        "One governed object per workspace_id + stripe subscription id. Replays of the same paid checkout must bind to the same operator-access subscription object, never create a second governed duty.",
+      economic_ref_strategy:
+        "Resolve economic_ref_id as ref_type=stripe_subscription and ref_key=subscription.id. Record checkout session id, customer id, and invoice id as supporting metadata, not competing identities.",
+      obligation_type: "activate_operator_access",
+      obligation_open_rule:
+        "Open when a paid checkout.session.completed lands for a subscription and no activate_operator_access obligation already exists for the same workspace_id + subscription.id.",
+      allowed_resolution_states: ["open", "acknowledged", "blocked", "completed", "failed", "canceled", "aged_open"],
+      required_operator_action:
+        "Bind operator identity, grant operator access, and confirm the return surface before closure.",
+      required_receipt_type: "obligation_resolution",
+      receipt_minimum_fields: [
+        "receipt_type",
+        "workspace_id",
+        "actor_id",
+        "object_id",
+        "economic_ref_id",
+        "obligation_id",
+        "movement_type",
+        "source_event_id",
+        "resolution_state",
+        "reason_code",
+        "proof_ref",
+        "occurred_at",
+        "recorded_at",
+      ],
+      signal_on_lag:
+        "Fire when a paid operator-access subscription remains open, acknowledged, or blocked beyond the access-activation SLA.",
+      signal_on_failure:
+        "Fire when activation resolves failed or canceled without explicit reason_code and operator identity reference.",
+      signal_on_unreceipted:
+        "Fire when activation reaches a terminal resolution but no linked receipt exists.",
       unsupported_or_deferred: null,
     },
     {

@@ -31,6 +31,11 @@ export const CLASS_RULES = {
       "confirm_dependency",
     ],
   },
+  operator_access_subscription: {
+    allowedPostures: ["direct_revenue"],
+    defaultObligation: "activate_operator_access",
+    allowedObligations: ["activate_operator_access"],
+  },
   job: {
     allowedPostures: ["direct_revenue", "cost_exposure"],
     defaultObligation: "schedule_job",
