@@ -45,7 +45,7 @@ export type StripeFirstWedgeDisposition = "supported" | "deferred" | "unsupporte
 export const stripe_first_wedge_contract = {
   name: "stripe_first_wedge_contract",
   wedge_decision:
-    "The first wedge is frozen as Stripe billing movement governance for invoice collection and payment exception handling. Formally supported movements in this pass are invoice.paid, invoice.payment_failed, charge.dispute.created, and charge.refunded. customer.subscription.created and customer.subscription.deleted remain deferred until subscription lifecycle object semantics are formalized.",
+    "The first wedge is frozen as Stripe billing movement governance for invoice collection, payment exception handling, and subscription lifecycle. Formally supported movements in this pass are invoice.paid, invoice.payment_failed, charge.dispute.created, charge.refunded, and customer.subscription.created. customer.subscription.deleted remains deferred until subscription churn semantics are formalized.",
   contract_rows: [
     {
       movement_type: "invoice_paid",
@@ -128,25 +128,38 @@ export const stripe_first_wedge_contract = {
       source_event: "stripe.customer.subscription.created",
       object_class: "subscription",
       object_identity_rule:
-        "Would bind one governed object per workspace_id + stripe subscription id if promoted into formal support.",
+        "One governed object per workspace_id + stripe subscription id. Replays must bind to the existing subscription object, never create a second object.",
       economic_ref_strategy:
-        "Would resolve economic_ref_id as ref_type=stripe_subscription and ref_key=subscription.id if promoted into formal support.",
-      obligation_type: "deferred",
+        "Resolve economic_ref_id as ref_type=subscription and ref_key=subscription.id.",
+      obligation_type: "operationalize_subscription",
       obligation_open_rule:
-        "No formal obligation may open from this movement in the frozen wedge until subscription activation semantics are ratified.",
-      allowed_resolution_states: ["open"],
+        "Open when a verified customer.subscription.created movement lands and no unresolved operationalize_subscription obligation already exists for the same workspace_id + subscription.id + source_event_id.",
+      allowed_resolution_states: ["open", "acknowledged", "blocked", "completed", "failed", "canceled", "aged_open"],
       required_operator_action:
-        "Deferred. Do not create a governed operator queue item from this event in the frozen wedge.",
-      required_receipt_type: "deferred",
-      receipt_minimum_fields: [],
+        "Onboard the new subscriber: verify account setup, confirm service activation, and close the follow-through.",
+      required_receipt_type: "obligation_proof",
+      receipt_minimum_fields: [
+        "receipt_type",
+        "workspace_id",
+        "actor_id",
+        "object_id",
+        "economic_ref_id",
+        "obligation_id",
+        "movement_type",
+        "source_event_id",
+        "resolution_state",
+        "reason_code",
+        "proof_ref",
+        "occurred_at",
+        "recorded_at",
+      ],
       signal_on_lag:
-        "Emit unsupported movement signal if this event attempts to open a governed obligation before contract promotion.",
+        "Fire when operationalize_subscription remains open past the configured onboarding SLA.",
       signal_on_failure:
-        "Emit contract breach signal if implementation logic mutates kernel truth for this movement outside the ratified contract.",
+        "Fire when operationalize_subscription resolves failed or canceled without an approved reason_code.",
       signal_on_unreceipted:
-        "Not applicable while deferred. The movement must be ignored or quarantined, not heuristically resolved.",
-      unsupported_or_deferred:
-        "Deferred. Subscription activation and onboarding semantics are not formalized enough for authoritative wedge support.",
+        "Fire when operationalize_subscription leaves open state through a terminal resolution but no linked receipt exists.",
+      unsupported_or_deferred: null,
     },
     {
       movement_type: "subscription_deleted",

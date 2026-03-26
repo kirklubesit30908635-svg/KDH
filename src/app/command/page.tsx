@@ -38,6 +38,8 @@ function primaryActionLabel(kind: string | null | undefined) {
       return "Seal dispute outcome";
     case "process_refund":
       return "Seal refund completion";
+    case "operationalize_subscription":
+      return "Seal subscriber onboarded";
     default:
       return "Seal closure";
   }
