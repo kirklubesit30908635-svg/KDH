@@ -9,3 +9,18 @@ node_modules/
 .vercel/
 tsconfig.tsbuildinfo
 data/
+# local config
+.claude/
+
+# logs
+*.log
+verification/*.log
+
+# build output
+mcp-server/dist/
+
+# archives
+*.zip
+
+# misc exports
+*.html
