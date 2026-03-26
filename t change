@@ -1,0 +1,164 @@
+[33m0141e71[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add proper .gitignore
+[33m4fd64f2[m your message
+[33mfaea2d0[m Initial commit
+[33m074bc04[m Merge pull request #6 from kirklubesit30908635-svg/claude/fix-ledger-orphans-duplicates-IBT6c
+[33m3dfc0ee[m fix: seal orphan obligations and block duplicate receipts (0032)
+[33m93822ed[m[33m ([m[1;32mwedge-final-separation[m[33m)[m Harden operator surfaces and tighten market presentation
+[33me243f2e[m normalize live stripe projection labels
+[33mdfb4d67[m fix live operator projection drift
+[33m17171c3[m activate next 16 auth proxy
+[33mb8b1750[m ship ratified operator and founder web runtime
+[33me6cfb5d[m Merge pull request #5 from kirklubesit30908635-svg/claude/autokirk-homepage-demo-fXkyg
+[33mc0e23ed[m Replace homepage with AutoKirk public-facing demo page
+[33m915ac00[m[33m ([m[1;31morigin/kernel-governance-update[m[33m, [m[1;32mkernel-governance-update[m[33m)[m align founder console with kernel rules: dynamic posture/obligation dropdowns
+[33m880989a[m fix stripe webhook: add invoice.created + all common event types, return 200 on all post-signature errors
+[33mb0ef6bd[m use getFounderSupabase in stripe webhook for reliable schema routing
+[33mdba84d0[m wire stripe webhook into kernel object/obligation pipeline
+[33md1c8054[m fix: move use client directive to line 1 in page.tsx
+[33me2e6568[m founder console live: rebuild core schema, fix Vercel build
+[33mcfa30e4[m feat(founder): founder console API routes, component, and DB grants
+[33m31ba92c[m fix(build): force disable Turbopack via experimental.turbo = false
+[33m819a1b2[m fix(build): remove turbopack config to fix RangeError: Invalid count value
+[33mcfe5b6b[m kernel rpc mutations v1
+[33m6e63976[m kernel constitution v1
+[33m815586d[m fix(integrity): replace corrupted unicode with ASCII equivalents
+[33m20d6002[m fix(ui): correct UTF-8 encoding characters
+[33mdebb18c[m feat(integrity): fix speed thresholds, add closure_quality, clean delta log
+[33md7a27c4[m fix: ignore TS and eslint errors at build, clean config
+[33mfa8ee95[m fix: type TopNav props in page.tsx
+[33m8c89edf[m fix: type SectionTitle props in page.tsx
+[33mea88c71[m fix: add className to AkButton type
+[33m51619ad[m fix: restore tsconfig.json
+[33m0b7d911[m fix: className on AkButton, disable strict TS to unblock build
+[33ma7f58ae[m fix: add className to AkButton
+[33mf18d07f[m fix: rewrite ak-ui.tsx with all props including tone
+[33m0bb9671[m fix: add tone prop to AkBadge and AkButton
+[33mf152334[m fix: add optional count prop to AkSectionHeader
+[33m397506f[m fix: add AkBadge and AkButton exports to ak-ui.tsx
+[33m661b115[m fix: replace ak-ui.tsx with clean hand-written version
+[33md5db915[m fix: restore ak-ui.tsx component deleted in f0932a7
+[33m8a862d6[m feat(integrity): aging penalty, speed multiplier, score delta log
+[33mf0932a7[m Delete src/components directory
+[33mff96fec[m Update ak-ui.tsx
+[33m9e80318[m Update ak-ui.tsx
+[33mbacc060[m Remove merge conflict markers from ak-ui.tsx
+[33m4622bb2[m Add proxy.ts file to src/src directory
+[33ma6d52fa[m pass production build for operator console and api surfaces
+[33m5ab62f5[m Fix formatting and indentation in ak-ui.tsx
+[33m6f41da4[m Update ak-ui.tsx
+[33m21dd29b[m Refactor AkShell and related components styles
+[33m90a1302[m Refactor AkButton for improved readability
+[33mf9d66ed[m Refactor AkShell props to use AkShellProps type
+[33md40e2e1[m Add 'use client' directive to page.tsx
+[33mb4e5a75[m Update page.tsx
+[33med5ccf1[m Merge pull request #4 from kirklubesit30908635-svg/claude/add-subscription-check-middleware-zAdNJ
+[33m51fcfa9[m Update fmt.Println message from 'Hello' to 'Goodbye'
+[33mea9a14f[m Update fmt.Println message from 'Hello' to 'Goodbye'
+[33mdf05ea0[m force redeploy: clear cache
+[33mc501ae5[m force redeploy: clear cache
+[33m0fc643e[m restore: ak-ui gold/black
+[33mbc7d15c[m restore: ak-ui gold/black no nav bar
+[33m883447e[m restore: ak-ui gold/black no nav bar
+[33mad95223[m restore: ak-ui gold/black no nav bar
+[33mb9d25e4[m redeploy: force March 9 state
+[33me59feed[m redeploy: force March 9 state
+[33mabf7f71[m redeploy: new stripe webhook secret
+[33mb6db43c[m fix: middleware queries core schema for operators subscription check
+[33m629b17d[m fix: strip webhook to bare subscription gate — remove timeout-causing obligation/ingest calls
+[33m595e872[m fix: webhook no longer hard-fails when STRIPE_ACCOUNT_ID is unset — ingest is soft-skipped, subscription gate always runs
+[33m76901ed[m fix: dark grey homepage
+[33m1f8dd80[m restore: full console UI dark grey
+[33m310b3fe[m[33m ([m[1;31morigin/claude/add-subscription-check-middleware-zAdNJ[m[33m)[m fix: inject-stripe looks up real provider_connection for intake counter
+[33m340c8f1[m fix: inject-stripe creates open obligation + increments stripe intake counter
+[33mb10a39f[m Merge pull request #3 from kirklubesit30908635-svg/claude/add-subscription-check-middleware-zAdNJ
+[33ma8f48db[m fix: remove auth gate from inject-stripe debug endpoint
+[33mfa5a8a6[m Merge pull request #2 from kirklubesit30908635-svg/claude/add-subscription-check-middleware-zAdNJ
+[33m442d37b[m feat: add debug inject-stripe endpoint for test event injection
+[33m4c54c73[m fix: add admin client subscription check to middleware
+[33me81381e[m fix: enforce subscription gate in middleware
+[33m92830a2[m fix: subscription gate fails closed + expose stripe fields in users feed
+[33meb3005f[m fix: homepage happy medium — structured sections, no clutter
+[33mc11e0ca[m feat: simple homepage with hero, problem statements, and login CTA
+[33m1cf3067[m Add KDH trident logos to public
+[33m4374aed[m feat: KDH corporate tenant hierarchy + workspace seed
+[33m6bfd409[m feat: Stripe $50/mo subscription gate
+[33m7dc60e3[m fix: wire system-state to real ledger data + suppress stop hooks
+[33m6f4a93c[m feat: operator workspace management on /users page
+[33m75e2ae6[m feat: auto-provision operator row on first login
+[33m4d5d9ef[m fix: migrate users + receipts to AkShell for unified nav
+[33ma91d853[m fix: rebuild receipts page to neutral-950/white design system
+[33mf08a027[m feat: add nav links to AkShell header
+[33m66c0df7[m feat: add /users page with operator registry in login visual style
+[33mb7bdade[m feat: update interior pages to neutral-950/white design system
+[33m3a09075[m fix: wrap useSearchParams in Suspense boundary on login page
+[33m7887e64[m fix: align integrity page to neutral-950/white design system
+[33m6685947[m fix: surface real auth error on login page + no_code fallback
+[33m195cee4[m fix: update page metadata and redesign AkShell to match AutoKirk identity
+[33m6155d0c[m feat: v2 homepage, login redesign, system-state API, integrity middleware
+[33m847d3e6[m Fix auth redirect + new homepage + install framer-motion/lucide-react
+[33meb591de[m Redesign login — split bento layout, integrity-matched aesthetic
+[33mab82a4f[m Redesign login to match homepage — Orbitron, matrix rain, animated grid
+[33m596ab57[m chore: force Vercel rebuild
+[33m967b688[m Fix auth callback: set session cookies on NextResponse, not cookieStore
+[33mfc291b9[m Add /auth/callback route to exchange magic link code for session
+[33m0a3eafd[m Switch login to magic link auth with AutoKirk terminal aesthetic
+[33m965bb97[m revert: clean simple login UI, password auth, no styling experiments
+[33m4edcb17[m fix: repair login auth loop + futuristic login UI
+[33m4e7d0c5[m Refactor login page to use email link authentication
+[33m26a0b72[m Refactor login page component for clarity
+[33m0740a59[m feat: matrix landing page
+[33m3be3192[m Merge pull request #1 from kirklubesit30908635-svg/feat/economic-object-governance
+[33m5f43ab0[m fix login supabase import
+[33m8bfad70[m Refactor LoginPage to use new Supabase client
+[33m4f2deea[m Refactor Supabase client creation function
+[33me717017[m Refactor LoginPage with Next.js router and improved UI
+[33mdda8411[m fix: use correct supabase browser client
+[33m0862d10[m fix: correct supabase client import path
+[33mba4fad0[m fix: restore operator login page
+[33m3ab9b65[m Redirect Home component to /command
+[33mb1119ca[m restore: page.tsx with clean inbox redirect
+[33m4568171[m fix: clean page.tsx redirect
+[33m9451586[m trigger: redeploy clean main
+[33m482cbd8[m trigger: redeploy clean main
+[33md30d344[m Delete src/app/page.tsx
+[33m6371ec0[m fix: clean page.tsx redirect
+[33m992d2e1[m merge: OSM salesman branch - keep inbox redirect
+[33mdc285c0[m[33m ([m[1;31morigin/feat/economic-object-governance[m[33m, [m[1;32mfeat/economic-object-governance[m[33m)[m Add economic object governance kernel anchors (0028 + 0029)
+[33mc82ef60[m repo hygiene: ignore env, vercel, build, and local data artifacts
+[33m0252b94[m repo hygiene: normalize gitignore
+[33m0b6922c[m repo hygiene: archive backup migrations and ignore temp artifacts
+[33m1c999d1[m fix migration numbering: move registry job domain to 0027
+[33m6cb2b4f[m cleanup: remove tracked supabase temp file
+[33mfa48335[m jobs domain: registry migration
+[33mbbe36e3[m repo hygiene: ignore temp files, backups, and notes
+[33m88167de[m repo hygiene: ignore temp, backup, env, and build files
+[33m25c7198[m repo hygiene: ignore supabase temp files and backup migrations
+[33mce14b00[m OSM prep: integrity surface, jobs schema, billing-ops overhaul, seal route
+[33m8954f25[m[33m ([m[1;31morigin/claude/launch-osm-salesman-We0vX[m[33m)[m chore: pin typescript version, update lockfile
+[33m7ab35eb[m feat(osm): launch salesman inbox for Old Salt Marine
+[33m6adcb7a[m Overhaul all UI pages + seal idempotency guard
+[33m465d5a2[m feat: eliminate all browser→core reads — Phase 5 debt resolution
+[33mc7412ab[m feat: full system function — auth membrane, command actions, billing/advertising surfaces
+[33m04825b5[m feat: add idempotency guard to obligation creation
+[33m76a7b75[m fix: grant USAGE ON SCHEMA core to authenticated role
+[33m2b48328[m fix: cast Stripe event.data.object through unknown for TS safety
+[33mf0a8995[m feat: Stripe → obligation → receipt pipeline
+[33mecb57e1[m fix: grant service_role write access on core + add operator views
+[33m2415956[m fix: restore production auth URLs in config.toml
+[33m34907c5[m feat: expose core schema in Supabase REST API
+[33m9dfe22e[m fix: add error handling to washbay API routes + fix launch.json
+[33md2bd848[m feat: migrate washbay store from local JSON to Supabase (core.washbay_jobs)
+[33me96b20b[m feat: add /washbay job board page
+[33m004cc29[m chore: trigger redeploy with env vars
+[33m4385f18[m feat: build missing face routes + fix dead homepage links
+[33mea3ae45[m chore: clean git state + add migrations 0016-0017 + washbay routes
+[33m8918d3c[m fix: upgrade eslint-config-next to 16.1.6
+[33mf3c35a0[m trigger Vercel deploy from KDH
+[33m8184de1[m Add Next.js operator console + Stripe webhook integration + all pending migrations
+[33m9ca44f9[m Add AutoKirk Intelligence Layer (ak_intelligence schema)
+[33m519223b[m feat: wire Supabase auth and RPC into operator console
+[33m1c5c0e6[m split monolith into 8-file kernel architecture
+[33mea65d82[m harden kernel: RLS on all tables, revoke public execute on internal functions
+[33m9ca7baf[m harden kernel migration: workspace-scoped idempotency + RLS read grants
+[33m5c6f7b5[m add kernel migration: ledger schema + access control (Section 7)
+[33m1784b16[m Add AutoKirk Clean Core v1 migration

@@ -37,6 +37,18 @@ supabase db push
 # Run the app test suite currently checked into this repo
 npm test
 
+# Run a single test file directly
+npx tsx --test tests/stripe-first-wedge-closure.test.ts
+
+# Run the Next.js dev server
+npm run dev
+
+# Type-check and build the app
+npm run build
+
+# Lint TypeScript/JS
+npm run lint
+
 supabase stop
 ```
 
@@ -86,6 +98,23 @@ Important authority notes:
 ### Founder-console obligation model
 
 The active obligation surface is the post-rebuild `core.objects` + `core.obligations` model introduced and then fixed in the March 2026 founder-console migrations. Later migrations restore operator projections and add receipt-proof linkage on top of that model.
+
+### App-layer architecture
+
+The Next.js app lives in `src/app/` and communicates with Supabase exclusively through three client helpers:
+- `src/lib/supabase-server.ts` — SSR cookie-based client for route handlers and server components
+- `src/lib/supabaseBrowser.ts` — browser client
+- `src/lib/supabaseAdmin.ts` — service-role client (bypasses RLS; use only for trusted server paths)
+
+Every authenticated route handler starts with `requireOperatorRouteContext()` (`src/lib/operator-access.ts`). It resolves the auth session → `core.operators` record → active `core.memberships` and returns a typed context including `defaultWorkspaceId`. Do not inline this auth logic; always use this helper.
+
+The Stripe ingest pipeline flows: Stripe webhook → `api.ingest_stripe_event` (DB function) → `core.objects` + `core.obligations` rows. The app layer then reads open obligations and routes operator actions through `sealObligation()` (`src/lib/obligation-store.ts`), which calls `api.command_resolve_obligation` and produces a ledger event + receipt pair.
+
+`src/lib/kernel/rules.ts` is the typed constraint layer (`CLASS_RULES`). Every `kernel_class` (e.g. `invoice`, `payment`, `operator_access_subscription`) declares exactly which `economic_posture` values and `obligation_type` values are valid. Both DB functions and app code must respect these constraints; `assertValidClassPosture` / `assertValidObligationForClass` are the enforcement helpers.
+
+`src/lib/stripe_first_wedge_contract.ts` maps Stripe event types to obligation types. `src/lib/stripe_first_wedge_closure.ts` defines which legacy routes/surfaces have been retired. The test in `tests/stripe-first-wedge-closure.test.ts` enforces both: it verifies that the contract covers all supported event types and that dead files have been physically deleted from the repo. When adding Stripe event support, update the contract file first.
+
+The `/command` surface (`src/app/command/`) is the live operator console. It reads from `core.v_operator_next_actions` and posts to `/api/command/seal` (or `/api/command/touch`) to advance obligations. The `/command/integrity` and `/command/receipts` pages pull from integrity summary views and `core.v_recent_receipts`.
 
 ### Known drift / caution
 
