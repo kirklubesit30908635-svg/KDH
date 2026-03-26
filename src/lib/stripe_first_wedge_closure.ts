@@ -1,7 +1,6 @@
 export type WedgeSurfaceClassification =
   | "supported"
   | "deferred"
-  | "legacy-readonly"
   | "dead";
 
 export type WedgeRouteGateDecision = {
@@ -351,11 +350,6 @@ export const stripe_first_wedge_closure = {
   mutation_paths: mutationPaths,
   operator_projections: operatorProjections,
 } as const;
-
-export const remainingStripeFirstWedgeLegacyReadonlyPaths =
-  stripe_first_wedge_closure.operator_projections.filter(
-    (entry) => entry.classification === "legacy-readonly",
-  );
 
 function matchesPath(pattern: string, pathname: string) {
   if (pattern.includes("[id]")) {
