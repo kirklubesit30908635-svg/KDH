@@ -3,6 +3,7 @@
 // If it isn't written here, it didn't happen.
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { REVENUE_ENFORCEMENT_CATEGORY } from "@/lib/ui-fmt";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -16,8 +17,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AutoKirk — Revenue Integrity Operating Layer",
-  description: "Governance kernel for revenue operations. Obligations, receipts, and enforcement in one system.",
+  title: `AutoKirk — ${REVENUE_ENFORCEMENT_CATEGORY}`,
+  description:
+    "Revenue enforcement infrastructure for governed obligations, closure receipts, and operator proof.",
 };
 
 export default function RootLayout({

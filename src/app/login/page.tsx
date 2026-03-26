@@ -105,7 +105,7 @@ const FLOW_STEPS: Array<{ label: string; href?: string }> = [
   { label: "command", href: "/command" },
   { label: "closure" },
   { label: "receipt", href: "/command/receipts" },
-  { label: "integrity signal", href: "/command/integrity" },
+  { label: "signal layer", href: "/command/integrity" },
 ];
 
 const SYSTEM_DOCTRINE = [
@@ -240,7 +240,7 @@ function ScoreDial({ score }: { score: number | null }) {
       <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-[#070b15]">
         <div className="text-center">
           <div className="text-5xl font-semibold tracking-tight sm:text-6xl">{score ?? "—"}</div>
-          <div className="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-500">{score == null ? "Locked" : "Integrity"}</div>
+          <div className="mt-2 text-[10px] uppercase tracking-[0.35em] text-slate-500">{score == null ? "Locked" : "Score"}</div>
         </div>
       </div>
     </div>
@@ -333,7 +333,7 @@ export default function HomePage() {
       if (integrityRes.reason instanceof ApiError && integrityRes.reason.status === 401) {
         unauthorized = true;
       } else {
-        nextErrors.push(`Integrity: ${integrityRes.reason instanceof Error ? integrityRes.reason.message : "Load failed"}`);
+        nextErrors.push(`Signal layer: ${integrityRes.reason instanceof Error ? integrityRes.reason.message : "Load failed"}`);
       }
       setIntegrity(null);
     }
@@ -423,7 +423,7 @@ export default function HomePage() {
     : authLocked
       ? "Sign in to load governed state."
       : loading
-        ? "Pulling system state..."
+        ? "Pulling signal layer..."
         : "Live state unavailable.";
 
   return (
@@ -443,7 +443,7 @@ export default function HomePage() {
 
           <div className="hidden items-center gap-2 md:flex">
             <Link href="/command/integrity" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
-              System
+              Signals
             </Link>
             <Link href="/command" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/10">
               Command
@@ -473,13 +473,13 @@ export default function HomePage() {
 
             <h1 className="mt-6 max-w-4xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
               Cross the auth membrane.
-              <span className="block">Enter the receipt-backed operating layer.</span>
+              <span className="block">Enter the revenue enforcement infrastructure.</span>
             </h1>
 
             <p className="mt-5 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
               AutoKirk is where the operator reads governed state, sees the oldest open duty, and verifies that closure actually
-              produced proof. Sign in to cross into the live machine, then move between command, receipts, integrity, and the
-              frozen Stripe billing wedge.
+              produced proof. Sign in to cross into the live machine, then move between command, receipts, the signal layer, and
+              the billing enforcement domain.
             </p>
 
             <div className="mt-10 flex flex-wrap gap-2 text-sm text-slate-300">
@@ -508,7 +508,7 @@ export default function HomePage() {
                 className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-medium text-slate-950 transition hover:translate-y-[-1px]"
               >
                 <Shield className="h-4 w-4" />
-                Open system state
+                Open signal layer
               </Link>
               <Link
                 href="/command"
@@ -545,12 +545,12 @@ export default function HomePage() {
 
           <div className="grid gap-6">
             <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(7,11,21,0.92),rgba(7,11,21,0.72))] p-7 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-              <div className="flex flex-wrap items-start justify-between gap-6">
-                <div>
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Integrity signal</div>
-                  <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
-                    {integrity ? gradeLabel(integrity.integrity_score) : authLocked ? "Authentication required" : "Loading state"}
-                  </div>
+                <div className="flex flex-wrap items-start justify-between gap-6">
+                  <div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Enforcement signal</div>
+                    <div className="mt-3 text-3xl font-semibold tracking-tight text-white">
+                      {integrity ? gradeLabel(integrity.integrity_score) : authLocked ? "Authentication required" : "Loading state"}
+                    </div>
                   <p className="mt-3 max-w-sm text-sm leading-6 text-slate-400">{pulseCopy}</p>
                   {integrity && (
                     <div
@@ -575,7 +575,7 @@ export default function HomePage() {
                 <MetricTile
                   label="Proof lag"
                   value={integrity ? String(integrity.proof_lag) : authLocked ? "Locked" : "—"}
-                  supporting={integrity ? "sealed without receipt" : "proof surface not loaded"}
+                  supporting={integrity ? "resolved without receipt" : "proof surface not loaded"}
                 />
                 <MetricTile
                   label="Closure latency"
@@ -595,7 +595,7 @@ export default function HomePage() {
                     <div>
                       <div className="text-lg font-medium text-white">Sign in to open the operator runtime.</div>
                       <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">
-                        Sign in to open the governed read surfaces for the live Stripe billing wedge.
+                        Sign in to open the governed operator surfaces for the billing enforcement domain.
                       </p>
                       {authQueryError ? (
                         <div className="mt-3 rounded-2xl border border-rose-300/15 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
@@ -792,7 +792,7 @@ export default function HomePage() {
                         </div>
                       </div>
                       <div className="rounded-full border border-emerald-400/15 bg-emerald-400/10 px-3 py-1 text-xs uppercase tracking-[0.18em] text-emerald-100">
-                        sealed
+                        receipt-backed
                       </div>
                     </div>
                   </div>
@@ -805,18 +805,18 @@ export default function HomePage() {
           <div className="rounded-[32px] border border-white/10 bg-white/[0.03] p-7">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Active wedge</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">The live billing wedge ranked by pressure.</h2>
+                <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">Active enforcement domain</div>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">The live billing domain ranked by pressure.</h2>
               </div>
               <Link href="/command/integrity" className="text-sm text-slate-300 transition hover:text-white">
-                Full system state →
+                Full signal layer →
               </Link>
             </div>
 
             <div className="mt-5 grid gap-3">
               {authLocked && (
                 <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-5">
-                  <div className="text-sm text-slate-300">Sign in above to load the live billing wedge.</div>
+                  <div className="text-sm text-slate-300">Sign in above to load the live billing domain.</div>
                 </div>
               )}
 
@@ -834,11 +834,11 @@ export default function HomePage() {
                     <div className="rounded-2xl border border-white/10 bg-[#080c17] p-4 transition hover:border-white/20 hover:bg-white/[0.05]">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Active wedge</div>
+                          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Active enforcement domain</div>
                           <div className="mt-2 text-lg font-medium text-white">{domain.label}</div>
                           <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-400">
                             <span>{domain.open} open</span>
-                            <span>{domain.sealed} sealed</span>
+                            <span>{domain.sealed} with receipt</span>
                             <span>{domain.breach_count} breach</span>
                           </div>
                         </div>
@@ -846,7 +846,7 @@ export default function HomePage() {
                           <div className="text-3xl font-semibold tracking-tight" style={{ color: accent }}>
                             {domain.integrity_score}
                           </div>
-                          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">integrity</div>
+                          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">score</div>
                         </div>
                       </div>
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/5">
@@ -871,9 +871,9 @@ export default function HomePage() {
 
             <div className="mt-6 space-y-4">
               <SurfaceLink
-                eyebrow="System"
-                title="System state"
-                body="Open the machine's current condition. Integrity tells the operator what is clean, what is degrading, and what needs attention."
+                eyebrow="Signals"
+                title="Signal layer"
+                body="Open the signal layer. It tells the operator what is clean, what is degrading, and what needs attention."
                 href="/command/integrity"
               />
               <SurfaceLink
@@ -885,7 +885,7 @@ export default function HomePage() {
               <SurfaceLink
                 eyebrow="Proof"
                 title="Receipt record"
-                body="Every sealed obligation leaves a record. Receipts turn finished work into proof the business can point back to."
+                body="Every resolved obligation leaves a record. Receipts turn finished work into proof the business can point back to."
                 href="/command/receipts"
               />
             </div>

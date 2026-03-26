@@ -37,7 +37,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/command", label: "Command", icon: Activity },
-  { href: "/command/integrity", label: "Integrity", icon: Gauge },
+  { href: "/command/integrity", label: "Signals", icon: Gauge },
   { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
 ];
 
@@ -89,7 +89,7 @@ export function AkShell({
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[11px] uppercase tracking-[0.34em] text-slate-500">AutoKirk</div>
-                <div className="truncate text-sm text-slate-300">Stripe billing wedge</div>
+                <div className="truncate text-sm text-slate-300">Billing enforcement domain</div>
               </div>
             </Link>
           </div>
@@ -173,7 +173,7 @@ export function AkShell({
               <SurfacePulse
                 label="Proof posture"
                 value="Receipt-backed billing closure"
-                note="The live operator wedge is frozen to Stripe billing movements and their governed receipts."
+                note="The live billing enforcement domain is frozen to supported Stripe billing movements and their governed receipts."
               />
             </div>
           </div>
