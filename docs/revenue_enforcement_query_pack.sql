@@ -215,6 +215,8 @@ with recent_supported_events as (
     se.received_at,
     se.payload,
     case
+      when se.stripe_type = 'stripe.checkout.session.completed'
+        then 'subscription'
       when se.stripe_type in ('stripe.invoice.paid', 'stripe.invoice.payment_failed')
         then 'invoice'
       when se.stripe_type in ('stripe.charge.dispute.created', 'stripe.charge.refunded')
@@ -222,6 +224,8 @@ with recent_supported_events as (
       else 'unknown'
     end as expected_economic_ref_type,
     case
+      when se.stripe_type = 'stripe.checkout.session.completed'
+        then coalesce(se.payload -> 'data' -> 'object' ->> 'subscription', '')
       when se.stripe_type in ('stripe.invoice.paid', 'stripe.invoice.payment_failed')
         then coalesce(se.payload -> 'data' -> 'object' ->> 'id', '')
       when se.stripe_type = 'stripe.charge.dispute.created'
@@ -236,6 +240,7 @@ with recent_supported_events as (
     end as expected_economic_ref_id
   from ingest.stripe_events se
   where se.stripe_type in (
+    'stripe.checkout.session.completed',
     'stripe.invoice.paid',
     'stripe.invoice.payment_failed',
     'stripe.charge.dispute.created',
@@ -318,6 +323,8 @@ with recent_supported_events as (
     se.stripe_type,
     se.received_at,
     case
+      when se.stripe_type = 'stripe.checkout.session.completed'
+        then 'subscription'
       when se.stripe_type in ('stripe.invoice.paid', 'stripe.invoice.payment_failed')
         then 'invoice'
       when se.stripe_type in ('stripe.charge.dispute.created', 'stripe.charge.refunded')
@@ -325,6 +332,8 @@ with recent_supported_events as (
       else 'unknown'
     end as expected_economic_ref_type,
     case
+      when se.stripe_type = 'stripe.checkout.session.completed'
+        then coalesce(se.payload -> 'data' -> 'object' ->> 'subscription', '')
       when se.stripe_type in ('stripe.invoice.paid', 'stripe.invoice.payment_failed')
         then coalesce(se.payload -> 'data' -> 'object' ->> 'id', '')
       when se.stripe_type = 'stripe.charge.dispute.created'
@@ -339,6 +348,7 @@ with recent_supported_events as (
     end as expected_economic_ref_id
   from ingest.stripe_events se
   where se.stripe_type in (
+    'stripe.checkout.session.completed',
     'stripe.invoice.paid',
     'stripe.invoice.payment_failed',
     'stripe.charge.dispute.created',
