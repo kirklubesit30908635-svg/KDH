@@ -39,10 +39,10 @@ function obligationShapeForRow(
   const amountRefunded = formatMoney(obj.amount_refunded);
 
   switch (row.obligation_type) {
-    case "activate_operator_access":
+    case "operationalize_subscription":
       return {
-        title: `Activate operator access: ${String(obj.subscription ?? obj.id ?? "unknown")}`,
-        why: "Paid subscription checkout completed and requires receipt-backed operator access activation.",
+        title: `Operationalize subscription: ${String(obj.subscription ?? obj.id ?? "unknown")}`,
+        why: "Paid subscription checkout completed and requires receipt-backed operational follow-through.",
         severity: "critical",
         dueAtHours: 1,
         economic_ref_type: "subscription",
@@ -96,6 +96,14 @@ export function stripeEventToObligation(
   const contract = classifyStripeFirstWedgeSourceEvent(stripeType);
 
   if (!contract.row || contract.disposition !== "supported") {
+    return {
+      disposition: contract.disposition,
+      row: contract.row,
+      obligation: null,
+    };
+  }
+
+  if (contract.canonicalSourceEvent === "stripe.customer.subscription.deleted") {
     return {
       disposition: contract.disposition,
       row: contract.row,

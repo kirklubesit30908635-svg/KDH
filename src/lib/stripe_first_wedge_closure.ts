@@ -351,6 +351,8 @@ export const stripe_first_wedge_closure = {
   operator_projections: operatorProjections,
 } as const;
 
+export const remainingStripeFirstWedgeLegacyReadonlyPaths: ReadonlyArray<WedgeProjection> = [];
+
 function matchesPath(pattern: string, pathname: string) {
   if (pattern.includes("[id]")) {
     const prefix = pattern.split("[id]")[0];

@@ -1,3 +1,4 @@
+
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -67,13 +68,13 @@ test("supported operator wedge surfaces stay open", () => {
   assert.equal(gate.source, "projection");
 });
 
-test("paid subscription activation is a supported wedge movement", () => {
+test("paid subscription operationalization is a supported wedge movement", () => {
   const contract = classifyStripeFirstWedgeSourceEvent("stripe.checkout.session.completed");
 
   assert.equal(contract.disposition, "supported");
-  assert.equal(contract.row?.object_class, "operator_access_subscription");
-  assert.equal(contract.row?.obligation_type, "activate_operator_access");
-  assert.ok(supportedStripeFirstWedgeObligationTypes.includes("activate_operator_access"));
+  assert.equal(contract.row?.object_class, "subscription");
+  assert.equal(contract.row?.obligation_type, "operationalize_subscription");
+  assert.ok(supportedStripeFirstWedgeObligationTypes.includes("operationalize_subscription"));
 });
 
 test("deferred subscription lifecycle stays out of live wedge projection SQL", () => {
@@ -200,3 +201,4 @@ test("integrity route reads from the wedge-specific summary view only", () => {
   assert.match(integrityRoute, /v_stripe_first_wedge_integrity_summary/);
   assert.doesNotMatch(integrityRoute, /\.from\("v_integrity_summary"\)/);
 });
+

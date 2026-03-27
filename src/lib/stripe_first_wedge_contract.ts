@@ -45,7 +45,7 @@ export type StripeFirstWedgeDisposition = "supported" | "deferred" | "unsupporte
 export const stripe_first_wedge_contract = {
   name: "stripe_first_wedge_contract",
   wedge_decision:
-    "The first wedge is frozen as Stripe billing movement governance for invoice collection, paid operator-access activation, and payment exception handling. Formally supported movements in this pass are checkout.session.completed for paid subscription activation, invoice.paid, invoice.payment_failed, charge.dispute.created, and charge.refunded. customer.subscription.created and customer.subscription.deleted remain deferred until broader subscription lifecycle semantics are formalized.",
+    "The first wedge is frozen as Stripe billing movement governance for invoice collection, paid subscription operationalization, subscription termination closure, and payment exception handling. Formally supported movements in this pass are checkout.session.completed for canonical subscription activation, customer.subscription.deleted for governed subscription termination, invoice.paid, invoice.payment_failed, charge.dispute.created, and charge.refunded. customer.subscription.created remains deferred until broader subscription lifecycle semantics are formalized.",
   contract_rows: [
     {
       movement_type: "invoice_paid",
@@ -126,17 +126,17 @@ export const stripe_first_wedge_contract = {
     {
       movement_type: "checkout_session_completed",
       source_event: "stripe.checkout.session.completed",
-      object_class: "operator_access_subscription",
+      object_class: "subscription",
       object_identity_rule:
-        "One governed object per workspace_id + stripe subscription id. Replays of the same paid checkout must bind to the same operator-access subscription object, never create a second governed duty.",
+        "One governed object per workspace_id + stripe subscription id. Replays of the same paid checkout must bind to the same canonical subscription object, never create a second governed duty.",
       economic_ref_strategy:
         "Resolve economic_ref_id as ref_type=stripe_subscription and ref_key=subscription.id. Record checkout session id, customer id, and invoice id as supporting metadata, not competing identities.",
-      obligation_type: "activate_operator_access",
+      obligation_type: "operationalize_subscription",
       obligation_open_rule:
-        "Open when a paid checkout.session.completed lands for a subscription and no activate_operator_access obligation already exists for the same workspace_id + subscription.id.",
+        "Open when a paid checkout.session.completed lands for a subscription and no operationalize_subscription obligation already exists for the same workspace_id + subscription.id.",
       allowed_resolution_states: ["open", "acknowledged", "blocked", "completed", "failed", "canceled", "aged_open"],
       required_operator_action:
-        "Bind operator identity, grant operator access, and confirm the return surface before closure.",
+        "Operationalize the canonical subscription, confirm downstream operator readiness, and close the governed activation follow-through.",
       required_receipt_type: "obligation_resolution",
       receipt_minimum_fields: [
         "receipt_type",
@@ -191,25 +191,38 @@ export const stripe_first_wedge_contract = {
       source_event: "stripe.customer.subscription.deleted",
       object_class: "subscription",
       object_identity_rule:
-        "Would bind one governed object per workspace_id + stripe subscription id if promoted into formal support.",
+        "Bind to the existing canonical subscription object keyed by workspace_id + stripe subscription id. The deletion event must not create a second object.",
       economic_ref_strategy:
-        "Would resolve economic_ref_id as ref_type=stripe_subscription and ref_key=subscription.id if promoted into formal support.",
-      obligation_type: "deferred",
+        "Resolve economic_ref_id as ref_type=stripe_subscription and ref_key=subscription.id. Use the same canonical subscription reference created by checkout.session.completed.",
+      obligation_type: "operationalize_subscription",
       obligation_open_rule:
-        "No formal obligation may open from this movement in the frozen wedge until subscription churn semantics are ratified.",
-      allowed_resolution_states: ["open"],
+        "Do not open a second obligation. Resolve or terminate the existing operationalize_subscription obligation for the same workspace_id + subscription.id.",
+      allowed_resolution_states: ["open", "acknowledged", "blocked", "completed", "failed", "canceled", "aged_open"],
       required_operator_action:
-        "Deferred. Do not create a governed operator queue item from this event in the frozen wedge.",
-      required_receipt_type: "deferred",
-      receipt_minimum_fields: [],
+        "No new operator action opens from deletion. The kernel must retire the governed subscription follow-through cleanly with a receipted terminal state.",
+      required_receipt_type: "obligation_resolution",
+      receipt_minimum_fields: [
+        "receipt_type",
+        "workspace_id",
+        "actor_id",
+        "object_id",
+        "economic_ref_id",
+        "obligation_id",
+        "movement_type",
+        "source_event_id",
+        "resolution_state",
+        "reason_code",
+        "proof_ref",
+        "occurred_at",
+        "recorded_at",
+      ],
       signal_on_lag:
-        "Emit unsupported movement signal if this event attempts to open a governed obligation before contract promotion.",
+        "Fire when the subscription_deleted lifecycle event leaves an operationalize_subscription obligation open or blocked after Stripe has already terminated the subscription.",
       signal_on_failure:
-        "Emit contract breach signal if implementation logic mutates kernel truth for this movement outside the ratified contract.",
+        "Fire when deletion closure records a non-terminal or contradictory state against the canonical subscription object.",
       signal_on_unreceipted:
-        "Not applicable while deferred. The movement must be ignored or quarantined, not heuristically resolved.",
-      unsupported_or_deferred:
-        "Deferred. Cancellation and churn handling are not formalized enough for authoritative wedge support.",
+        "Fire when a subscription termination reaches its terminal obligation state but no governed receipt is linked.",
+      unsupported_or_deferred: null,
     },
     {
       movement_type: "charge_dispute_created",

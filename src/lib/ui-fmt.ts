@@ -18,6 +18,8 @@ export function fmtObligationType(kind: string | null | undefined): string {
   if (!kind) return "Unknown obligation";
 
   switch (kind) {
+    case "operationalize_subscription":
+      return "Subscription operationalization";
     case "activate_operator_access":
       return "Access activation";
     case "record_revenue":
@@ -35,6 +37,8 @@ export function fmtObligationType(kind: string | null | undefined): string {
 
 export function fmtResolutionAction(kind: string | null | undefined): string {
   switch (kind) {
+    case "operationalize_subscription":
+      return "Resolve subscription operationalization";
     case "activate_operator_access":
       return "Resolve access activation";
     case "record_revenue":

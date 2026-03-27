@@ -20,7 +20,12 @@ function firstString(...values: unknown[]) {
   return null;
 }
 
-function buildActivationSealMetadata(
+const SUBSCRIPTION_OPERATION_OBLIGATION_TYPES = new Set([
+  "operationalize_subscription",
+  "activate_operator_access",
+]);
+
+function buildSubscriptionSealMetadata(
   obligationId: string,
   objectId: string,
   workspaceId: string,
@@ -50,7 +55,15 @@ function buildActivationSealMetadata(
       obligationMetadata.stripe_invoice_id,
       objectMetadata.stripe_invoice_id,
     ),
+    checkout_session_id: firstString(
+      obligationMetadata.checkout_session_id,
+      objectMetadata.checkout_session_id,
+      obligationMetadata.stripe_checkout_session_id,
+      objectMetadata.stripe_checkout_session_id,
+    ),
     stripe_checkout_session_id: firstString(
+      obligationMetadata.checkout_session_id,
+      objectMetadata.checkout_session_id,
       obligationMetadata.stripe_checkout_session_id,
       objectMetadata.stripe_checkout_session_id,
     ),
@@ -79,6 +92,7 @@ function buildActivationSealMetadata(
     occurred_at: now,
     recorded_at: now,
     proof: {
+      subscription_operationalized: true,
       access_granted: true,
       return_surface: "/command",
     },
@@ -125,7 +139,10 @@ export async function POST(request: NextRequest) {
         : { surface: "command", action: "seal", workspace_id: defaultWorkspaceId };
     let reasonCode: string | undefined;
 
-    if (action !== "quote" && obligationRow.obligation_type === "activate_operator_access") {
+    if (
+      action !== "quote" &&
+      SUBSCRIPTION_OPERATION_OBLIGATION_TYPES.has(obligationRow.obligation_type)
+    ) {
       const { data: objectRow, error: objectErr } = await supabase
         .schema("core")
         .from("objects")
@@ -137,14 +154,14 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: objectErr.message }, { status: 500 });
       }
 
-      metadata = buildActivationSealMetadata(
+      metadata = buildSubscriptionSealMetadata(
         obligationId,
         obligationRow.object_id,
         defaultWorkspaceId,
         asRecord(obligationRow.metadata),
         asRecord(objectRow?.metadata),
       );
-      reasonCode = "access_activated";
+      reasonCode = "action_completed";
     }
 
     const result = await sealObligation(

@@ -128,7 +128,7 @@ Current repo truth to keep in mind:
 
 - [src/app/api/stripe/webhook/route.ts](C:/Users/chase kirk/autokirk-kernel/src/app/api/stripe/webhook/route.ts) verifies the Stripe event and calls canonical ingest.
 - [src/lib/stripe-canonical-ingest.ts](C:/Users/chase kirk/autokirk-kernel/src/lib/stripe-canonical-ingest.ts) writes through `api.ingest_stripe_event(...)`.
-- The canonical ingest path now projects paid `stripe.checkout.session.completed` events into an `operator_access_subscription` object plus an `activate_operator_access` obligation before the billing enforcement domain can go clear.
+- The canonical ingest path now projects paid `stripe.checkout.session.completed` events into a `subscription` object plus an `operationalize_subscription` obligation before the billing enforcement domain can go clear.
 
 That means this spot check is still not ceremonial. It is the live test for whether money movement becomes operational pressure and stays visible until closure is receipted.
 
