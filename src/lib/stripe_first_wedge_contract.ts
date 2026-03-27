@@ -126,7 +126,7 @@ export const stripe_first_wedge_contract = {
     {
       movement_type: "subscription_created",
       source_event: "stripe.customer.subscription.created",
-      object_class: "subscription",
+      object_class: "operator_access_subscription",
       object_identity_rule:
         "Would bind one governed object per workspace_id + stripe subscription id if promoted into formal support.",
       economic_ref_strategy:
@@ -151,7 +151,7 @@ export const stripe_first_wedge_contract = {
     {
       movement_type: "subscription_deleted",
       source_event: "stripe.customer.subscription.deleted",
-      object_class: "subscription",
+      object_class: "operator_access_subscription",
       object_identity_rule:
         "Would bind one governed object per workspace_id + stripe subscription id if promoted into formal support.",
       economic_ref_strategy:
