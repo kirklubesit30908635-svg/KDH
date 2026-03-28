@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { requireOperatorRouteContext } from "@/lib/operator-access";
-import { supportedStripeFirstWedgeObligationTypes } from "@/lib/stripe_first_wedge_contract";
 
 export async function GET() {
   const access = await requireOperatorRouteContext();
@@ -16,7 +15,6 @@ export async function GET() {
       .from("v_operator_next_actions")
       .select("*")
       .eq("workspace_id", defaultWorkspaceId)
-      .in("kind", supportedStripeFirstWedgeObligationTypes)
       .order("is_overdue", { ascending: false })
       .order("due_at", { ascending: true, nullsFirst: false })
       .order("sort_key", { ascending: false });
