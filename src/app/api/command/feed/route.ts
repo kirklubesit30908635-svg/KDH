@@ -10,14 +10,12 @@ export async function GET() {
 
   try {
     const { supabase, defaultWorkspaceId } = access.context;
-    const face = "billing";
 
     const query = supabase
       .schema("core")
       .from("v_operator_next_actions")
       .select("*")
       .eq("workspace_id", defaultWorkspaceId)
-      .eq("face", face)
       .in("kind", supportedStripeFirstWedgeObligationTypes)
       .order("is_overdue", { ascending: false })
       .order("due_at", { ascending: true, nullsFirst: false })
@@ -32,7 +30,6 @@ export async function GET() {
     return NextResponse.json({
       rows: data ?? [],
       workspace_id: defaultWorkspaceId,
-      face_filter: face ?? "all",
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
