@@ -123,6 +123,7 @@ export const stripe_first_wedge_contract = {
         "Fire when recover_payment leaves open state through a terminal resolution but no receipt is linked.",
       unsupported_or_deferred: null,
     },
+<<<<<<< HEAD
     {
       movement_type: "checkout_session_completed",
       source_event: "stripe.checkout.session.completed",
@@ -165,6 +166,12 @@ export const stripe_first_wedge_contract = {
       movement_type: "subscription_created",
       source_event: "stripe.customer.subscription.created",
       object_class: "subscription",
+=======
+    {
+      movement_type: "subscription_created",
+      source_event: "stripe.customer.subscription.created",
+      object_class: "operator_access_subscription",
+>>>>>>> 5fec8bede2089ae673c3dbde7d7eb9753985f585
       object_identity_rule:
         "Would bind one governed object per workspace_id + stripe subscription id if promoted into formal support.",
       economic_ref_strategy:
@@ -189,7 +196,7 @@ export const stripe_first_wedge_contract = {
     {
       movement_type: "subscription_deleted",
       source_event: "stripe.customer.subscription.deleted",
-      object_class: "subscription",
+      object_class: "operator_access_subscription",
       object_identity_rule:
         "Would bind one governed object per workspace_id + stripe subscription id if promoted into formal support.",
       economic_ref_strategy:
