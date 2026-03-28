@@ -7,6 +7,7 @@ import {
   Activity,
   Gauge,
   ReceiptText,
+  Settings,
 } from "lucide-react";
 
 const TONES = {
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/command", label: "Command", icon: Activity },
   { href: "/command/integrity", label: "Integrity", icon: Gauge },
   { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
+  { href: "/command/settings", label: "Settings", icon: Settings },
 ];
 
 function cx(...parts: Array<string | false | null | undefined>) {
