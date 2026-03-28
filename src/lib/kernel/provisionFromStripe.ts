@@ -1,12 +1,13 @@
 // src/lib/kernel/provisionFromStripe.ts
 // ============================================================
-// Customer Provisioning — Stripe → Kernel Bridge
+// Account Activation — Billing Source → Kernel Bridge
 // ============================================================
-// Called from the Stripe webhook handler when a subscription
-// event arrives. Extracts customer/email/subscription from the
-// Stripe event payload and calls the kernel provisioning RPC.
+// Called from the Stripe webhook handler when a billing event
+// confirms a paid account. Extracts billing account details
+// and calls the kernel activation RPC.
 //
-// This is the ONLY path for creating customer workspaces.
+// Stripe is the billing trigger. AutoKirk owns the activation path.
+// This is the ONLY path for creating operational workspaces.
 // ============================================================
 
 import type Stripe from "stripe";
@@ -96,7 +97,7 @@ export async function provisionFromStripe(
   try {
     const { data: result, error } = await supabaseAdmin
       .schema("api")
-      .rpc("provision_customer_workspace", {
+      .rpc("provision_account_workspace", {
         p_stripe_customer_id: data.stripeCustomerId,
         p_email: email,
         p_subscription_id: data.subscriptionId,
