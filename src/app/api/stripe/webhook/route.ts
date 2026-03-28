@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { ingestStripeEventCanonical } from "@/lib/stripe-canonical-ingest";
+import { provisionFromStripe } from "@/lib/kernel/provisionFromStripe";
 
 export const runtime = "nodejs";
+
+// Stripe event types that trigger customer provisioning
+const PROVISIONING_EVENTS = new Set([
+  "checkout.session.completed",
+  "customer.subscription.created",
+]);
 
 // ---------------------------------------------------------------------------
 // POST handler
@@ -17,7 +24,6 @@ export async function POST(req: NextRequest) {
 
   if (missing.length > 0) {
     console.error("[stripe-webhook] Missing env vars:", missing);
-    // Return 200 so Stripe stops retrying — config issue, not transient
     return NextResponse.json({ error: "config", missing }, { status: 200 });
   }
 
@@ -52,6 +58,25 @@ export async function POST(req: NextRequest) {
   try {
     const ingest = await ingestStripeEventCanonical(event);
 
+    // ----- PROVISIONING BRIDGE -----
+    // For subscription events, provision customer workspace.
+    // Non-fatal: ingest success is not gated on provisioning.
+    let provisionResult = null;
+    if (PROVISIONING_EVENTS.has(event.type)) {
+      try {
+        provisionResult = await provisionFromStripe(event);
+        if (!provisionResult.ok) {
+          console.error(
+            "[stripe-webhook] Provisioning failed (non-fatal):",
+            provisionResult.error
+          );
+        }
+      } catch (provErr: unknown) {
+        const provMsg = provErr instanceof Error ? provErr.message : String(provErr);
+        console.error("[stripe-webhook] Provisioning error (non-fatal):", provMsg);
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       type: event.type,
@@ -66,12 +91,17 @@ export async function POST(req: NextRequest) {
       seq: ingest.seq,
       hash: ingest.hash,
       ...(ingest.obligationId != null && { obligation_id: ingest.obligationId }),
+      ...(provisionResult != null && {
+        provisioning: {
+          action: provisionResult.action,
+          workspace_id: provisionResult.workspace_id,
+          tenant_id: provisionResult.tenant_id,
+        },
+      }),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[stripe-webhook] Unhandled error:", msg);
-    // Still return 200 — we verified the signature, so the event is real.
-    // Returning non-200 would cause Stripe to retry endlessly.
     return NextResponse.json({ ok: false, error: msg });
   }
 }
