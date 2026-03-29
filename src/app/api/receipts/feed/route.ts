@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   try {
     const { supabase, defaultWorkspaceId } = access.context;
     const { searchParams } = new URL(request.url);
-    const face = "billing";
+    const face = searchParams.get("face") ?? null;
     const limit = Number(searchParams.get("limit") ?? "0");
 
     let query = supabase
@@ -18,8 +18,11 @@ export async function GET(request: Request) {
       .from("v_recent_receipts")
       .select("*")
       .eq("workspace_id", defaultWorkspaceId)
-      .eq("face", face)
       .order("created_at", { ascending: false });
+
+    if (face) {
+      query = query.eq("face", face);
+    }
 
     if (Number.isFinite(limit) && limit > 0) {
       query = query.limit(limit);
