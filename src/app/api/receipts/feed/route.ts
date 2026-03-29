@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const { supabase, defaultWorkspaceId } = access.context;
+    const { supabase, defaultWorkspaceId, workspaceIds } = access.context;
     const { searchParams } = new URL(request.url);
     const face = searchParams.get("face") ?? null;
     const limit = Number(searchParams.get("limit") ?? "0");
@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       .schema("core")
       .from("v_recent_receipts")
       .select("*")
-      .eq("workspace_id", defaultWorkspaceId)
+      .in("workspace_id", workspaceIds)
       .order("created_at", { ascending: false });
 
     if (face) {
