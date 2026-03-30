@@ -16,10 +16,12 @@ This is a mixed application + database repository. The canonical database lives 
 - `tests` — app/runtime verification, including Stripe-first wedge coverage.
 - `fix_dealership_fn.sql` — quarantined legacy out-of-band SQL that still references `ak_kernel`. It is not part of canonical resetability and must not be applied to current kernel databases.
 
+**Project ID:** `autokirk-kernel` | **DB:** PostgreSQL v17 | **API:** 54321 | **DB port:** 54322 | **Studio:** 54323
+
 ## Commands
 
 ```bash
-# Start local Supabase stack (Postgres :54322, API :54321, Studio :54323)
+# Start local Supabase stack
 supabase start
 
 # Re-run the full migration chain from scratch
@@ -65,6 +67,42 @@ Reset success alone is not sufficient.
 ## Migration authority
 
 The live chain currently breaks into these eras:
+| File | Purpose |
+|------|---------|
+| `0001_extensions.sql` | `pgcrypto` extension |
+| `0002_schemas.sql` | Schema declarations + `ledger._deny_mutation` + `ledger.sha256_hex` |
+| `0003_identity.sql` | `core` tables (tenants, workspaces, departments, operators, memberships) + identity helpers |
+| `0004_registry.sql` | `registry` catalogues (event_types, receipt_types) + kernel seed rows |
+| `0005_ledger.sql` | `ledger` tables (chain_heads, events, receipt_heads, receipts) + chaining triggers |
+| `0006_api.sql` | `api.append_event` + `api.emit_receipt` SECURITY DEFINER RPCs |
+| `0007_rls.sql` | Full ACL: RLS enables, policies, REVOKE ALL, GRANT SELECT, REVOKE/GRANT EXECUTE |
+| `0008_intelligence.sql` | `knowledge` schema: findings, recommendations, simulations, memory patterns |
+| `0009_knowledge_refine.sql` | Consolidated evidence_refs, FTS indexes, materialized views, archival functions |
+| `0010_schema_reserve.sql` | Reserve `governance`, `receipts`, `signals` schemas |
+| `0011_registry_stripe.sql` | Stripe event type seed rows (18 types) |
+| `0012_core_provider_connections.sql` | `core.provider_connections` workspace-to-provider trust anchor |
+| `0013_ingest_stripe.sql` | `ingest.stripe_events` append-only envelope storage |
+| `0014_api_stripe_ingest.sql` | `api.ingest_stripe_event` SECURITY DEFINER RPC |
+| `0015_stripe_acl_rls.sql` | ACL hardening for Stripe objects |
+| `0016_membership_tenure.sql` | Tenure fields: `active_from`, `active_to`, `status` on memberships |
+| `0017_workspace_settings.sql` | `core.workspace_settings` key/value config table |
+| `0018_washbay_jobs.sql` | `core.washbay_jobs` job board persistence (deprecated; superseded by core.jobs) |
+| `0019_core_grants_and_operator_views.sql` | Service role grants + skeleton views (`v_receipts`, `v_next_actions`) |
+| `0020_obligations_and_receipts.sql` | `core.obligations` + `core.receipts` business-layer tables |
+| `0021_grant_authenticated_schema_usage.sql` | Fix: `GRANT USAGE ON SCHEMA core` to `authenticated` |
+| `0022_obligation_idempotency.sql` | `UNIQUE (idempotency_key)` partial index on obligations |
+| `0023_core_jobs.sql` | `core.jobs` projection table (write-protected, event-sourced view) |
+| `0024_extend_obligations_for_jobs.sql` | Job-domain columns on obligations (job_id, obligation_type, trigger/satisfaction FKs) |
+| `0025_api_washbay.sql` | Washbay API: full job lifecycle RPCs |
+| `0026_v_job_summary.sql` | `core.v_job_summary` flattened view with derived metrics |
+| `0027_registry_job_domain.sql` | Job domain event/receipt type seed rows |
+| `0100_ingest.sql` | `ingest.raw_events` + `ingest.trusted_events` staging tables + ACL |
+| `20260307223333_governance_rule_sets.sql` | `governance.rule_sets` + `governance.rule_versions` catalogues |
+| `20260307223659_signals_runtime.sql` | `signals` runtime: detectors, bindings, runs, signal_instances |
+| `20260307224145_signals_indexes.sql` | Additional signals indexes |
+| `20260307224404_api_run_signal_detector.sql` | `api.run_signal_detector` SECURITY DEFINER RPC |
+
+`fix_dealership_fn.sql` in the repo root is a **deprecated** out-of-band fixup script for an external `dealership` schema referencing the legacy `ak_kernel` name. Do **not** apply it — the referenced tables no longer exist.
 
 - `0001`–`0007` — kernel bootstrap: extensions, schemas, identity, registry, ledger, canonical API write surface, and baseline ACL/RLS
 - `0008`–`0031` — knowledge, Stripe ingest, jobs/obligations, economic refs, and tenant hierarchy work
@@ -79,12 +117,6 @@ Important authority notes:
 
 ## Canonical live DB surfaces
 
-- `api.append_event(...)` and `api.emit_receipt(...)` remain the canonical ledger writers.
-- Canonical Stripe ingest is `api.ingest_stripe_event(text, text, text, boolean, text, timestamptz, jsonb)`.
-- Governed operator mutations use `api.command_touch_obligation(...)` and `api.command_resolve_obligation(...)`.
-- Receipt proof reconciliation uses `api.reconcile_obligation_proof(...)` and `api.link_receipt_to_obligation(...)`.
-- Operator-facing reads come from `core.v_operator_next_actions`, `core.v_recent_receipts`, `core.v_stripe_first_wedge_integrity_summary`, and compatibility aliases in `core`.
-
 ## Architecture
 
 ### Multi-tenancy model
@@ -94,6 +126,28 @@ Important authority notes:
 ### Hash-chained append-only ledger
 
 `ledger.events` and `ledger.receipts` are immutable chains. `ledger._events_before_insert` and `ledger._receipts_before_insert` assign `seq`, `prev_hash`, and `hash` while advancing mutable head pointers under lock. `_deny_mutation` blocks direct UPDATE/DELETE on append-only tables.
+```
+core.tenants (id, slug, name)
+  └── core.workspaces (id, tenant_id, slug, name)
+        ├── core.departments (id, workspace_id, slug, name)
+        └── core.memberships (id, operator_id, workspace_id, role, status, active_from, active_to)
+              └── core.operators (id, auth_uid, handle)
+```
+
+Roles: `owner / admin / member / viewer`.
+
+**Membership tenure** (0016): `status ∈ {active, suspended, revoked, expired}`. Validity window: `active_from ≤ now()` AND `(active_to IS NULL OR active_to > now())`. All RLS policies that call `core.is_member()` inherit this enforcement.
+
+### Hash-chained append-only ledger
+
+`ledger.events` and `ledger.receipts` are immutable chains. Each row is assigned `seq`, `prev_hash`, and `hash` by a BEFORE INSERT trigger.
+
+**Hash formula:** `sha256(prev_hash || seq || workspace_id || chain_key || event_type_id || payload)`
+
+- The trigger locks `ledger.chain_heads` / `ledger.receipt_heads` with `FOR UPDATE` for atomicity.
+- `ledger._deny_mutation()` trigger blocks UPDATE/DELETE on all append-only tables.
+- Idempotency is workspace-scoped: duplicate `idempotency_key` within the same workspace is silently suppressed (trigger returns early, INSERT never fires).
+- Both tables have `UNIQUE (workspace_id, chain_key, seq)` to prevent seq reuse.
 
 ### Founder-console obligation model
 
