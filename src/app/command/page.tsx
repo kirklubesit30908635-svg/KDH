@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { OperatorAutopilotPanel } from "@/components/operator-autopilot-panel";
+import { OperatorSummaryPanel } from "@/components/operator-summary-panel";
+import { fetchOperatorAutopilot } from "@/lib/operator-autopilot-client";
+import type { OperatorAutopilot } from "@/lib/operator-autopilot";
+import { fetchOperatorSummary } from "@/lib/operator-summary-client";
+import type { OperatorSummary } from "@/lib/operator-summary";
 import type { NextActionRow } from "@/lib/ui-models";
 import { fmtDue, fmtObligationType, fmtResolutionAction, safeStr } from "@/lib/ui-fmt";
 import { AkBadge, AkButton, AkPanel, AkSectionHeader, AkShell } from "@/components/ak/ak-ui";
@@ -36,6 +42,8 @@ function riskTone(row: NextActionRow): "danger" | "gold" | "muted" {
 
 export default function CommandPage() {
   const [rows, setRows] = useState<NextActionRow[]>([]);
+  const [summary, setSummary] = useState<OperatorSummary | null>(null);
+  const [autopilot, setAutopilot] = useState<OperatorAutopilot | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [authLocked, setAuthLocked] = useState(false);
@@ -47,10 +55,32 @@ export default function CommandPage() {
     setErr(null);
     setAuthLocked(false);
     try {
-      const res = await fetch("/api/command/feed", { cache: "no-store" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new ApiError(res.status, j.error ?? `HTTP ${res.status}`);
+      const [summaryRes, autopilotRes, queueRes] = await Promise.allSettled([
+        fetchOperatorSummary(),
+        fetchOperatorAutopilot(),
+        fetch("/api/command/feed", { cache: "no-store" }),
+      ]);
+
+      if (summaryRes.status === "fulfilled") {
+        setSummary(summaryRes.value);
+        setAuthLocked(summaryRes.value.live_state_health === "access_required");
+      } else {
+        setSummary(null);
+      }
+
+      if (autopilotRes.status === "fulfilled") {
+        setAutopilot(autopilotRes.value);
+      } else {
+        setAutopilot(null);
+      }
+
+      if (queueRes.status === "rejected") {
+        throw queueRes.reason;
+      }
+
+      const j = await queueRes.value.json().catch(() => ({}));
+      if (!queueRes.value.ok) {
+        throw new ApiError(queueRes.value.status, j.error ?? `HTTP ${queueRes.value.status}`);
       }
       setRows((j.rows ?? []) as NextActionRow[]);
     } catch (e) {
@@ -61,6 +91,7 @@ export default function CommandPage() {
         setErr(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
       }
       setRows([]);
+      setAutopilot(null);
     }
     setLoading(false);
   }, []);
@@ -68,20 +99,6 @@ export default function CommandPage() {
   useEffect(() => {
     void loadData();
   }, [loadData]);
-
-  const counts = useMemo(() => {
-    const late = rows.filter((row) => row.is_breach).length;
-    const atRisk = rows.filter(
-      (row) => !row.is_breach && (row.severity === "critical" || row.severity === "at_risk"),
-    ).length;
-    const dueSoon = rows.filter((row) => row.severity === "due_today").length;
-    return {
-      total: rows.length,
-      late,
-      atRisk,
-      dueSoon,
-    };
-  }, [rows]);
 
   async function handleSeal(row: NextActionRow) {
     setActingId(row.obligation_id);
@@ -101,6 +118,7 @@ export default function CommandPage() {
           label: fmtResolutionAction(row.kind),
         });
         setRows((prev) => prev.filter((item) => item.obligation_id !== row.obligation_id));
+        await loadData();
       }
     } catch (e) {
       alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -115,38 +133,21 @@ export default function CommandPage() {
       subtitle="Resolve governed revenue obligations in the billing enforcement domain. Nothing is complete until closure emits a receipt."
       eyebrow="Billing Enforcement Domain"
     >
-      <div className="grid gap-4 md:grid-cols-4">
-        <AkPanel className="p-5">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Needs action</div>
-          <div className="mt-3 text-3xl font-semibold text-white">{counts.total}</div>
-          <div className="mt-2 text-sm text-slate-400">Live governed obligations in the billing enforcement domain.</div>
-        </AkPanel>
-        <AkPanel className="p-5">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Late</div>
-          <div className="mt-3 text-3xl font-semibold text-rose-200">{counts.late}</div>
-          <div className="mt-2 text-sm text-slate-400">Open obligations already past due.</div>
-        </AkPanel>
-        <AkPanel className="p-5">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">At risk</div>
-          <div className="mt-3 text-3xl font-semibold text-amber-100">{counts.atRisk}</div>
-          <div className="mt-2 text-sm text-slate-400">Critical or at-risk items not yet late.</div>
-        </AkPanel>
-        <AkPanel className="p-5">
-          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Proved</div>
-          <div className="mt-3 text-lg font-semibold text-white">Closure proof</div>
-          <div className="mt-2 text-sm text-slate-400">Resolved work is only real when its receipt is visible in the proof layer.</div>
-          <Link href="/command/receipts" className="mt-4 inline-flex text-sm text-cyan-100 transition hover:text-white">
-            Open proof layer →
-          </Link>
-        </AkPanel>
-      </div>
+      {summary ? <OperatorSummaryPanel summary={summary} /> : null}
+      {autopilot ? <OperatorAutopilotPanel autopilot={autopilot} /> : null}
 
-      <div className="flex items-center justify-between gap-3">
-        <AkSectionHeader label="Billing queue" count={rows.length} />
-        <button onClick={() => void loadData()} className="text-sm text-slate-400 transition hover:text-white">
-          Refresh
-        </button>
-      </div>
+      <AkSectionHeader
+        label="Billing queue"
+        count={summary?.needs_action_count ?? rows.length}
+        right={
+          <button
+            onClick={() => void loadData()}
+            className="text-sm text-slate-400 transition hover:text-white"
+          >
+            Refresh
+          </button>
+        }
+      />
 
       {loading && (
         <div className="flex items-center gap-3 text-sm text-white/35">
@@ -193,9 +194,16 @@ export default function CommandPage() {
 
       {!loading && !err && !authLocked && rows.length === 0 && (
         <AkPanel className="p-10 text-center">
-          <div className="mb-3 text-4xl">✓</div>
-          <div className="mb-1 text-base font-extrabold text-white">Billing domain clear</div>
-          <div className="text-sm text-white/35">No open billing enforcement obligations require action right now.</div>
+          <div className="mb-3 text-4xl text-white/20">◎</div>
+          <div className="mb-1 text-base font-extrabold text-white">
+            {summary?.live_state_health === "idle" ? "No open obligations" : "No queue rows visible"}
+          </div>
+          <div className="text-sm text-white/35">
+            {summary?.status_message ?? "The authoritative summary could not be loaded."}
+          </div>
+          <Link href="/command/receipts" className="mt-4 inline-flex text-sm text-cyan-100 transition hover:text-white">
+            Open proof layer →
+          </Link>
         </AkPanel>
       )}
 

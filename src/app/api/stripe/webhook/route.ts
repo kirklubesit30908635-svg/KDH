@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { ingestStripeEventCanonical } from "@/lib/stripe-canonical-ingest";
 import { provisionFromStripe } from "@/lib/kernel/provisionFromStripe";
+import {
+  resolvePaymentIntentObligation,
+  type PaymentResolutionResult,
+} from "@/lib/stripe-payment-resolution";
 
 export const runtime = "nodejs";
 
@@ -57,6 +61,14 @@ export async function POST(req: NextRequest) {
   // ---- From here on, always return 200 so Stripe doesn't endlessly retry ----
   try {
     const ingest = await ingestStripeEventCanonical(event);
+    let paymentResolution: PaymentResolutionResult | null = null;
+
+    try {
+      paymentResolution = await resolvePaymentIntentObligation(event, stripe);
+    } catch (paymentErr: unknown) {
+      const paymentMsg = paymentErr instanceof Error ? paymentErr.message : String(paymentErr);
+      console.error("[stripe-webhook] Payment resolution error (non-fatal):", paymentMsg);
+    }
 
     // ----- PROVISIONING BRIDGE -----
     // For subscription events, provision customer workspace.
@@ -91,6 +103,8 @@ export async function POST(req: NextRequest) {
       seq: ingest.seq,
       hash: ingest.hash,
       ...(ingest.obligationId != null && { obligation_id: ingest.obligationId }),
+      ...(paymentResolution &&
+        paymentResolution.status !== "not_applicable" && { payment_resolution: paymentResolution }),
       ...(provisionResult != null && {
         provisioning: {
           action: provisionResult.action,

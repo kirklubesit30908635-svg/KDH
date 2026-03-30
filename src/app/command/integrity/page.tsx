@@ -3,6 +3,15 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AkShell, AkPanel, AkSectionHeader } from "@/components/ak/ak-ui";
+import { OperatorWatchdogPanel } from "@/components/operator-watchdog-panel";
+import { OperatorSummaryPanel } from "@/components/operator-summary-panel";
+import {
+  fetchOperatorWatchdog,
+  runOperatorWatchdog,
+} from "@/lib/operator-watchdog-client";
+import type { OperatorWatchdog } from "@/lib/operator-watchdog";
+import { fetchOperatorSummary } from "@/lib/operator-summary-client";
+import type { OperatorSummary } from "@/lib/operator-summary";
 
 // --- Types --------------------------------------------------------------------
 
@@ -54,7 +63,7 @@ interface IntegrityStats {
 type SignalLevel = "clean" | "warn" | "critical";
 interface Signal { level: SignalLevel; message: string }
 
-function buildSignals(s: IntegrityStats): Signal[] {
+function buildSignals(s: IntegrityStats, summary: OperatorSummary | null): Signal[] {
   const out: Signal[] = [];
 
   if (s.proof_lag > 0) {
@@ -96,7 +105,17 @@ function buildSignals(s: IntegrityStats): Signal[] {
   }
 
   if (out.length === 0) {
-    out.push({ level: "clean", message: "All signals clear -- governance operating cleanly" });
+    if (!summary) {
+      out.push({ level: "warn", message: "Operator summary unavailable. Do not treat this surface as clear." });
+    } else if (summary.live_state_health === "idle") {
+      out.push({ level: "clean", message: "No open obligations, no proof lag, and no recent proof activity." });
+    } else if (summary.live_state_health === "proof_active") {
+      out.push({ level: "warn", message: summary.status_message });
+    } else if (summary.live_state_health === "degraded" || summary.live_state_health === "unavailable") {
+      out.push({ level: "critical", message: summary.status_message });
+    } else {
+      out.push({ level: "warn", message: summary.status_message });
+    }
   }
 
   return out;
@@ -105,8 +124,8 @@ function buildSignals(s: IntegrityStats): Signal[] {
 // --- Helpers ------------------------------------------------------------------
 
 function scoreGrade(s: number) {
-  if (s >= 90) return { grade: "A", label: "GOVERNANCE CLEAN",          color: "#22c55e" };
-  if (s >= 80) return { grade: "B", label: "OPERATING WITHIN BOUNDS",   color: "#60a5fa" };
+  if (s >= 90) return { grade: "A", label: "HIGH INTEGRITY SCORE",       color: "#22c55e" };
+  if (s >= 80) return { grade: "B", label: "STABLE INTEGRITY",           color: "#60a5fa" };
   if (s >= 70) return { grade: "C", label: "WATCH -- REVIEW REQUIRED",   color: "#f59e0b" };
   if (s >= 60) return { grade: "D", label: "AT RISK -- ACTION REQUIRED", color: "#f97316" };
   return              { grade: "F", label: "CRITICAL -- SYSTEM AT RISK",  color: "#ef4444" };
@@ -245,31 +264,87 @@ function BreakdownRow({
 // --- Page ---------------------------------------------------------------------
 
 export default function IntegrityPage() {
+  const [summary, setSummary] = useState<OperatorSummary | null>(null);
+  const [watchdog, setWatchdog] = useState<OperatorWatchdog | null>(null);
   const [stats,   setStats]   = useState<IntegrityStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [runningWatchdog, setRunningWatchdog] = useState(false);
   const [err,     setErr]     = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     setLoading(true);
     setErr(null);
-    try {
-      const res = await fetch("/api/integrity/stats");
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? `HTTP ${res.status}`);
-      }
-      setStats(await res.json());
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
+    const [summaryRes, watchdogRes, statsRes] = await Promise.allSettled([
+      fetchOperatorSummary(),
+      fetchOperatorWatchdog(),
+      fetch("/api/integrity/stats", { cache: "no-store" }),
+    ]);
+
+    if (summaryRes.status === "fulfilled") {
+      setSummary(summaryRes.value);
+    } else {
+      setSummary(null);
     }
+
+    if (watchdogRes.status === "fulfilled") {
+      setWatchdog(watchdogRes.value);
+    } else {
+      setWatchdog(null);
+    }
+
+    if (statsRes.status === "rejected") {
+      setStats(null);
+      setErr(statsRes.reason instanceof Error ? statsRes.reason.message : String(statsRes.reason));
+      setLoading(false);
+      return;
+    }
+
+    const res = statsRes.value;
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      const message = j && typeof j === "object" && "error" in j && typeof j.error === "string" ? j.error : `HTTP ${res.status}`;
+      setStats(null);
+      if (!(summaryRes.status === "fulfilled" && summaryRes.value.live_state_health === "access_required" && res.status === 401)) {
+        setErr(message);
+      }
+      setLoading(false);
+      return;
+    }
+
+    setStats(await res.json());
+    setLoading(false);
   }, []);
 
-  useEffect(() => { loadStats(); }, [loadStats]);
+  const handleRunWatchdog = useCallback(async () => {
+    setRunningWatchdog(true);
+    try {
+      const run = await runOperatorWatchdog();
+      await loadStats();
+      setWatchdog((current) =>
+        current
+          ? {
+              ...current,
+              run,
+            }
+          : current,
+      );
+    } catch (error) {
+      setErr(error instanceof Error ? error.message : String(error));
+    } finally {
+      setRunningWatchdog(false);
+    }
+  }, [loadStats]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadStats();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadStats]);
 
   const scoreInfo = stats ? scoreGrade(stats.integrity_score) : null;
-  const signals   = stats ? buildSignals(stats) : [];
+  const signals   = stats ? buildSignals(stats, summary) : [];
 
   return (
     <AkShell
@@ -293,6 +368,16 @@ export default function IntegrityPage() {
           <div className="text-sm text-white/70">{err}</div>
           <button onClick={loadStats} className="mt-4 text-xs font-bold text-white/40 hover:text-white/80 transition">{"Retry \u2192"}</button>
         </AkPanel>
+      )}
+
+      {!loading && summary && <OperatorSummaryPanel summary={summary} className="mb-6" />}
+      {!loading && watchdog && (
+        <OperatorWatchdogPanel
+          watchdog={watchdog}
+          running={runningWatchdog}
+          onRun={() => void handleRunWatchdog()}
+          className="mb-6"
+        />
       )}
 
       {!loading && !err && stats && scoreInfo && (

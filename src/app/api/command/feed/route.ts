@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireOperatorRouteContext } from "@/lib/operator-access";
+import { loadOperatorQueueRows } from "@/lib/operator-queue";
 
 export async function GET() {
   const access = await requireOperatorRouteContext();
@@ -8,26 +9,12 @@ export async function GET() {
   }
 
   try {
-    const { supabase, defaultWorkspaceId } = access.context;
-
-    const query = supabase
-      .schema("core")
-      .from("v_operator_next_actions")
-      .select("*")
-      .eq("workspace_id", defaultWorkspaceId)
-      .order("is_overdue", { ascending: false })
-      .order("due_at", { ascending: true, nullsFirst: false })
-      .order("sort_key", { ascending: false });
-
-    const { data, error } = await query;
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
+    const { workspaceIds } = access.context;
+    const rows = await loadOperatorQueueRows(access.context);
 
     return NextResponse.json({
-      rows: data ?? [],
-      workspace_id: defaultWorkspaceId,
+      rows,
+      workspace_ids: workspaceIds,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";

@@ -150,8 +150,8 @@ test("classifyStripeFirstWedgeSourceEvent: completely random event is unsupporte
 
 // ── derived export lists ──────────────────────────────────────────────────────
 
-test("supportedStripeFirstWedgeRows: contains exactly 4 supported rows", () => {
-  assert.equal(supportedStripeFirstWedgeRows.length, 4);
+test("supportedStripeFirstWedgeRows: contains exactly 5 supported rows", () => {
+  assert.equal(supportedStripeFirstWedgeRows.length, 5);
 });
 
 test("supportedStripeFirstWedgeRows: all rows have null unsupported_or_deferred", () => {
@@ -190,8 +190,8 @@ test("deferredStripeFirstWedgeRows: all rows have non-null unsupported_or_deferr
   }
 });
 
-test("supportedStripeFirstWedgeSourceEvents: contains 4 source events", () => {
-  assert.equal(supportedStripeFirstWedgeSourceEvents.length, 4);
+test("supportedStripeFirstWedgeSourceEvents: contains 5 source events", () => {
+  assert.equal(supportedStripeFirstWedgeSourceEvents.length, 5);
 });
 
 test("supportedStripeFirstWedgeSourceEvents: contains stripe.invoice.paid", () => {
@@ -202,8 +202,8 @@ test("supportedStripeFirstWedgeSourceEvents: contains stripe.charge.dispute.crea
   assert.ok(supportedStripeFirstWedgeSourceEvents.includes("stripe.charge.dispute.created"));
 });
 
-test("supportedOrDeferredStripeFirstWedgeSourceEvents: has 6 total events", () => {
-  assert.equal(supportedOrDeferredStripeFirstWedgeSourceEvents.length, 6);
+test("supportedOrDeferredStripeFirstWedgeSourceEvents: has 7 total events", () => {
+  assert.equal(supportedOrDeferredStripeFirstWedgeSourceEvents.length, 7);
 });
 
 test("supportedOrDeferredStripeFirstWedgeSourceEvents: includes deferred events", () => {
@@ -280,8 +280,8 @@ test("stripStripeSourcePrefix: does not strip embedded stripe. occurrences", () 
 
 // ── stripe_first_wedge_contract structure ────────────────────────────────────
 
-test("stripe_first_wedge_contract: has 6 contract rows total", () => {
-  assert.equal(stripe_first_wedge_contract.contract_rows.length, 6);
+test("stripe_first_wedge_contract: has 7 contract rows total", () => {
+  assert.equal(stripe_first_wedge_contract.contract_rows.length, 7);
 });
 
 test("stripe_first_wedge_contract: every row has required_receipt_type", () => {

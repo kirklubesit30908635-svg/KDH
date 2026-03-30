@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fmtFace, fmtDue, safeStr } from "../src/lib/ui-fmt";
+import {
+  fmtDue,
+  fmtFace,
+  fmtReceiptLabel,
+  fmtReceiptReasonCode,
+  fmtReceiptSummary,
+  readReceiptMetadata,
+  safeStr,
+} from "../src/lib/ui-fmt";
 
 // ── fmtFace ───────────────────────────────────────────────────────────────────
 
@@ -134,4 +142,98 @@ test("safeStr: object is converted to [object Object]", () => {
 
 test("safeStr: array is converted to comma-separated string", () => {
   assert.equal(safeStr([1, 2, 3]), "1,2,3");
+});
+
+// ── receipt labeling ──────────────────────────────────────────────────────────
+
+test("fmtReceiptLabel prefers payload.metadata.proof_kind", () => {
+  assert.equal(
+    fmtReceiptLabel({
+      payload: { metadata: { proof_kind: "github_invoice_receipt", action: "sealed" } },
+      face: "billing",
+      receiptType: "commit",
+    }),
+    "github_invoice_receipt",
+  );
+});
+
+test("fmtReceiptLabel falls back to payload.payload.metadata.action", () => {
+  assert.equal(
+    fmtReceiptLabel({
+      payload: { payload: { metadata: { action: "action_completed" } } },
+      face: "unknown",
+      receiptType: "commit",
+    }),
+    "action_completed",
+  );
+});
+
+test("fmtReceiptLabel falls back to face when face is meaningful", () => {
+  assert.equal(
+    fmtReceiptLabel({
+      payload: {},
+      face: "builder_operating_costs",
+      receiptType: "commit",
+    }),
+    "builder_operating_costs",
+  );
+});
+
+test("fmtReceiptLabel falls back to receipt_type when metadata and face are absent", () => {
+  assert.equal(
+    fmtReceiptLabel({
+      payload: {},
+      face: "unknown",
+      receiptType: "commit",
+    }),
+    "commit",
+  );
+});
+
+test("fmtReceiptSummary prefers payload.metadata.insight", () => {
+  assert.equal(
+    fmtReceiptSummary({
+      metadata: { insight: "OpenAI invoice and receipt linked" },
+      reason_code: "action_completed",
+    }),
+    "OpenAI invoice and receipt linked",
+  );
+});
+
+test("fmtReceiptSummary falls back to reason_code", () => {
+  assert.equal(
+    fmtReceiptSummary({
+      payload: { reason_code: "action_completed" },
+    }),
+    "action_completed",
+  );
+});
+
+test("fmtReceiptReasonCode reads top-level and nested payload reason codes", () => {
+  assert.equal(fmtReceiptReasonCode({ reason_code: "top_level_reason" }), "top_level_reason");
+  assert.equal(
+    fmtReceiptReasonCode({ payload: { reason_code: "nested_reason" } }),
+    "nested_reason",
+  );
+});
+
+test("readReceiptMetadata exposes proof kind, action, insight, and reason code", () => {
+  assert.deepEqual(
+    readReceiptMetadata({
+      payload: {
+        metadata: {
+          proof_kind: "vercel_invoice",
+          action: "action_completed",
+          insight: "Vercel invoice proof recorded",
+        },
+        reason_code: "action_completed",
+      },
+    }),
+    {
+      proofKind: "vercel_invoice",
+      action: "action_completed",
+      insight: "Vercel invoice proof recorded",
+      reasonCode: "action_completed",
+    },
+  );
 });

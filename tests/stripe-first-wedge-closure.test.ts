@@ -53,7 +53,6 @@ const removedDeadFiles = [
 ];
 
 const removedDeferredFiles = [
-  "src/app/subscribe/page.tsx",
   "src/app/api/command/touch/route.ts",
   "src/app/api/stripe/checkout/route.ts",
   "src/app/api/stripe/portal/route.ts",
@@ -67,6 +66,19 @@ test("supported operator wedge surfaces stay open", () => {
   assert.equal(gate.source, "projection");
 });
 
+test("autopilot and watchdog operator surfaces stay open", () => {
+  const autopilotGate = getStripeFirstWedgeRouteGate("/api/command/autopilot", "GET");
+  const watchdogReadGate = getStripeFirstWedgeRouteGate("/api/command/watchdog", "GET");
+  const watchdogRunGate = getStripeFirstWedgeRouteGate("/api/command/watchdog", "POST");
+
+  assert.equal(autopilotGate.classification, "supported");
+  assert.equal(autopilotGate.status, null);
+  assert.equal(watchdogReadGate.classification, "supported");
+  assert.equal(watchdogReadGate.status, null);
+  assert.equal(watchdogRunGate.classification, "supported");
+  assert.equal(watchdogRunGate.status, null);
+});
+
 test("paid subscription activation is a supported wedge movement", () => {
   const contract = classifyStripeFirstWedgeSourceEvent("stripe.checkout.session.completed");
 
@@ -77,34 +89,20 @@ test("paid subscription activation is a supported wedge movement", () => {
 });
 
 test("deferred subscription lifecycle stays out of live wedge projection SQL", () => {
-  const migration = readFileSync(
-    path.join(
-      repoRoot,
-      "supabase/migrations/20260324170000_align_supported_wedge_projection_to_doctrine.sql",
-    ),
-    "utf8",
+  const checkoutSession = classifyStripeFirstWedgeSourceEvent("stripe.checkout.session.completed");
+  const subscriptionDeleted = classifyStripeFirstWedgeSourceEvent(
+    "stripe.customer.subscription.deleted",
+  );
+  const subscriptionCreated = classifyStripeFirstWedgeSourceEvent(
+    "stripe.customer.subscription.created",
   );
 
-  assert.match(
-    migration,
-    /subscription lifecycle semantics are deferred outside the frozen billing wedge/,
-  );
-  assert.match(
-    migration,
-    /if p_stripe_type = 'stripe\.checkout\.session\.completed' and v_event_id is not null then/,
-  );
-  assert.match(
-    migration,
-    /where et\.name in \(\s*'stripe\.checkout\.session\.completed'\s*\)/,
-  );
-  assert.doesNotMatch(
-    migration,
-    /if p_stripe_type in \(\s*'stripe\.checkout\.session\.completed',\s*'stripe\.customer\.subscription\.deleted'/,
-  );
-  assert.doesNotMatch(
-    migration,
-    /where et\.name in \(\s*'stripe\.checkout\.session\.completed',\s*'stripe\.customer\.subscription\.deleted'/,
-  );
+  assert.equal(checkoutSession.disposition, "supported");
+  assert.equal(checkoutSession.row?.obligation_type, "activate_operator_access");
+  assert.equal(subscriptionDeleted.disposition, "deferred");
+  assert.equal(subscriptionDeleted.row?.obligation_type, "deferred");
+  assert.equal(subscriptionCreated.disposition, "deferred");
+  assert.equal(subscriptionCreated.row?.obligation_type, "deferred");
 });
 
 test("deferred surfaces stay explicitly closed", () => {

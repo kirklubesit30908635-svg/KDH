@@ -238,8 +238,8 @@ test("provisionFromStripe handles customer.subscription.created", () => {
 test("provisionFromStripe uses schema-qualified RPC call", () => {
   assert.ok(
     provisionTs.includes('.schema("api")') &&
-    provisionTs.includes('.rpc("provision_customer_workspace"'),
-    "Should call api.provision_customer_workspace via schema-qualified path"
+    provisionTs.includes('.rpc("provision_account_workspace"'),
+    "Should call api.provision_account_workspace via schema-qualified path"
   );
 });
 

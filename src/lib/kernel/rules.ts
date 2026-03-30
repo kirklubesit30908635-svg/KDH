@@ -28,7 +28,6 @@ export const CLASS_RULES = {
       "review_plan",
       "justify_spend",
       "downgrade_unused",
-<<<<<<< HEAD
       "confirm_dependency",
     ],
   },
@@ -40,23 +39,6 @@ export const CLASS_RULES = {
   job: {
     allowedPostures: ["direct_revenue", "cost_exposure"],
     defaultObligation: "schedule_job",
-=======
-      "confirm_dependency",
-    ],
-  },
-  operator_access_subscription: {
-    allowedPostures: ["direct_revenue"],
-    defaultObligation: "operationalize_subscription",
-    allowedObligations: [
-      "operationalize_subscription",
-      "activate_subscription",
-      "handle_churn",
-    ],
-  },
-  job: {
-    allowedPostures: ["direct_revenue", "cost_exposure"],
-    defaultObligation: "schedule_job",
->>>>>>> 5fec8bede2089ae673c3dbde7d7eb9753985f585
     allowedObligations: ["schedule_job", "complete_job", "review_cost"],
   },
   campaign: {

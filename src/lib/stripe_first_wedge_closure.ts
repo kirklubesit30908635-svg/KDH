@@ -27,7 +27,7 @@ type WedgeProjection = {
   reason: string;
 };
 
-const mutationPaths = [
+const mutationPaths: WedgeMutationPath[] = [
   {
     path: "/auth/callback",
     method: "GET",
@@ -45,6 +45,12 @@ const mutationPaths = [
     method: "POST",
     classification: "supported",
     reason: "The only live operator mutation path for wedge obligation resolution.",
+  },
+  {
+    path: "/api/command/watchdog",
+    method: "POST",
+    classification: "supported",
+    reason: "Governed watchdog evaluation path for live operator pressure and escalation signaling.",
   },
   {
     path: "/api/command/touch",
@@ -130,9 +136,9 @@ const mutationPaths = [
     classification: "dead",
     reason: "Washbay mutations are unrelated to the frozen Stripe billing wedge.",
   },
-] satisfies WedgeMutationPath[];
+];
 
-const operatorProjections = [
+const operatorProjections: WedgeProjection[] = [
   {
     path: "/",
     kind: "page",
@@ -170,6 +176,18 @@ const operatorProjections = [
     reason: "Supported queue projection for live billing wedge obligations.",
   },
   {
+    path: "/api/command/autopilot",
+    kind: "api",
+    classification: "supported",
+    reason: "Supported recommendation projection built from the governed queue and summary contract.",
+  },
+  {
+    path: "/api/command/watchdog",
+    kind: "api",
+    classification: "supported",
+    reason: "Supported watchdog projection for governed operator pressure and drift signals.",
+  },
+  {
     path: "/api/receipts/feed",
     kind: "api",
     classification: "supported",
@@ -202,8 +220,8 @@ const operatorProjections = [
   {
     path: "/subscribe",
     kind: "page",
-    classification: "deferred",
-    reason: "Subscription and access setup are outside the frozen Stripe billing operator wedge.",
+    classification: "supported",
+    reason: "Subscription entry point for new operators — Stripe Checkout flow into the governed operator wedge.",
   },
   {
     path: "/reset-password",
@@ -343,14 +361,14 @@ const operatorProjections = [
     classification: "dead",
     reason: "Generic signal aggregation is internal residue and not part of the paying-operator wedge contract.",
   },
-] satisfies WedgeProjection[];
+];
 
 export const stripe_first_wedge_closure = {
   name: "stripe_first_wedge_closure",
   wedge: "Frozen Stripe billing movement-to-receipt deployment boundary.",
   mutation_paths: mutationPaths,
   operator_projections: operatorProjections,
-} as const;
+};
 
 export const remainingStripeFirstWedgeLegacyReadonlyPaths =
   stripe_first_wedge_closure.operator_projections.filter(

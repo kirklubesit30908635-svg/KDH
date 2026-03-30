@@ -62,42 +62,68 @@ export function safeStr(v: unknown): string {
   return String(v);
 }
 
-const OBLIGATION_TYPE_LABELS: Record<string, string> = {
-  record_revenue: "Record Revenue",
-  recover_payment: "Recover Payment",
-  respond_to_dispute: "Respond to Dispute",
-  process_refund: "Process Refund",
-  collect_payment: "Collect Payment",
-  collect_invoice: "Collect Invoice",
-  review_invoice: "Review Invoice",
-  review_invoice_update: "Review Invoice Update",
-  track_finalized_invoice: "Track Finalized Invoice",
-  write_off_review: "Write-Off Review",
-  fund_active_period: "Fund Active Period",
-  justify_spend: "Justify Spend",
-  follow_up: "Follow Up",
-  qualify: "Qualify",
-  close_lost: "Close Lost",
-  review_plan: "Review Plan",
-  downgrade_unused: "Downgrade Unused",
-  confirm_dependency: "Confirm Dependency",
-  schedule_job: "Schedule Job",
-  complete_job: "Complete Job",
-  review_cost: "Review Cost",
-  track_campaign: "Track Campaign",
-  evaluate_roi: "Evaluate ROI",
-  complete_inspection: "Complete Inspection",
-  review_findings: "Review Findings",
-  reconcile_payment: "Reconcile Payment",
-  confirm_checkout: "Confirm Checkout",
-  confirm_charge: "Confirm Charge",
-  confirm_payment_intent: "Confirm Payment Intent",
-  activate_subscription: "Activate Subscription",
-  review_subscription_change: "Review Subscription Change",
-  handle_churn: "Handle Churn",
-  recover_failed_payment: "Recover Failed Payment",
-  investigate_payment: "Investigate Payment",
-  respond: "Respond",
-  escalate: "Escalate",
-};
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function receiptMetadata(payload: unknown): Record<string, unknown> | null {
+  const root = asRecord(payload);
+  if (!root) return null;
+
+  const direct = asRecord(root.metadata);
+  if (direct) return direct;
+
+  const nestedPayload = asRecord(root.payload);
+  return nestedPayload ? asRecord(nestedPayload.metadata) : null;
+}
+
+export function fmtReceiptLabel(input: {
+  payload: unknown;
+  face: string | null | undefined;
+  receiptType: string | null | undefined;
+}): string {
+  const metadata = receiptMetadata(input.payload);
+
+  return (
+    nonEmptyString(metadata?.proof_kind) ??
+    nonEmptyString(metadata?.action) ??
+    (input.face && input.face !== "unknown" ? input.face : null) ??
+    input.receiptType ??
+    "receipt"
+  );
+}
+
+export function fmtReceiptReasonCode(payload: unknown): string | null {
+  const root = asRecord(payload);
+  if (!root) return null;
+
+  return (
+    nonEmptyString(root.reason_code) ??
+    nonEmptyString(asRecord(root.payload)?.reason_code) ??
+    null
+  );
+}
+
+export function fmtReceiptSummary(payload: unknown): string {
+  const metadata = receiptMetadata(payload);
+  return (
+    nonEmptyString(metadata?.insight) ??
+    fmtReceiptReasonCode(payload) ??
+    "Proof recorded"
+  );
+}
+
+export function readReceiptMetadata(payload: unknown) {
+  const metadata = receiptMetadata(payload);
+  return {
+    proofKind: nonEmptyString(metadata?.proof_kind),
+    action: nonEmptyString(metadata?.action),
+    insight: nonEmptyString(metadata?.insight),
+    reasonCode: fmtReceiptReasonCode(payload),
+  };
+}
 

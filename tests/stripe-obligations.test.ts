@@ -79,7 +79,7 @@ test("stripeEventToObligation: invoice.paid why message includes formatted amoun
   const result = stripeEventToObligation("invoice.paid", {
     object: { id: "in_001", number: "INV-001", amount_paid: 5000 },
   });
-  assert.match(result.obligation!.why, /\$50\.00/);
+  assert.match(result.obligation!.why ?? "", /\$50\.00/);
 });
 
 test("stripeEventToObligation: invoice.paid sets economic_ref_type invoice", () => {
@@ -184,7 +184,7 @@ test("stripeEventToObligation: charge.dispute.created why includes reason when p
   const result = stripeEventToObligation("charge.dispute.created", {
     object: { id: "dp_001", charge: "ch_001", reason: "fraudulent" },
   });
-  assert.match(result.obligation!.why, /fraudulent/);
+  assert.match(result.obligation!.why ?? "", /fraudulent/);
 });
 
 test("stripeEventToObligation: charge.dispute.created due_at is approximately 7 days from now", () => {
@@ -236,7 +236,7 @@ test("stripeEventToObligation: charge.refunded why includes formatted refund amo
   const result = stripeEventToObligation("charge.refunded", {
     object: { id: "ch_002", amount_refunded: 2000 },
   });
-  assert.match(result.obligation!.why, /\$20\.00/);
+  assert.match(result.obligation!.why ?? "", /\$20\.00/);
 });
 
 test("stripeEventToObligation: charge.refunded economic_ref_type is payment", () => {

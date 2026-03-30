@@ -7,7 +7,6 @@ import {
   Activity,
   Gauge,
   ReceiptText,
-  Settings,
 } from "lucide-react";
 
 const TONES = {
@@ -40,7 +39,6 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/command", label: "Command", icon: Activity },
   { href: "/command/integrity", label: "Integrity", icon: Gauge },
   { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
-  { href: "/command/settings", label: "Settings", icon: Settings },
 ];
 
 function cx(...parts: Array<string | false | null | undefined>) {
@@ -48,7 +46,7 @@ function cx(...parts: Array<string | false | null | undefined>) {
 }
 
 function isActive(pathname: string, href: string) {
-  return pathname === href || pathname.startsWith(`${href}/`);
+  return pathname === href;
 }
 
 export function AkShell({
@@ -91,7 +89,7 @@ export function AkShell({
               </div>
               <div className="min-w-0">
                 <div className="truncate text-[11px] uppercase tracking-[0.34em] text-slate-500">AutoKirk</div>
-                <div className="truncate text-sm text-slate-300">Stripe billing wedge</div>
+                <div className="truncate text-sm text-slate-300">Governed operator runtime</div>
               </div>
             </Link>
           </div>
@@ -122,7 +120,7 @@ export function AkShell({
               href="/login"
               className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
             >
-              Entry
+              Operator entry
             </Link>
           </div>
         </div>
@@ -150,7 +148,10 @@ export function AkShell({
       </header>
 
       <main className="relative mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-9">
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-9">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/30 to-transparent" />
+          <div className="pointer-events-none absolute -right-16 top-8 h-40 w-40 rounded-full bg-cyan-300/8 blur-3xl" />
+          <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-amber-300/8 blur-3xl" />
           <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between xl:gap-10">
             <div className="max-w-3xl">
               <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">{eyebrow}</div>
@@ -168,14 +169,14 @@ export function AkShell({
 
             <div className="grid gap-4 sm:grid-cols-2 xl:w-[27rem]">
               <SurfacePulse
-                label="Kernel authority"
-                value="Truth stays in the Kernel"
-                note="Reads come through route handlers. Mutation authority stays behind governed action surfaces."
+                label="Authoritative read"
+                value="One shared operator summary"
+                note="The first screen should tell the truth. Operator read surfaces stay aligned to one governed summary contract."
               />
               <SurfacePulse
-                label="Proof posture"
-                value="Receipt-backed billing closure"
-                note="The live operator wedge is frozen to Stripe billing movements and their governed receipts."
+                label="Governed closure"
+                value="One receipt-backed write path"
+                note="Movement becomes obligation, closure, ledger event, and receipt through the same governed operator runtime."
               />
             </div>
           </div>
