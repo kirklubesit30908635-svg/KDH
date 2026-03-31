@@ -112,14 +112,14 @@ export default function CommandPage() {
   return (
     <AkShell
       title="Command"
-      subtitle="One governed queue for the frozen Stripe billing wedge. Resolve what is late first, then what is at risk, then what is still open."
-      eyebrow="Billing Wedge Action Rail"
+      subtitle="Resolve governed revenue obligations in the billing enforcement domain. Nothing is complete until closure emits a receipt."
+      eyebrow="Billing Enforcement Domain"
     >
       <div className="grid gap-4 md:grid-cols-4">
         <AkPanel className="p-5">
           <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Needs action</div>
           <div className="mt-3 text-3xl font-semibold text-white">{counts.total}</div>
-          <div className="mt-2 text-sm text-slate-400">Live governed obligations in the billing wedge.</div>
+          <div className="mt-2 text-sm text-slate-400">Live governed obligations in the billing enforcement domain.</div>
         </AkPanel>
         <AkPanel className="p-5">
           <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Late</div>
@@ -133,8 +133,8 @@ export default function CommandPage() {
         </AkPanel>
         <AkPanel className="p-5">
           <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">Proved</div>
-          <div className="mt-3 text-lg font-semibold text-white">Receipt-backed</div>
-          <div className="mt-2 text-sm text-slate-400">Completed work must be visible in receipts.</div>
+          <div className="mt-3 text-lg font-semibold text-white">Closure proof</div>
+          <div className="mt-2 text-sm text-slate-400">Resolved work is only real when its receipt is visible in the proof layer.</div>
           <Link href="/command/receipts" className="mt-4 inline-flex text-sm text-cyan-100 transition hover:text-white">
             Open proof layer →
           </Link>
@@ -159,7 +159,7 @@ export default function CommandPage() {
         <AkPanel className="p-6">
           <div className="mb-2 text-sm font-extrabold text-white">Sign in to load the billing queue</div>
           <div className="max-w-xl text-sm text-white/60">
-            This surface only reads the governed Stripe billing wedge for an authenticated operator session.
+            This surface only reads the governed billing enforcement domain for an authenticated operator session.
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link
@@ -194,8 +194,8 @@ export default function CommandPage() {
       {!loading && !err && !authLocked && rows.length === 0 && (
         <AkPanel className="p-10 text-center">
           <div className="mb-3 text-4xl">✓</div>
-          <div className="mb-1 text-base font-extrabold text-white">Billing wedge clear</div>
-          <div className="text-sm text-white/35">No open Stripe billing obligations require action right now.</div>
+          <div className="mb-1 text-base font-extrabold text-white">Billing domain clear</div>
+          <div className="text-sm text-white/35">No open billing enforcement obligations require action right now.</div>
         </AkPanel>
       )}
 
@@ -239,7 +239,7 @@ export default function CommandPage() {
 
                   <div className="flex shrink-0 items-start">
                     <AkButton tone="gold" disabled={isActing} onClick={() => void handleSeal(row)}>
-                      {isActing ? "Sealing…" : actionLabel}
+                      {isActing ? "Recording…" : actionLabel}
                     </AkButton>
                   </div>
                 </div>
