@@ -67,6 +67,20 @@ Reset success alone is not sufficient.
 ## Migration authority
 
 The live chain currently breaks into these eras:
+
+- `0001`–`0007` — kernel bootstrap: extensions, schemas, identity, registry, ledger, canonical API write surface, and baseline ACL/RLS
+- `0008`–`0031` — knowledge, Stripe ingest, jobs/obligations, economic refs, and tenant hierarchy work
+- `0100` — append-only ingest staging
+- `20260307...` onward — governance and signals runtime, founder-console object/obligation pivot, canonical Stripe/service-role changes, projection rebuilds, receipt linking, and stripe-first wedge closure views
+
+Important authority notes:
+
+- The current files in `supabase/migrations` are the canonical reset chain.
+- `0019_core_grants_and_operator_views.sql` and `0020_obligations_and_receipts.sql` were rewritten in place earlier in the repo's life; `supabase/archive/*.bak` preserves older bodies for audit, not execution.
+- `20260314161901_rebuild_core_for_founder_console.sql` is the major structural pivot in the chain. It drops and recreates `core.objects`, `core.obligations`, related vocabulary tables, and compatibility views.
+
+### Migration file reference
+
 | File | Purpose |
 |------|---------|
 | `0001_extensions.sql` | `pgcrypto` extension |
@@ -102,20 +116,13 @@ The live chain currently breaks into these eras:
 | `20260307224145_signals_indexes.sql` | Additional signals indexes |
 | `20260307224404_api_run_signal_detector.sql` | `api.run_signal_detector` SECURITY DEFINER RPC |
 
-`fix_dealership_fn.sql` in the repo root is a **deprecated** out-of-band fixup script for an external `dealership` schema referencing the legacy `ak_kernel` name. Do **not** apply it — the referenced tables no longer exist.
-
-- `0001`–`0007` — kernel bootstrap: extensions, schemas, identity, registry, ledger, canonical API write surface, and baseline ACL/RLS
-- `0008`–`0031` — knowledge, Stripe ingest, jobs/obligations, economic refs, and tenant hierarchy work
-- `0100` — append-only ingest staging
-- `20260307...` onward — governance and signals runtime, founder-console object/obligation pivot, canonical Stripe/service-role changes, projection rebuilds, receipt linking, and stripe-first wedge closure views
-
-Important authority notes:
-
-- The current files in `supabase/migrations` are the canonical reset chain.
-- `0019_core_grants_and_operator_views.sql` and `0020_obligations_and_receipts.sql` were rewritten in place earlier in the repo's life; `supabase/archive/*.bak` preserves older bodies for audit, not execution.
-- `20260314161901_rebuild_core_for_founder_console.sql` is the major structural pivot in the chain. It drops and recreates `core.objects`, `core.obligations`, related vocabulary tables, and compatibility views.
-
 ## Canonical live DB surfaces
+
+- `api.append_event(...)` and `api.emit_receipt(...)` remain the canonical ledger writers.
+- Canonical Stripe ingest is `api.ingest_stripe_event(text, text, text, boolean, text, timestamptz, jsonb)`.
+- Governed operator mutations use `api.command_touch_obligation(...)` and `api.command_resolve_obligation(...)`.
+- Receipt proof reconciliation uses `api.reconcile_obligation_proof(...)` and `api.link_receipt_to_obligation(...)`.
+- Operator-facing reads come from `core.v_operator_next_actions`, `core.v_recent_receipts`, `core.v_stripe_first_wedge_integrity_summary`, and compatibility aliases in `core`.
 
 ## Architecture
 
@@ -123,35 +130,26 @@ Important authority notes:
 
 `core.tenants` → `core.workspaces` → `core.departments`. `core.operators` are users (soft-linked to `auth.users` via `auth_uid`). `core.memberships` controls workspace access and tenure. Workspace membership remains the main read/write guard for live operator surfaces.
 
+**Membership tenure** (`status ∈ {active, suspended, revoked, expired}`): validity window is `active_from ≤ now()` AND `(active_to IS NULL OR active_to > now())`. All RLS policies that call `core.is_member()` inherit this enforcement.
+
 ### Hash-chained append-only ledger
 
 `ledger.events` and `ledger.receipts` are immutable chains. `ledger._events_before_insert` and `ledger._receipts_before_insert` assign `seq`, `prev_hash`, and `hash` while advancing mutable head pointers under lock. `_deny_mutation` blocks direct UPDATE/DELETE on append-only tables.
-```
-core.tenants (id, slug, name)
-  └── core.workspaces (id, tenant_id, slug, name)
-        ├── core.departments (id, workspace_id, slug, name)
-        └── core.memberships (id, operator_id, workspace_id, role, status, active_from, active_to)
-              └── core.operators (id, auth_uid, handle)
-```
-
-Roles: `owner / admin / member / viewer`.
-
-**Membership tenure** (0016): `status ∈ {active, suspended, revoked, expired}`. Validity window: `active_from ≤ now()` AND `(active_to IS NULL OR active_to > now())`. All RLS policies that call `core.is_member()` inherit this enforcement.
-
-### Hash-chained append-only ledger
-
-`ledger.events` and `ledger.receipts` are immutable chains. Each row is assigned `seq`, `prev_hash`, and `hash` by a BEFORE INSERT trigger.
 
 **Hash formula:** `sha256(prev_hash || seq || workspace_id || chain_key || event_type_id || payload)`
 
-- The trigger locks `ledger.chain_heads` / `ledger.receipt_heads` with `FOR UPDATE` for atomicity.
-- `ledger._deny_mutation()` trigger blocks UPDATE/DELETE on all append-only tables.
-- Idempotency is workspace-scoped: duplicate `idempotency_key` within the same workspace is silently suppressed (trigger returns early, INSERT never fires).
-- Both tables have `UNIQUE (workspace_id, chain_key, seq)` to prevent seq reuse.
+Idempotency is workspace-scoped: duplicate `idempotency_key` within the same workspace is silently suppressed. Both tables have `UNIQUE (workspace_id, chain_key, seq)` to prevent seq reuse.
 
 ### Founder-console obligation model
 
 The active obligation surface is the post-rebuild `core.objects` + `core.obligations` model introduced and then fixed in the March 2026 founder-console migrations. Later migrations restore operator projections and add receipt-proof linkage on top of that model.
+
+No client role (`anon`, `authenticated`) may write directly to any kernel table. All writes go through `api.*` SECURITY DEFINER RPCs. ACL model:
+
+- `REVOKE ALL` on every kernel table from `anon` and `authenticated`.
+- Selective `GRANT SELECT` re-opened on: `ledger.events`, `ledger.receipts`, `core.operators`, `core.memberships`, `registry.event_types`, `registry.receipt_types` — required so RLS USING clauses can evaluate.
+- RLS policies: ledger tables use `USING (core.is_member(workspace_id))`; `core.operators` uses `USING (auth_uid = auth.uid())` (self-read only); registry catalogues use `USING (true)`.
+- Internal functions (`_deny_mutation`, `_events_before_insert`, `_receipts_before_insert`, `sha256_hex`, `assert_member`) have `REVOKE EXECUTE FROM PUBLIC`. Only `core.current_operator_id()` and `core.is_member()` are re-granted to `authenticated`.
 
 ### App-layer architecture
 
@@ -170,7 +168,53 @@ The Stripe ingest pipeline flows: Stripe webhook → `api.ingest_stripe_event` (
 
 The `/command` surface (`src/app/command/`) is the live operator console. It reads from `core.v_operator_next_actions` and posts to `/api/command/seal` (or `/api/command/touch`) to advance obligations. The `/command/integrity` and `/command/receipts` pages pull from integrity summary views and `core.v_recent_receipts`.
 
-### Known drift / caution
+### Intelligence layer / knowledge schema
+
+**Doctrine: AI may observe, interpret, simulate, and propose — it may not directly mutate domain reality.**
+
+| Table | Purpose |
+|-------|---------|
+| `knowledge.findings` | Evidence-backed claims (severity, confidence, impact_estimate, risk_if_ignored) |
+| `knowledge.recommendations` | AI-drafted proposals (requires_approval, emitted_proposal_id) |
+| `knowledge.simulation_runs` | Counterfactual/forecast outputs |
+| `knowledge.memory_patterns` | Institutional memory distilled from repeated findings |
+| `knowledge.outcome_comparisons` | Expected vs actual (learning loop) |
+| `knowledge.review_actions` | Human interaction trail |
+| `knowledge.founder_briefs` | Cross-face strategic summaries |
+
+### Governance & signals runtime
+
+- `governance.rule_sets` + `governance.rule_versions`: versioned, JSON Schema-validated rule definitions (via `pg_jsonschema`). domain ∈ `{signals, obligations, pricing, collections}`. status ∈ `{draft, approved, retired}`.
+- `signals.detectors`: SQL function references; evaluation_mode ∈ `{event_driven, scheduled, hybrid}`; detection_grain ∈ `{event, job, invoice, customer, asset, workspace}`.
+- `signals.detector_bindings`: activates a detector per workspace under an approved rule version; EXCLUDE constraint prevents overlapping bindings.
+- `signals.signal_instances`: de-duplicated lifecycle-managed signals; `lifecycle_status ∈ {open, acknowledged, in_review, resolved, dismissed, superseded}`; partial unique index prevents duplicate open signals.
+- `api.run_signal_detector(binding_id, source_event_id?, window?)`: validates binding, invokes implementation_ref, upserts signal instances, idempotent.
+
+## Schema doctrine
+
+Kernel schemas must be institutional and product-agnostic. Allowed schemas:
+
+```
+core, governance, receipts, signals, knowledge, api, ingest, ledger, registry
+```
+
+Product-prefixed schemas are forbidden in the kernel (e.g. `ak_*`, `autokirk_*`). Vertical/industry faces may introduce their own schemas (e.g. `marine`, `dealership`, `service`), but the kernel itself must remain neutral.
+
+## Key conventions
+
+1. **Workspace scoping** — Every mutation validates workspace membership via `core.assert_member()`.
+2. **Idempotency** — Duplicate keys are suppressed silently; callers may retry safely.
+3. **Atomicity** — BEFORE INSERT triggers lock mutable chain heads with `FOR UPDATE`.
+4. **Causality** — Ledger events are first-class facts; projections are derived.
+5. **No direct writes** — All authenticated writes go through `api.*` SECURITY DEFINER RPCs.
+6. **Proof chain** — `core.receipts` ties `ledger.receipts` to business-layer `core.obligations`.
+7. **Governance** — Rule sets are versioned and JSON Schema-validated before a binding can be activated.
+8. **Intelligence isolation** — The `knowledge` schema observes reality but cannot write to ledger or projection tables.
+9. **Tenure enforcement** — Membership status and date windows are checked inside `core.is_member()`, inherited by all RLS.
+10. **Schema neutrality** — The kernel never uses product-prefixed schemas; vertical faces extend via their own schemas.
+11. **Numbered migrations** — Prefer `NNNN_name.sql` for new kernel migrations. Timestamp-based names (`YYYYMMDDHHMMSS_name.sql`) are used for feature migrations that arrived after the numbered series reached a stable baseline.
+
+## Known drift / caution
 
 - Broad placeholder RLS still exists in `knowledge`, `governance`, and `signals`; those surfaces remain audit-sensitive.
 - Legacy `ak_*` naming survives in comments, indexes, triggers, and policy names inside `0008_intelligence.sql`. Treat those as drift, not doctrine.
