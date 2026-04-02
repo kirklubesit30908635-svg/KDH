@@ -15,13 +15,10 @@
 -- =============================================================
 
 begin;
-
 -- btree_gist is needed for the no-overlap exclusion constraint.
 create extension if not exists btree_gist with schema extensions;
-
 -- signals schema was reserved in 0010_schema_reserve.sql.
 create schema if not exists signals;
-
 -- ---------------------------------------------------------------
 -- signals.detector_candidate
 -- Composite type returned by every SQL-function detector.
@@ -45,7 +42,6 @@ create type signals.detector_candidate as (
   payload                jsonb,
   evidence               jsonb
 );
-
 -- ---------------------------------------------------------------
 -- signals.signal_types
 -- Catalogue of machine-detectable condition families.
@@ -63,10 +59,8 @@ create table signals.signal_types (
   is_active        boolean     not null default true,
   created_at       timestamptz not null default now()
 );
-
 comment on table signals.signal_types is
 'Catalogue of signal families. Each type declares what kind of subject/object pair the detector addresses and its default severity.';
-
 -- ---------------------------------------------------------------
 -- signals.detectors
 -- One row per runnable detector. implementation_ref points to a
@@ -89,10 +83,8 @@ create table signals.detectors (
   retired_at          timestamptz,
   check (extensions.jsonschema_is_valid(override_schema))
 );
-
 comment on table signals.detectors is
 'Detector catalogue. Each row names a SQL function (implementation_ref) that returns SETOF signals.detector_candidate given a binding context.';
-
 -- ---------------------------------------------------------------
 -- signals.detector_event_types
 -- Declares which event types trigger an event-driven detector.
@@ -105,10 +97,8 @@ create table signals.detector_event_types (
   created_at             timestamptz not null default now(),
   unique (detector_id, event_type_id)
 );
-
 comment on table signals.detector_event_types is
 'Maps event-driven detectors to the registry.event_types that should trigger them.';
-
 -- ---------------------------------------------------------------
 -- signals.detector_bindings
 -- Activates a detector for a workspace under a specific approved
@@ -131,10 +121,8 @@ create table signals.detector_bindings (
   created_at          timestamptz not null default now(),
   check (effective_to is null or effective_to > effective_from)
 );
-
 comment on table signals.detector_bindings is
 'Activates a detector for a workspace under a specific approved rule version. No two active bindings for the same (workspace, detector) may overlap in time.';
-
 alter table signals.detector_bindings
   add constraint detector_bindings_no_overlap
   exclude using gist (
@@ -142,7 +130,6 @@ alter table signals.detector_bindings
     detector_id      with =,
     effective_during with &&
   );
-
 -- ---------------------------------------------------------------
 -- signals.runs
 -- Execution record for each detector invocation.
@@ -166,16 +153,12 @@ create table signals.runs (
   error_detail        jsonb,
   unique (workspace_id, idempotency_key)
 );
-
 comment on table signals.runs is
 'Execution log for every detector invocation. Idempotency is workspace-scoped.';
-
 create index idx_runs_workspace_binding_status
   on signals.runs (workspace_id, detector_binding_id, status, started_at desc);
-
 create index idx_runs_detector_started
   on signals.runs (detector_id, started_at desc);
-
 -- ---------------------------------------------------------------
 -- signals.signal_instances
 -- De-duplicated, lifecycle-managed signal surface.
@@ -215,20 +198,15 @@ create table signals.signal_instances (
   payload               jsonb       not null default '{}'::jsonb,
   reaffirmed_count      integer     not null default 0 check (reaffirmed_count >= 0)
 );
-
 comment on table signals.signal_instances is
 'De-duplicated, lifecycle-managed signal surface. At most one open/acknowledged/in_review instance may exist per (workspace, dedupe_key).';
-
 create unique index signals_signal_instances_active_dedupe_idx
   on signals.signal_instances (workspace_id, dedupe_key)
   where lifecycle_status in ('open', 'acknowledged', 'in_review');
-
 create index idx_signal_instances_workspace_status
   on signals.signal_instances (workspace_id, lifecycle_status, opened_at desc);
-
 create index idx_signal_instances_subject
   on signals.signal_instances (workspace_id, subject_type, subject_id);
-
 -- ---------------------------------------------------------------
 -- RLS (open placeholders — tighten with workspace-membership
 -- guards once the pattern is standardised across the kernel).
@@ -239,7 +217,6 @@ alter table signals.detector_event_types enable row level security;
 alter table signals.detector_bindings    enable row level security;
 alter table signals.runs                 enable row level security;
 alter table signals.signal_instances     enable row level security;
-
 create policy signal_types_select          on signals.signal_types         for select using (true);
 create policy signal_types_write           on signals.signal_types         for all    using (true) with check (true);
 create policy detectors_select             on signals.detectors            for select using (true);
@@ -252,5 +229,4 @@ create policy runs_select                  on signals.runs                 for s
 create policy runs_write                   on signals.runs                 for all    using (true) with check (true);
 create policy signal_instances_select      on signals.signal_instances     for select using (true);
 create policy signal_instances_write       on signals.signal_instances     for all    using (true) with check (true);
-
 commit;

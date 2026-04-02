@@ -11,28 +11,23 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- 1. Schema + table grants
 -- ---------------------------------------------------------------
 
 GRANT USAGE ON SCHEMA core TO service_role, anon;
-
 -- service_role: full access on all current + future core objects
 GRANT ALL PRIVILEGES ON ALL TABLES    IN SCHEMA core TO service_role;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA core TO service_role;
 GRANT ALL PRIVILEGES ON ALL ROUTINES  IN SCHEMA core TO service_role;
-
 ALTER DEFAULT PRIVILEGES IN SCHEMA core
   GRANT ALL PRIVILEGES ON TABLES    TO service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA core
   GRANT ALL PRIVILEGES ON SEQUENCES TO service_role;
-
 -- authenticated: read on current + future core objects
 GRANT SELECT ON ALL TABLES IN SCHEMA core TO authenticated;
 ALTER DEFAULT PRIVILEGES IN SCHEMA core
   GRANT SELECT ON TABLES TO authenticated;
-
 -- ---------------------------------------------------------------
 -- 2. core.v_receipts
 --    Operator receipt read surface. Skeleton view — returns the
@@ -52,9 +47,7 @@ SELECT
   NULL::uuid                              AS ledger_event_id,
   NULL::jsonb                             AS payload
 WHERE false;
-
 GRANT SELECT ON core.v_receipts TO authenticated, service_role;
-
 -- ---------------------------------------------------------------
 -- 3. core.v_next_actions
 --    Operator command surface. Skeleton view — returns correct
@@ -74,8 +67,8 @@ SELECT
   NULL::boolean                           AS is_breach,
   NULL::text                              AS economic_ref_type,
   NULL::text                              AS economic_ref_id
-WHERE false;  -- intentionally empty until obligations table exists
+WHERE false;
+-- intentionally empty until obligations table exists
 
 GRANT SELECT ON core.v_next_actions TO authenticated, service_role;
-
 COMMIT;

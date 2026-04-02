@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(vercel --version)",
+      "Bash(powershell -Command \"Get-Process -Id 60652, 58744 | Select-Object Id, ProcessName, MainWindowTitle\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  },
+  "hooks": {
+    "Stop": []
+  }
+}

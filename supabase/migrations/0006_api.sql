@@ -78,7 +78,6 @@ BEGIN
   RETURN QUERY SELECT v_event_id, v_seq, v_hash;
 END;
 $$;
-
 -- ---------------------------------------------------------------
 -- api.emit_receipt
 -- Sole authorised write path into ledger.receipts.
@@ -132,7 +131,6 @@ BEGIN
   RETURN QUERY SELECT v_receipt_id, v_seq, v_hash;
 END;
 $$;
-
 -- Grant the api schema and its write RPCs to authenticated operators.
 -- anon has no write surface whatsoever.
 GRANT USAGE ON SCHEMA api TO authenticated;

@@ -20,7 +20,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- core.jobs
 -- Projection-level record. The source of truth is ledger.events.
@@ -66,54 +65,41 @@ CREATE TABLE core.jobs (
   created_at         timestamptz NOT NULL DEFAULT now(),
   updated_at         timestamptz NOT NULL DEFAULT now()
 );
-
 COMMENT ON TABLE core.jobs IS
   'Projection-level job record. Source of truth is ledger.events. '
   'Mutated only by api.* SECURITY DEFINER functions. Direct writes blocked.';
-
 COMMENT ON COLUMN core.jobs.quoted_cents IS
   'Expected revenue from service package at job creation time.';
-
 COMMENT ON COLUMN core.jobs.invoice_cents IS
   'Final invoiced amount. NULL until invoice.finalized event.';
-
 COMMENT ON COLUMN core.jobs.payment_cents IS
   'Amount actually received. NULL until payment.received event.';
-
 -- ---------------------------------------------------------------
 -- Indexes
 -- ---------------------------------------------------------------
 CREATE INDEX idx_jobs_workspace_status
   ON core.jobs (workspace_id, status);
-
 CREATE INDEX idx_jobs_workspace_operator
   ON core.jobs (workspace_id, operator_id)
   WHERE operator_id IS NOT NULL;
-
 CREATE INDEX idx_jobs_workspace_created
   ON core.jobs (workspace_id, created_at DESC);
-
 CREATE INDEX idx_jobs_workspace_paid_at
   ON core.jobs (workspace_id, paid_at DESC)
   WHERE paid_at IS NOT NULL;
-
 -- ---------------------------------------------------------------
 -- updated_at trigger
 -- ---------------------------------------------------------------
 CREATE TRIGGER jobs_set_updated_at
   BEFORE UPDATE ON core.jobs
   FOR EACH ROW EXECUTE FUNCTION core.set_updated_at();
-
 -- ---------------------------------------------------------------
 -- RLS — read only for authenticated workspace members
 -- No INSERT/UPDATE/DELETE: all writes go through api.* functions.
 -- ---------------------------------------------------------------
 ALTER TABLE core.jobs ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY jobs_select
   ON core.jobs FOR SELECT
   USING (core.is_member(workspace_id));
-
 REVOKE INSERT, UPDATE, DELETE ON core.jobs FROM authenticated;
-
 COMMIT;

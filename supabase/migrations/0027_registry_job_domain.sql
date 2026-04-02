@@ -25,7 +25,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- Job lifecycle events
 -- ---------------------------------------------------------------
@@ -39,7 +38,6 @@ INSERT INTO registry.event_types (family, name, description) VALUES
   ('job', 'job.voided',          'Job voided before work began'),
   ('job', 'job.reopened',        'Completed job reopened for correction')
 ON CONFLICT (name) DO NOTHING;
-
 -- ---------------------------------------------------------------
 -- Commercial events
 -- ---------------------------------------------------------------
@@ -54,7 +52,6 @@ INSERT INTO registry.event_types (family, name, description) VALUES
   ('commercial', 'invoice.finalized',      'Invoice locked and sent'),
   ('commercial', 'payment.received',       'Payment recorded against invoice')
 ON CONFLICT (name) DO NOTHING;
-
 -- ---------------------------------------------------------------
 -- Accountability events
 -- ---------------------------------------------------------------
@@ -65,7 +62,6 @@ INSERT INTO registry.event_types (family, name, description) VALUES
   ('account', 'obligation.expired',      'Obligation passed its deadline without satisfaction'),
   ('account', 'exception.recorded',      'Operational exception manually or automatically recorded')
 ON CONFLICT (name) DO NOTHING;
-
 -- ---------------------------------------------------------------
 -- Forecast / intelligence events
 -- ---------------------------------------------------------------
@@ -74,7 +70,6 @@ INSERT INTO registry.event_types (family, name, description) VALUES
   ('forecast', 'signal.emitted',          'Operational or commercial signal surfaced'),
   ('forecast', 'leakage.detected',        'Revenue leakage pattern detected')
 ON CONFLICT (name) DO NOTHING;
-
 -- ---------------------------------------------------------------
 -- Receipt types for job domain
 -- ---------------------------------------------------------------
@@ -89,5 +84,4 @@ INSERT INTO registry.receipt_types (name, description) VALUES
   ('obligation_closed', 'Proof an obligation was satisfied'),
   ('projection_run',    'Proof a revenue projection was computed and stored')
 ON CONFLICT (name) DO NOTHING;
-
 COMMIT;

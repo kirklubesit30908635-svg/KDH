@@ -1,242 +1,240 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireOperatorRouteContext } from "@/lib/operator-access";
+import { supportedStripeFirstWedgeObligationTypes } from "@/lib/stripe_first_wedge_contract";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+const ENFORCEMENT_DOMAIN = {
+  face: "billing",
+  label: "Billing Enforcement Domain",
+} as const;
 
-const ENFORCEMENT_DOMAINS = [
-  { face: "billing",      label: "Billing Enforcement" },
-  { face: "advertising",  label: "Advertising Enforcement" },
-  { face: "dealership",   label: "Dealership Enforcement" },
-] as const;
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-/** Latency in hours → 0–100 score */
 function latencyToScore(avgHours: number | null): number {
   if (avgHours === null) return 80;
-  if (avgHours <=  4)   return 100;
-  if (avgHours <= 12)   return 88;
-  if (avgHours <= 24)   return 72;
-  if (avgHours <= 48)   return 52;
-  if (avgHours <= 72)   return 32;
+  if (avgHours <= 0.25) return 100;
+  if (avgHours <= 1) return 95;
+  if (avgHours <= 4) return 88;
+  if (avgHours <= 12) return 72;
+  if (avgHours <= 24) return 52;
+  if (avgHours <= 48) return 32;
   return 15;
 }
 
-/** Simple 2-factor domain score (no latency/coverage data per-face) */
+function speedMultiplier(avgHours: number | null): number {
+  if (avgHours === null) return 1.0;
+  if (avgHours <= 0.25) return 1.05;
+  if (avgHours <= 1) return 1.0;
+  if (avgHours <= 4) return 0.95;
+  if (avgHours <= 12) return 0.9;
+  return 0.8;
+}
+
+function agingPenalty(openObs: { created_at: string }[]): number {
+  const now = Date.now();
+  let penalty = 0;
+  for (const o of openObs) {
+    const ageHours = (now - new Date(o.created_at).getTime()) / (1000 * 3600);
+    if (ageHours > 24) penalty += 3;
+    else if (ageHours > 6) penalty += 1;
+    else if (ageHours > 2) penalty += 0.5;
+  }
+  return Math.min(30, Math.round(penalty));
+}
+
 function domainScore(closureRate: number, breachRate: number): number {
   return Math.max(0, Math.min(100, Math.round(0.6 * closureRate + 0.4 * (100 - breachRate))));
 }
 
 export async function GET() {
-  // Route-local auth — middleware never substitutes for this
-  const supabase = await supabaseServer();
-  const { data: { user }, error: authErr } = await supabase.auth.getUser();
-  if (authErr || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const access = await requireOperatorRouteContext();
+  if (!access.ok) {
+    return access.response;
   }
 
   try {
-    // ── All parallel queries ────────────────────────────────────────────────
-    const [
-      totalRes,
-      sealedCountRes,
-      openRes,
-      breachRes,
-      stripeRes,
-      coveredRes,
-      latencyRowsRes,
-      sealedIdsRes,
-      receiptIdsRes,
-      // Domain aggregation — all obligations with face+status (no payload)
-      allObsRes,
-      // Breaches by face — from projection view
-      allBreachRes,
-    ] = await Promise.all([
-      // 1. Total obligations (all statuses)
-      supabaseAdmin.schema("core").from("obligations")
-        .select("id", { count: "exact", head: true }),
+    const { supabase, defaultWorkspaceId } = access.context;
 
-      // 2. Sealed
-      supabaseAdmin.schema("core").from("obligations")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "sealed"),
-
-      // 3. Open
-      supabaseAdmin.schema("core").from("obligations")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "open"),
-
-      // 4. Breached (open + past due)
-      supabaseAdmin.schema("core").from("v_next_actions")
-        .select("obligation_id", { count: "exact", head: true })
-        .eq("is_breach", true),
-
-      // 5. Total Stripe ingest events
-      supabaseAdmin.schema("ingest").from("stripe_events")
-        .select("id", { count: "exact", head: true }),
-
-      // 6. Events that produced an obligation
-      supabaseAdmin.schema("core").from("obligations")
-        .select("id", { count: "exact", head: true })
-        .not("source_event_id", "is", null),
-
-      // 7. Latency: sealed obligations timestamps (capped)
-      supabaseAdmin.schema("core").from("obligations")
-        .select("created_at, sealed_at")
-        .eq("status", "sealed")
-        .not("sealed_at", "is", null)
-        .limit(500),
-
-      // 8. Proof lag: sealed obligation IDs
-      supabaseAdmin.schema("core").from("obligations")
-        .select("id")
-        .eq("status", "sealed"),
-
-      // 9. Proof lag: obligation IDs that have receipts
-      supabaseAdmin.schema("core").from("receipts")
-        .select("obligation_id")
-        .not("obligation_id", "is", null),
-
-      // 10. Domain data: all obligations with face + status
-      supabaseAdmin.schema("core").from("obligations")
-        .select("face, status"),
-
-      // 11. Domain breach data: breached obligations with face
-      supabaseAdmin.schema("core").from("v_next_actions")
-        .select("face, obligation_id")
-        .eq("is_breach", true),
+    const [summaryRes, breachRowsRes, receiptRowsRes, openActionRowsRes] = await Promise.all([
+      supabase
+        .schema("core")
+        .from("v_stripe_first_wedge_integrity_summary")
+        .select("*")
+        .eq("workspace_id", defaultWorkspaceId)
+        .maybeSingle(),
+      supabase
+        .schema("core")
+        .from("v_operator_next_actions")
+        .select("obligation_id, face")
+        .eq("workspace_id", defaultWorkspaceId)
+        .eq("face", ENFORCEMENT_DOMAIN.face)
+        .in("kind", supportedStripeFirstWedgeObligationTypes)
+        .eq("is_overdue", true),
+      supabase
+        .schema("core")
+        .from("v_recent_receipts")
+        .select("obligation_id, face, economic_ref_type")
+        .eq("workspace_id", defaultWorkspaceId)
+        .eq("face", ENFORCEMENT_DOMAIN.face)
+        .in("economic_ref_type", ["invoice", "payment", "subscription"]),
+      supabase
+        .schema("core")
+        .from("v_operator_next_actions")
+        .select("obligation_id, face, created_at, is_overdue")
+        .eq("workspace_id", defaultWorkspaceId)
+        .eq("face", ENFORCEMENT_DOMAIN.face)
+        .in("kind", supportedStripeFirstWedgeObligationTypes),
     ]);
 
-    // ── Core counts ─────────────────────────────────────────────────────────
-    const total   = totalRes.count       ?? 0;
-    const sealed  = sealedCountRes.count ?? 0;
-    const open    = openRes.count        ?? 0;
-    const breach  = breachRes.count      ?? 0;
+    if (summaryRes.error) {
+      return NextResponse.json({ error: summaryRes.error.message }, { status: 500 });
+    }
+    if (breachRowsRes.error) {
+      return NextResponse.json({ error: breachRowsRes.error.message }, { status: 500 });
+    }
+    if (receiptRowsRes.error) {
+      return NextResponse.json({ error: receiptRowsRes.error.message }, { status: 500 });
+    }
+    if (openActionRowsRes.error) {
+      return NextResponse.json({ error: openActionRowsRes.error.message }, { status: 500 });
+    }
 
-    // ── Closure Rate ─────────────────────────────────────────────────────────
+    const summary = summaryRes.data;
+    const openActionRows = openActionRowsRes.data ?? [];
+    const receiptRows = receiptRowsRes.data ?? [];
+    const breachRows = breachRowsRes.data ?? [];
+
+    const open = openActionRows.length;
+    const sealed = receiptRows.length;
+    const total = open + sealed;
+    const breach = breachRows.length;
     const closure_rate = total > 0 ? Math.round((sealed / total) * 100) : 100;
+    const avg_closure_hours = summary?.avg_closure_hours ?? null;
+    const latency_score = summary?.latency_score ?? latencyToScore(avg_closure_hours);
+    const speed_mult = speedMultiplier(avg_closure_hours);
+    const closure_quality = Math.min(100, Math.round(closure_rate * speed_mult));
 
-    // ── Breach Rate ──────────────────────────────────────────────────────────
+    const openObs = openActionRows.map((row) => ({ created_at: row.created_at as string }));
+    const aging_penalty = agingPenalty(openObs);
+    const aging_count = openObs.filter((o) => {
+      const ageHours = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 3600);
+      return ageHours > 2;
+    }).length;
+
     const breach_rate = open > 0 ? Math.round((breach / open) * 100) : 0;
+    const receiptedIds = new Set<string>();
+    for (const row of receiptRows) {
+      if (typeof row.obligation_id === "string" && row.obligation_id.length > 0) {
+        receiptedIds.add(row.obligation_id);
+      }
+    }
 
-    // ── Event Coverage ───────────────────────────────────────────────────────
-    const stripe_total  = stripeRes.count  ?? 0;
-    const covered_count = coveredRes.count ?? 0;
+    const stripe_total = summary?.stripe_events ?? total;
+    const covered_count = summary?.covered_events ?? total;
     const event_coverage =
-      stripe_total > 0 ? Math.round((covered_count / stripe_total) * 100) : 100;
-    const events_awaiting = Math.max(0, stripe_total - covered_count);
-
-    // ── Obligation Latency ───────────────────────────────────────────────────
-    const latencyRows = latencyRowsRes.data ?? [];
-    const avg_closure_hours =
-      latencyRows.length > 0
-        ? latencyRows.reduce((sum, r) => {
-            const ms =
-              new Date(r.sealed_at as string).getTime() -
-              new Date(r.created_at as string).getTime();
-            return sum + ms / (1000 * 3600);
-          }, 0) / latencyRows.length
-        : null;
-
-    const latency_score = latencyToScore(avg_closure_hours);
-
-    // ── Proof Lag ────────────────────────────────────────────────────────────
-    const sealedIds    = new Set((sealedIdsRes.data  ?? []).map((r) => r.id));
-    const receiptedIds = new Set(
-      (receiptIdsRes.data ?? []).map((r) => r.obligation_id).filter(Boolean)
-    );
-    const proof_lag = [...sealedIds].filter((id) => !receiptedIds.has(id)).length;
+      summary?.event_coverage ??
+      (stripe_total > 0 ? Math.max(0, Math.min(100, Math.round((covered_count / stripe_total) * 100))) : 100);
+    const events_awaiting = summary?.events_awaiting ?? Math.max(0, stripe_total - covered_count);
+    const proof_lag = summary?.proof_lag ?? Math.max(0, sealed - receiptedIds.size);
     const proof_score =
-      sealed > 0 ? Math.max(0, Math.round((1 - proof_lag / sealed) * 100)) : 100;
+      summary?.proof_score ??
+      (sealed > 0 ? Math.max(0, Math.round((1 - proof_lag / sealed) * 100)) : 100);
 
-    // ── Integrity Score ──────────────────────────────────────────────────────
-    //   30% closure · 25% no-breach · 20% coverage · 15% latency · 10% proof
     const raw_score =
-      0.30 * closure_rate +
+      0.3 * closure_quality +
       0.25 * (100 - breach_rate) +
-      0.20 * event_coverage +
+      0.2 * event_coverage +
       0.15 * latency_score +
-      0.10 * proof_score;
+      0.1 * proof_score -
+      aging_penalty;
+
     const integrity_score = Math.max(0, Math.min(100, Math.round(raw_score)));
+    const pts_closure = Math.round(0.3 * closure_quality);
+    const pts_breach = Math.round(0.25 * (100 - breach_rate));
+    const pts_coverage = Math.round(0.2 * event_coverage);
+    const pts_latency = Math.round(0.15 * latency_score);
+    const pts_proof = Math.round(0.1 * proof_score);
 
-    // ── Component points ─────────────────────────────────────────────────────
-    const pts_closure  = Math.round(0.30 * closure_rate);
-    const pts_breach   = Math.round(0.25 * (100 - breach_rate));
-    const pts_coverage = Math.round(0.20 * event_coverage);
-    const pts_latency  = Math.round(0.15 * latency_score);
-    const pts_proof    = Math.round(0.10 * proof_score);
-
-    // ── Confidence ───────────────────────────────────────────────────────────
     const confidence: "High" | "Medium" | "Low" =
       total >= 20 ? "High" : total >= 5 ? "Medium" : "Low";
 
-    // ── Domain Integrity ─────────────────────────────────────────────────────
-    const allObs = allObsRes.data ?? [];
-    const allBreachRows = allBreachRes.data ?? [];
+    const delta_log: { direction: "up" | "down" | "neutral"; label: string }[] = [];
+    if (sealed > 0) {
+      delta_log.push({ direction: "up", label: `${sealed} obligations resolved with receipt` });
+    }
+    if (breach > 0) delta_log.push({ direction: "down", label: `${breach} breach${breach > 1 ? "es" : ""} in queue` });
+    if (aging_count > 0) {
+      delta_log.push({
+        direction: "down",
+        label: `${aging_count} aging open obligation${aging_count > 1 ? "s" : ""}`,
+      });
+    }
+    if (speed_mult >= 1.0) {
+      delta_log.push({
+        direction: "up",
+        label: avg_closure_hours !== null ? `avg closure ${avg_closure_hours.toFixed(1)}h` : "closure speed nominal",
+      });
+    }
+    if (speed_mult < 1.0) {
+      delta_log.push({
+        direction: "down",
+        label: avg_closure_hours !== null ? `slow avg closure ${avg_closure_hours.toFixed(1)}h` : "closure speed degraded",
+      });
+    }
+    if (proof_lag > 0) {
+      delta_log.push({ direction: "down", label: `${proof_lag} resolved without receipt` });
+    }
+    if (events_awaiting > 0) {
+      delta_log.push({ direction: "down", label: `${events_awaiting} events uncovered` });
+    }
+    if (delta_log.length === 0) {
+      delta_log.push({ direction: "neutral", label: "All signals stable" });
+    }
 
-    const domains = ENFORCEMENT_DOMAINS.map(({ face, label }) => {
-      const faceObs    = allObs.filter((o) => o.face === face);
-      const faceSealed = faceObs.filter((o) => o.status === "sealed").length;
-      const faceOpen   = faceObs.filter((o) => o.status === "open").length;
-      const faceTotal  = faceObs.length;
-      const faceBreach = allBreachRows.filter((b) => b.face === face).length;
-
-      const d_closure_rate = faceTotal > 0 ? Math.round((faceSealed / faceTotal) * 100) : 100;
-      const d_breach_rate  = faceOpen  > 0 ? Math.round((faceBreach / faceOpen)  * 100) : 0;
-      const d_score        = domainScore(d_closure_rate, d_breach_rate);
-
-      return {
-        face,
-        label,
-        total:        faceTotal,
-        sealed:       faceSealed,
-        open:         faceOpen,
-        breach_count: faceBreach,
-        closure_rate: d_closure_rate,
-        breach_rate:  d_breach_rate,
-        integrity_score: d_score,
-      };
-    });
+    const cr = total > 0 ? (sealed / total) * 100 : 100;
+    const br = open > 0 ? (breach / open) * 100 : 0;
+    const domains = [
+      {
+        face: ENFORCEMENT_DOMAIN.face,
+        label: ENFORCEMENT_DOMAIN.label,
+        total,
+        sealed,
+        open,
+        breach_count: breach,
+        closure_rate: Math.round(cr),
+        breach_rate: Math.round(br),
+        integrity_score: domainScore(cr, br),
+      },
+    ];
 
     return NextResponse.json({
       integrity_score,
-      confidence,
-
-      // Five metrics
       closure_rate,
+      closure_quality,
       breach_rate,
       event_coverage,
-      events_awaiting,
-      avg_closure_hours:
-        avg_closure_hours !== null ? Math.round(avg_closure_hours * 10) / 10 : null,
       latency_score,
-      proof_lag,
       proof_score,
-
-      // Component points (for breakdown)
+      avg_closure_hours,
+      total_obligations: total,
+      sealed_obligations: sealed,
+      open_obligations: open,
+      breach_count: breach,
+      proof_lag,
+      events_awaiting,
+      stripe_events: stripe_total,
+      covered_events: covered_count,
+      aging_penalty,
+      speed_mult,
       pts_closure,
       pts_breach,
       pts_coverage,
       pts_latency,
       pts_proof,
-
-      // Domain integrity
+      confidence: (summary?.confidence as "High" | "Medium" | "Low" | undefined) ?? confidence,
+      computed_at: summary?.computed_at ?? new Date().toISOString(),
+      delta_log,
       domains,
-
-      // Supporting counts
-      open_obligations:   open,
-      sealed_obligations: sealed,
-      total_obligations:  total,
-      breach_count:       breach,
-      stripe_events:      stripe_total,
-      covered_events:     covered_count,
-
-      computed_at: new Date().toISOString(),
     });
-
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch (err) {
+    console.error("integrity/stats error:", err);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }

@@ -1,5 +1,3 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
 export interface ObligationInput {
   title: string;
   why?: string | null;
@@ -13,136 +11,73 @@ export interface ObligationInput {
   idempotency_key?: string | null;
 }
 
-export interface ReceiptInput {
+interface GovernedMutationResult {
+  ok: boolean;
   obligation_id: string;
-  sealed_by?: string | null;
-  face?: string | null;
-  economic_ref_type?: string | null;
-  economic_ref_id?: string | null;
-  ledger_event_id?: string | null;
-  payload?: Record<string, unknown> | null;
-  workspace_id?: string | null;
+  ledger_event_id: string;
+  receipt_id: string;
+  event_seq: number;
+  event_hash: string;
+  receipt_seq: number;
+  receipt_hash: string;
+  next_due_at?: string;
+  resolved_at?: string;
+  terminal_action?: string;
+  reason_code?: string;
 }
 
-export interface Obligation {
-  id: string;
-  title: string;
-  why: string | null;
-  face: string;
-  severity: string;
-  status: string;
-  due_at: string | null;
-  created_at: string;
-  sealed_at: string | null;
-  sealed_by: string | null;
-  economic_ref_type: string | null;
-  economic_ref_id: string | null;
-  source_event_id: string | null;
-  idempotency_key: string | null;
+interface SealObligationOptions {
+  terminalAction?: "closed" | "terminated" | "eliminated";
+  reasonCode?: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface Receipt {
-  id: string;
-  obligation_id: string;
-  sealed_at: string;
-  sealed_by: string | null;
-  face: string | null;
-  economic_ref_type: string | null;
-  economic_ref_id: string | null;
-  ledger_event_id: string | null;
-  payload: Record<string, unknown> | null;
+interface RpcError {
+  message: string;
 }
 
-export async function createObligation(input: ObligationInput): Promise<Obligation> {
-  const row = {
-    title:             input.title,
-    why:               input.why ?? null,
-    face:              input.face ?? "unknown",
-    severity:          input.severity ?? "queue",
-    due_at:            input.due_at ?? null,
-    economic_ref_type: input.economic_ref_type ?? null,
-    economic_ref_id:   input.economic_ref_id ?? null,
-    source_event_id:   input.source_event_id ?? null,
-    workspace_id:      input.workspace_id ?? null,
-    idempotency_key:   input.idempotency_key ?? null,
+interface RpcClient {
+  schema(schema: string): {
+    rpc(
+      fn: string,
+      args: Record<string, unknown>
+    ): Promise<{ data: unknown; error: RpcError | null }>;
   };
+}
 
-  // Try insert first; on duplicate idempotency_key (23505) fetch the existing row
-  const { data, error } = await supabaseAdmin
-    .schema("core")
-    .from("obligations")
-    .insert(row)
-    .select()
-    .single();
+function asRpcClient(client: unknown): RpcClient {
+  return client as RpcClient;
+}
 
-  if (!error) return data as Obligation;
+async function runJsonRpc(
+  client: unknown,
+  fn: "command_resolve_obligation",
+  args: Record<string, unknown>
+): Promise<GovernedMutationResult> {
+  const { data, error } = await asRpcClient(client).schema("api").rpc(fn, args);
 
-  // Duplicate idempotency_key — return the existing obligation
-  if (input.idempotency_key && (error.code === "23505" || error.code === "42P10")) {
-    const { data: existing, error: fetchErr } = await supabaseAdmin
-      .schema("core")
-      .from("obligations")
-      .select()
-      .eq("idempotency_key", input.idempotency_key)
-      .single();
-    if (!fetchErr && existing) return existing as Obligation;
+  if (error) {
+    throw new Error(`${fn} failed: ${error.message}`);
   }
 
-  throw new Error(`createObligation failed: ${error.message}`);
-}
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error(`${fn} returned an invalid payload`);
+  }
 
-export async function createReceipt(input: ReceiptInput): Promise<Receipt> {
-  const { data, error } = await supabaseAdmin
-    .schema("core")
-    .from("receipts")
-    .insert({
-      obligation_id:     input.obligation_id,
-      sealed_by:         input.sealed_by ?? null,
-      face:              input.face ?? null,
-      economic_ref_type: input.economic_ref_type ?? null,
-      economic_ref_id:   input.economic_ref_id ?? null,
-      ledger_event_id:   input.ledger_event_id ?? null,
-      payload:           input.payload ?? null,
-      workspace_id:      input.workspace_id ?? null,
-    })
-    .select()
-    .single();
-
-  if (error) throw new Error(`createReceipt failed: ${error.message}`);
-  return data as Receipt;
+  return data as GovernedMutationResult;
 }
 
 export async function sealObligation(
+  client: unknown,
   obligationId: string,
-  sealedBy: string,
-  receiptPayload?: Record<string, unknown>
-): Promise<{ obligation: Obligation; receipt: Receipt }> {
-  const { data: obl, error: oblErr } = await supabaseAdmin
-    .schema("core")
-    .from("obligations")
-    .update({
-      status: "sealed",
-      sealed_at: new Date().toISOString(),
-      sealed_by: sealedBy,
-    })
-    .eq("id", obligationId)
-    .neq("status", "sealed")
-    .select()
-    .single();
-
-  if (oblErr) throw new Error(`sealObligation failed: ${oblErr.message}`);
-  if (!obl) throw new Error(`sealObligation: obligation ${obligationId} not found or already sealed`);
-
-  const obligation = obl as Obligation;
-
-  const receipt = await createReceipt({
-    obligation_id:     obligationId,
-    sealed_by:         sealedBy,
-    face:              obligation.face,
-    economic_ref_type: obligation.economic_ref_type,
-    economic_ref_id:   obligation.economic_ref_id,
-    payload:           receiptPayload ?? { sealed: true },
+  actorId: string,
+  options?: SealObligationOptions
+): Promise<GovernedMutationResult> {
+  return runJsonRpc(client, "command_resolve_obligation", {
+    p_obligation_id: obligationId,
+    p_actor_id: actorId,
+    p_terminal_action: options?.terminalAction ?? "closed",
+    p_reason_code: options?.reasonCode ?? "action_completed",
+    p_metadata: options?.metadata ?? {},
   });
-
-  return { obligation, receipt };
 }

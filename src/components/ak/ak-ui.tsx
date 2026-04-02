@@ -1,124 +1,455 @@
 "use client";
 
-import React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import type { CSSProperties, ReactNode } from "react";
+import {
+  Activity,
+  Gauge,
+  ReceiptText,
+} from "lucide-react";
 
-export function AkShell(props: { title: string; subtitle?: string; children: React.ReactNode }) {
+const TONES = {
+  gold: {
+    text: "text-amber-100",
+    border: "border-amber-300/20",
+    bg: "bg-amber-300/12",
+  },
+  danger: {
+    text: "text-rose-100",
+    border: "border-rose-300/20",
+    bg: "bg-rose-300/12",
+  },
+  muted: {
+    text: "text-slate-300",
+    border: "border-white/10",
+    bg: "bg-white/6",
+  },
+} as const;
+
+type Tone = keyof typeof TONES;
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof Activity;
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { href: "/command", label: "Command", icon: Activity },
+  { href: "/command/integrity", label: "Integrity", icon: Gauge },
+  { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
+];
+
+function cx(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
+}
+
+function isActive(pathname: string, href: string) {
+  return pathname === href;
+}
+
+export function AkShell({
+  title,
+  subtitle,
+  eyebrow = "Kernel Governed Surface",
+  actions,
+  children,
+}: {
+  title?: string;
+  subtitle?: string;
+  eyebrow?: string;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const pathname = usePathname();
+
   return (
-    <div className="min-h-screen bg-black text-zinc-100">
-      {/* subtle “submarine” atmosphere */}
-      <div className="pointer-events-none fixed inset-0 opacity-60">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-[#6b4e12]/10 blur-3xl" />
-        <div className="absolute top-40 left-10 h-[420px] w-[420px] rounded-full bg-indigo-500/5 blur-3xl" />
-        <div className="absolute bottom-0 right-0 h-[520px] w-[520px] rounded-full bg-purple-500/5 blur-3xl" />
+    <div className="min-h-screen bg-[#071018] text-slate-100">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute left-[-14%] top-[-8%] h-[26rem] w-[26rem] rounded-full bg-cyan-300/10 blur-3xl" />
+        <div className="absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full bg-amber-300/10 blur-3xl" />
+        <div className="absolute bottom-[-14%] left-[16%] h-[24rem] w-[24rem] rounded-full bg-emerald-300/8 blur-3xl" />
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
       </div>
 
-      <div className="relative mx-auto w-full max-w-6xl px-6 py-10">
-        <div className="text-xs font-extrabold tracking-[0.32em] text-[#d6b24a]/90">
-          AUTO KIRK • OPERATOR CONSOLE
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#071018]/88 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+          <div className="min-w-0">
+            <Link href="/" className="inline-flex items-center gap-3">
+              <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
+                AK
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-[11px] uppercase tracking-[0.34em] text-slate-500">AutoKirk</div>
+                <div className="truncate text-sm text-slate-300">Governed operator runtime</div>
+              </div>
+            </Link>
+          </div>
+
+          <nav className="hidden flex-1 items-center justify-center gap-2 xl:flex">
+            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={cx(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
+                    active
+                      ? "border-cyan-300/25 bg-cyan-300/12 text-cyan-100"
+                      : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="hidden items-center gap-2 md:flex">
+            <Link
+              href="/login"
+              className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+            >
+              Operator entry
+            </Link>
+          </div>
         </div>
 
-        <div className="mt-5">
-          <h1 className="text-5xl font-extrabold leading-[1.05] text-[#d6b24a] drop-shadow-[0_0_28px_rgba(214,178,74,0.12)]">
-            {props.title}
-          </h1>
-          {props.subtitle ? (
-            <div className="mt-4 max-w-3xl text-base text-zinc-400">
-              {props.subtitle}
+        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-4 sm:px-6 xl:hidden lg:px-8">
+          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+            const active = isActive(pathname, href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={cx(
+                  "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
+                  active
+                    ? "border-cyan-300/25 bg-cyan-300/12 text-cyan-100"
+                    : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            );
+          })}
+        </div>
+      </header>
+
+      <main className="relative mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-9">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/30 to-transparent" />
+          <div className="pointer-events-none absolute -right-16 top-8 h-40 w-40 rounded-full bg-cyan-300/8 blur-3xl" />
+          <div className="pointer-events-none absolute -left-12 bottom-0 h-32 w-32 rounded-full bg-amber-300/8 blur-3xl" />
+          <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between xl:gap-10">
+            <div className="max-w-3xl">
+              <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">{eyebrow}</div>
+              {title ? (
+                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                  {title}
+                </h1>
+              ) : null}
+              {subtitle ? (
+                <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
-          ) : null}
-        </div>
 
-        <div className="mt-10">{props.children}</div>
-      </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:w-[27rem]">
+              <SurfacePulse
+                label="Authoritative read"
+                value="One shared operator summary"
+                note="The first screen should tell the truth. Operator read surfaces stay aligned to one governed summary contract."
+              />
+              <SurfacePulse
+                label="Governed closure"
+                value="One receipt-backed write path"
+                note="Movement becomes obligation, closure, ledger event, and receipt through the same governed operator runtime."
+              />
+            </div>
+          </div>
+
+          {actions ? <div className="mt-8">{actions}</div> : null}
+        </section>
+
+        <div className="mt-10 space-y-10 lg:space-y-12">{children}</div>
+      </main>
     </div>
   );
 }
 
-export function AkPanel(props: { className?: string; children: React.ReactNode }) {
+function SurfacePulse({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note: string;
+}) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/10 bg-[#09111a]/90 p-5">
+      <div className="text-[10px] uppercase tracking-[0.26em] text-slate-500">{label}</div>
+      <div className="mt-3 text-lg font-medium text-white">{value}</div>
+      <div className="mt-3 text-sm leading-6 text-slate-400">{note}</div>
+    </div>
+  );
+}
+
+export function AkPanel({
+  children,
+  className,
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}) {
   return (
     <div
-      className={[
-        "rounded-2xl border border-[#2a2516] bg-[#070707]/90",
-        "shadow-[0_0_0_1px_rgba(214,178,74,0.08),0_18px_60px_rgba(0,0,0,0.55)]",
-        "backdrop-blur-sm",
-        props.className ?? "",
-      ].join(" ")}
+      className={cx(
+        "rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,37,0.92),rgba(8,16,26,0.85))] shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
+        className,
+      )}
+      style={style}
     >
-      {props.children}
+      {children}
     </div>
   );
 }
 
-export function AkBadge(props: { tone?: "gold" | "muted" | "danger"; children: React.ReactNode }) {
-  const tone = props.tone ?? "muted";
-  const cls =
-    tone === "gold"
-      ? "border-[#3a2f12] bg-[#0d0a03] text-[#d6b24a]"
-      : tone === "danger"
-      ? "border-[#3a0f0f] bg-[#120606] text-[#ff3b30]"
-      : "border-[#222] bg-[#0b0b0b] text-zinc-300";
+export function AkSectionHeader({
+  label,
+  count,
+  right,
+}: {
+  label: string;
+  count?: number;
+  right?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+      <div className="flex items-center gap-3">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+          {label}
+        </div>
+        {count !== undefined ? (
+          <div className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-300">
+            {count}
+          </div>
+        ) : null}
+      </div>
+      {right ? <div>{right}</div> : null}
+    </div>
+  );
+}
+
+export function AkBadge({
+  children,
+  tone,
+  color,
+}: {
+  children: ReactNode;
+  tone?: Tone;
+  color?: string;
+}) {
+  const theme = tone ? TONES[tone] : null;
 
   return (
     <span
-      className={[
-        "inline-flex items-center rounded-full border px-2.5 py-1",
-        "text-[11px] font-extrabold tracking-wide",
-        cls,
-      ].join(" ")}
+      className={cx(
+        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
+        theme?.text,
+        theme?.border,
+        theme?.bg,
+      )}
+      style={color ? { color, borderColor: `${color}33`, backgroundColor: `${color}14` } : undefined}
     >
-      {props.children}
+      {children}
     </span>
   );
 }
 
-export function AkSectionHeader(props: { label: string; count?: number; right?: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <div className="text-xs font-extrabold tracking-[0.22em] text-zinc-500">
-          {props.label.toUpperCase()}
-        </div>
-        {typeof props.count === "number" ? (
-          <div className="text-xs font-bold text-zinc-600">{props.count}</div>
-        ) : null}
-      </div>
-      {props.right ? <div>{props.right}</div> : null}
-    </div>
-  );
-}
-
-export function AkInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={[
-        "w-full rounded-xl border border-[#2a2516] bg-black px-4 py-3 text-sm text-zinc-100",
-        "placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-[#d6b24a]/30",
-        props.className ?? "",
-      ].join(" ")}
-    />
-  );
-}
-
-export function AkButton(props: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "gold" | "muted" | "danger" }) {
-  const tone = props.tone ?? "gold";
-  const cls =
-    tone === "gold"
-      ? "bg-[#d6b24a] text-black hover:brightness-105"
-      : tone === "danger"
-      ? "bg-[#ff3b30] text-black hover:brightness-105"
-      : "bg-[#121212] text-zinc-200 hover:bg-[#181818]";
+export function AkButton({
+  children,
+  onClick,
+  variant = "ghost",
+  tone,
+  className,
+  disabled,
+  type = "button",
+}: {
+  children: ReactNode;
+  onClick?: () => void;
+  variant?: "primary" | "ghost";
+  tone?: Tone;
+  className?: string;
+  disabled?: boolean;
+  type?: "button" | "submit" | "reset";
+}) {
+  const toneStyles =
+    tone === "danger"
+      ? {
+          ghost: "border-rose-300/20 bg-rose-300/10 text-rose-100 hover:border-rose-300/30 hover:bg-rose-300/14",
+          primary: "bg-rose-200 text-rose-950 hover:bg-rose-100",
+        }
+      : tone === "gold"
+        ? {
+            ghost: "border-amber-300/20 bg-amber-300/10 text-amber-100 hover:border-amber-300/30 hover:bg-amber-300/14",
+            primary: "bg-amber-200 text-amber-950 hover:bg-amber-100",
+          }
+        : {
+            ghost: "border-white/10 bg-white/[0.04] text-slate-100 hover:border-white/20 hover:bg-white/[0.08]",
+            primary: "bg-white text-slate-950 hover:bg-slate-100",
+          };
 
   return (
     <button
-      {...props}
-      className={[
-        "inline-flex items-center justify-center rounded-xl px-4 py-3 text-sm font-extrabold",
-        "border border-[#2a2516] shadow-[0_0_0_1px_rgba(214,178,74,0.10)]",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
-        cls,
-        props.className ?? "",
-      ].join(" ")}
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        "inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-medium transition",
+        disabled && "cursor-not-allowed opacity-50",
+        variant === "primary" ? "border-transparent" : "",
+        variant === "primary" ? toneStyles.primary : toneStyles.ghost,
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function AkInput({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  type?: string;
+  className?: string;
+}) {
+  return (
+    <input
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      className={cx(
+        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]",
+        className,
+      )}
     />
+  );
+}
+
+export function AkSelect({
+  value,
+  onChange,
+  children,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={cx(
+        "w-full rounded-2xl border border-white/10 bg-[#0b1520] px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/25",
+        className,
+      )}
+    >
+      {children}
+    </select>
+  );
+}
+
+export function AkTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <textarea
+      value={value}
+      placeholder={placeholder}
+      onChange={(event) => onChange(event.target.value)}
+      className={cx(
+        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]",
+        className,
+      )}
+    />
+  );
+}
+
+export function AkUtilityLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+    >
+      {children}
+    </Link>
+  );
+}
+
+export function AkMetricStrip({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return <div className={cx("grid gap-4 md:grid-cols-2 xl:grid-cols-4", className)}>{children}</div>;
+}
+
+export function AkMetricCard({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <AkPanel className="p-5">
+      <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div>
+      <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{value}</div>
+      <div className="mt-2 text-sm text-slate-400">{detail}</div>
+    </AkPanel>
   );
 }

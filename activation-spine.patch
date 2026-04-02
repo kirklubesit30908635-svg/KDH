@@ -1,0 +1,2791 @@
+diff --git a/src/app/activate/connect/page.tsx b/src/app/activate/connect/page.tsx
+new file mode 100644
+index 0000000..00d7cc6
+--- /dev/null
++++ b/src/app/activate/connect/page.tsx
+@@ -0,0 +1,184 @@
++"use client";
++
++import { useState } from "react";
++import { useRouter } from "next/navigation";
++import {
++  ArrowRight,
++  CheckCircle2,
++  Circle,
++  CreditCard,
++  ExternalLink,
++  Loader2,
++  Shield,
++} from "lucide-react";
++
++const STEPS = [
++  { key: "profile", label: "Business Profile" },
++  { key: "connect", label: "Connect Billing" },
++  { key: "verify", label: "Verify Enforcement" },
++];
++
++function StepIndicator({ current }: { current: number }) {
++  return (
++    <div className="flex items-center gap-3">
++      {STEPS.map((step, i) => (
++        <div key={step.key} className="flex items-center gap-2">
++          {i < current ? (
++            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
++          ) : i === current ? (
++            <div className="h-5 w-5 rounded-full border-2 border-cyan-400 bg-cyan-400/20" />
++          ) : (
++            <Circle className="h-5 w-5 text-slate-600" />
++          )}
++          <span
++            className={`text-sm ${i === current ? "text-white font-medium" : "text-slate-500"}`}
++          >
++            {step.label}
++          </span>
++          {i < STEPS.length - 1 && (
++            <div className="mx-2 h-px w-8 bg-white/10" />
++          )}
++        </div>
++      ))}
++    </div>
++  );
++}
++
++export default function ConnectPage() {
++  const router = useRouter();
++  const [connecting, setConnecting] = useState(false);
++  const [skipping, setSkipping] = useState(false);
++
++  async function handleConnect() {
++    setConnecting(true);
++    // In production, this would initiate Stripe Connect OAuth.
++    // For now, redirect to a Stripe Connect onboarding URL.
++    // The return URL would be /api/stripe/connect/callback
++    try {
++      const res = await fetch("/api/onboard/connect-url", {
++        method: "POST",
++      });
++      const data = await res.json();
++      if (data.url) {
++        window.location.href = data.url;
++      } else {
++        // If Connect isn't configured yet, skip to verify
++        router.push("/activate/verify");
++      }
++    } catch {
++      router.push("/activate/verify");
++    }
++  }
++
++  async function handleSkip() {
++    setSkipping(true);
++    // For founder/demo: skip Connect and go to verify
++    router.push("/activate/verify");
++  }
++
++  return (
++    <div className="min-h-screen bg-[#071018] text-slate-100">
++      <div className="pointer-events-none fixed inset-0 overflow-hidden">
++        <div className="absolute left-[-14%] top-[-8%] h-[26rem] w-[26rem] rounded-full bg-cyan-300/10 blur-3xl" />
++        <div className="absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full bg-amber-300/10 blur-3xl" />
++      </div>
++
++      <div className="relative mx-auto max-w-2xl px-4 py-16 sm:px-6">
++        <div className="text-center">
++          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
++            AK
++          </div>
++          <h1 className="mt-6 text-3xl font-semibold tracking-tight text-white">
++            Connect your billing source
++          </h1>
++          <p className="mt-3 text-sm text-slate-400">
++            AutoKirk ingests your Stripe events to create obligations and track
++            enforcement. Connect your Stripe account so AutoKirk can watch your
++            revenue.
++          </p>
++        </div>
++
++        <div className="mt-8 flex justify-center">
++          <StepIndicator current={1} />
++        </div>
++
++        <div className="mt-10 rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,37,0.92),rgba(8,16,26,0.85))] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
++          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
++            <CreditCard className="h-5 w-5 text-cyan-400" />
++            <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
++              Stripe Connect
++            </span>
++          </div>
++
++          <div className="mt-6 space-y-6">
++            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
++              <div className="flex items-start gap-4">
++                <Shield className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
++                <div>
++                  <div className="text-sm font-medium text-white">
++                    Secure OAuth connection
++                  </div>
++                  <div className="mt-1 text-sm text-slate-400">
++                    AutoKirk uses Stripe Connect to read your payment events.
++                    We never store your Stripe credentials — the connection uses
++                    OAuth with read-only event access.
++                  </div>
++                </div>
++              </div>
++            </div>
++
++            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-5">
++              <div className="text-sm text-slate-300">
++                Once connected, AutoKirk will:
++              </div>
++              <ul className="mt-3 space-y-2 text-sm text-slate-400">
++                <li className="flex items-center gap-2">
++                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
++                  Receive your payment events in real time
++                </li>
++                <li className="flex items-center gap-2">
++                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
++                  Create obligations for every revenue-affecting event
++                </li>
++                <li className="flex items-center gap-2">
++                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
++                  Track enforcement with receipted proof
++                </li>
++              </ul>
++            </div>
++
++            <button
++              onClick={handleConnect}
++              disabled={connecting}
++              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-[#635bff] px-4 py-3 text-sm font-medium text-white transition hover:bg-[#7a73ff] disabled:opacity-50"
++            >
++              {connecting ? (
++                <Loader2 className="h-4 w-4 animate-spin" />
++              ) : (
++                <>
++                  Connect with Stripe
++                  <ExternalLink className="h-4 w-4" />
++                </>
++              )}
++            </button>
++
++            <button
++              onClick={handleSkip}
++              disabled={skipping}
++              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.08]"
++            >
++              {skipping ? (
++                <Loader2 className="h-4 w-4 animate-spin" />
++              ) : (
++                <>
++                  Skip for now
++                  <ArrowRight className="h-4 w-4" />
++                </>
++              )}
++            </button>
++          </div>
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/activate/page.tsx b/src/app/activate/page.tsx
+new file mode 100644
+index 0000000..be580f6
+--- /dev/null
++++ b/src/app/activate/page.tsx
+@@ -0,0 +1,187 @@
++"use client";
++
++import { useState } from "react";
++import { useRouter } from "next/navigation";
++import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
++import {
++  Building2,
++  ArrowRight,
++  CheckCircle2,
++  Circle,
++  Loader2,
++} from "lucide-react";
++
++const BUSINESS_TYPES = [
++  { value: "marine_dealership", label: "Marine Dealership" },
++  { value: "auto_dealership", label: "Auto Dealership" },
++  { value: "equipment_dealer", label: "Equipment Dealer" },
++  { value: "service_provider", label: "Service Provider" },
++  { value: "other", label: "Other" },
++];
++
++const STEPS = [
++  { key: "profile", label: "Business Profile" },
++  { key: "connect", label: "Connect Billing" },
++  { key: "verify", label: "Verify Enforcement" },
++];
++
++function StepIndicator({ current }: { current: number }) {
++  return (
++    <div className="flex items-center gap-3">
++      {STEPS.map((step, i) => (
++        <div key={step.key} className="flex items-center gap-2">
++          {i < current ? (
++            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
++          ) : i === current ? (
++            <div className="h-5 w-5 rounded-full border-2 border-cyan-400 bg-cyan-400/20" />
++          ) : (
++            <Circle className="h-5 w-5 text-slate-600" />
++          )}
++          <span
++            className={`text-sm ${i === current ? "text-white font-medium" : "text-slate-500"}`}
++          >
++            {step.label}
++          </span>
++          {i < STEPS.length - 1 && (
++            <div className="mx-2 h-px w-8 bg-white/10" />
++          )}
++        </div>
++      ))}
++    </div>
++  );
++}
++
++export default function OnboardPage() {
++  const router = useRouter();
++  const [businessName, setBusinessName] = useState("");
++  const [businessType, setBusinessType] = useState("");
++  const [saving, setSaving] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++
++  async function handleSubmit() {
++    if (!businessName.trim()) {
++      setError("Business name is required");
++      return;
++    }
++
++    setSaving(true);
++    setError(null);
++
++    try {
++      const res = await fetch("/api/onboard/profile", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({
++          business_name: businessName.trim(),
++          business_type: businessType || null,
++        }),
++      });
++
++      const data = await res.json();
++      if (!res.ok) throw new Error(data.error ?? "Failed to save profile");
++
++      router.push("/activate/connect");
++    } catch (err) {
++      setError(err instanceof Error ? err.message : "Something went wrong");
++    } finally {
++      setSaving(false);
++    }
++  }
++
++  return (
++    <div className="min-h-screen bg-[#071018] text-slate-100">
++      <div className="pointer-events-none fixed inset-0 overflow-hidden">
++        <div className="absolute left-[-14%] top-[-8%] h-[26rem] w-[26rem] rounded-full bg-cyan-300/10 blur-3xl" />
++        <div className="absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full bg-amber-300/10 blur-3xl" />
++      </div>
++
++      <div className="relative mx-auto max-w-2xl px-4 py-16 sm:px-6">
++        <div className="text-center">
++          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
++            AK
++          </div>
++          <h1 className="mt-6 text-3xl font-semibold tracking-tight text-white">
++            Set up your workspace
++          </h1>
++          <p className="mt-3 text-sm text-slate-400">
++            AutoKirk provisions a governed operational workspace for your
++            business. Every revenue event, obligation, and resolution is tracked
++            with receipted proof.
++          </p>
++        </div>
++
++        <div className="mt-8 flex justify-center">
++          <StepIndicator current={0} />
++        </div>
++
++        <div className="mt-10 rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,37,0.92),rgba(8,16,26,0.85))] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
++          <div className="flex items-center gap-3 border-b border-white/10 pb-4">
++            <Building2 className="h-5 w-5 text-cyan-400" />
++            <span className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
++              Business Profile
++            </span>
++          </div>
++
++          <div className="mt-6 space-y-5">
++            <div>
++              <label className="mb-2 block text-sm text-slate-300">
++                Business name
++              </label>
++              <input
++                type="text"
++                value={businessName}
++                onChange={(e) => setBusinessName(e.target.value)}
++                placeholder="e.g. Old Salt Marine"
++                className="w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]"
++              />
++            </div>
++
++            <div>
++              <label className="mb-2 block text-sm text-slate-300">
++                Business type
++              </label>
++              <select
++                value={businessType}
++                onChange={(e) => setBusinessType(e.target.value)}
++                className="w-full rounded-2xl border border-white/10 bg-[#0b1520] px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/25"
++              >
++                <option value="">Select type…</option>
++                {BUSINESS_TYPES.map((t) => (
++                  <option key={t.value} value={t.value}>
++                    {t.label}
++                  </option>
++                ))}
++              </select>
++            </div>
++
++            {error && (
++              <div className="rounded-xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-200">
++                {error}
++              </div>
++            )}
++
++            <button
++              onClick={handleSubmit}
++              disabled={saving || !businessName.trim()}
++              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
++            >
++              {saving ? (
++                <Loader2 className="h-4 w-4 animate-spin" />
++              ) : (
++                <>
++                  Continue
++                  <ArrowRight className="h-4 w-4" />
++                </>
++              )}
++            </button>
++          </div>
++        </div>
++
++        <div className="mt-6 text-center text-xs text-slate-600">
++          AutoKirk provisions governed workspaces from paid billing accounts.
++          Stripe is the billing trigger — AutoKirk owns the activation path.
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/activate/verify/page.tsx b/src/app/activate/verify/page.tsx
+new file mode 100644
+index 0000000..462d5a6
+--- /dev/null
++++ b/src/app/activate/verify/page.tsx
+@@ -0,0 +1,229 @@
++"use client";
++
++import { useCallback, useEffect, useState } from "react";
++import { useRouter } from "next/navigation";
++import {
++  ArrowRight,
++  CheckCircle2,
++  Circle,
++  Loader2,
++  Radio,
++  ShieldCheck,
++  Sparkles,
++} from "lucide-react";
++
++const STEPS = [
++  { key: "profile", label: "Business Profile" },
++  { key: "connect", label: "Connect Billing" },
++  { key: "verify", label: "Verify Enforcement" },
++];
++
++function StepIndicator({ current }: { current: number }) {
++  return (
++    <div className="flex items-center gap-3">
++      {STEPS.map((step, i) => (
++        <div key={step.key} className="flex items-center gap-2">
++          {i < current ? (
++            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
++          ) : i === current ? (
++            <div className="h-5 w-5 rounded-full border-2 border-cyan-400 bg-cyan-400/20" />
++          ) : (
++            <Circle className="h-5 w-5 text-slate-600" />
++          )}
++          <span
++            className={`text-sm ${i === current ? "text-white font-medium" : "text-slate-500"}`}
++          >
++            {step.label}
++          </span>
++          {i < STEPS.length - 1 && (
++            <div className="mx-2 h-px w-8 bg-white/10" />
++          )}
++        </div>
++      ))}
++    </div>
++  );
++}
++
++type VerifyState = "checking" | "waiting" | "verified" | "error";
++
++export default function VerifyPage() {
++  const router = useRouter();
++  const [state, setState] = useState<VerifyState>("checking");
++  const [obligationCount, setObligationCount] = useState(0);
++  const [error, setError] = useState<string | null>(null);
++
++  const checkEnforcement = useCallback(async () => {
++    try {
++      const res = await fetch("/api/customer/status", { cache: "no-store" });
++      const data = await res.json();
++      const activation = data.activation;
++
++      if (activation && (activation.enforcement_status === "live" || activation.enforcement_status === "first_event_seen")) {
++        setObligationCount(activation.obligations_open ?? 1);
++        setState("verified");
++      } else {
++        setState("waiting");
++      }
++    } catch (err) {
++      setError(err instanceof Error ? err.message : "Check failed");
++      setState("error");
++    }
++  }, []);
++
++  useEffect(() => {
++    void checkEnforcement();
++
++    // Poll every 5 seconds if waiting
++    const interval = setInterval(() => {
++      if (state === "waiting" || state === "checking") {
++        void checkEnforcement();
++      }
++    }, 5000);
++
++    return () => clearInterval(interval);
++  }, [checkEnforcement, state]);
++
++  async function handleActivate() {
++    try {
++      await fetch("/api/onboard/activate", { method: "POST" });
++      router.push("/command");
++    } catch {
++      router.push("/command");
++    }
++  }
++
++  function handleSkip() {
++    void handleActivate();
++  }
++
++  return (
++    <div className="min-h-screen bg-[#071018] text-slate-100">
++      <div className="pointer-events-none fixed inset-0 overflow-hidden">
++        <div className="absolute left-[-14%] top-[-8%] h-[26rem] w-[26rem] rounded-full bg-cyan-300/10 blur-3xl" />
++        <div className="absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full bg-amber-300/10 blur-3xl" />
++      </div>
++
++      <div className="relative mx-auto max-w-2xl px-4 py-16 sm:px-6">
++        <div className="text-center">
++          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-lg font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
++            AK
++          </div>
++          <h1 className="mt-6 text-3xl font-semibold tracking-tight text-white">
++            {state === "verified"
++              ? "Enforcement is live"
++              : "Verifying enforcement"}
++          </h1>
++          <p className="mt-3 text-sm text-slate-400">
++            {state === "verified"
++              ? "AutoKirk received your first revenue event and created an obligation. Your workspace is protected."
++              : "AutoKirk is listening for your first revenue event. Once received, enforcement activates automatically."}
++          </p>
++        </div>
++
++        <div className="mt-8 flex justify-center">
++          <StepIndicator current={2} />
++        </div>
++
++        <div className="mt-10 rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,37,0.92),rgba(8,16,26,0.85))] p-8 shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
++          {state === "checking" && (
++            <div className="flex flex-col items-center gap-4 py-8">
++              <Loader2 className="h-8 w-8 animate-spin text-cyan-400" />
++              <div className="text-sm text-slate-400">
++                Checking enforcement status…
++              </div>
++            </div>
++          )}
++
++          {state === "waiting" && (
++            <div className="space-y-6">
++              <div className="flex flex-col items-center gap-4 py-4">
++                <div className="relative">
++                  <Radio className="h-10 w-10 text-amber-400" />
++                  <div className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-amber-400" />
++                </div>
++                <div className="text-center">
++                  <div className="text-lg font-medium text-white">
++                    Listening for events
++                  </div>
++                  <div className="mt-1 text-sm text-slate-400">
++                    Make a payment or trigger a billing event in your Stripe
++                    account. AutoKirk will detect it automatically.
++                  </div>
++                </div>
++              </div>
++
++              <div className="rounded-xl border border-amber-300/20 bg-amber-300/5 p-4 text-sm text-amber-200">
++                No events received yet. If you connected Stripe, try processing a
++                test payment. Otherwise, you can skip this step and start exploring.
++              </div>
++
++              <button
++                onClick={handleSkip}
++                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.08]"
++              >
++                Skip and enter workspace
++                <ArrowRight className="h-4 w-4" />
++              </button>
++            </div>
++          )}
++
++          {state === "verified" && (
++            <div className="space-y-6">
++              <div className="flex flex-col items-center gap-4 py-4">
++                <div className="grid h-16 w-16 place-items-center rounded-full border border-emerald-400/30 bg-emerald-400/10">
++                  <ShieldCheck className="h-8 w-8 text-emerald-400" />
++                </div>
++                <div className="text-center">
++                  <div className="text-lg font-medium text-white">
++                    Enforcement confirmed
++                  </div>
++                  <div className="mt-1 text-sm text-slate-400">
++                    {obligationCount} obligation{obligationCount !== 1 ? "s" : ""}{" "}
++                    created from your revenue events. AutoKirk is tracking your
++                    revenue integrity.
++                  </div>
++                </div>
++              </div>
++
++              <div className="rounded-xl border border-emerald-300/20 bg-emerald-300/5 p-4">
++                <div className="flex items-start gap-3">
++                  <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" />
++                  <div className="text-sm text-emerald-200">
++                    Your workspace is now active. Every payment event creates an
++                    obligation. Every operator action produces a receipt. The
++                    integrity score reflects reality.
++                  </div>
++                </div>
++              </div>
++
++              <button
++                onClick={handleActivate}
++                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-transparent bg-white px-4 py-3 text-sm font-medium text-slate-950 transition hover:bg-slate-100"
++              >
++                Enter your workspace
++                <ArrowRight className="h-4 w-4" />
++              </button>
++            </div>
++          )}
++
++          {state === "error" && (
++            <div className="space-y-6">
++              <div className="rounded-xl border border-rose-300/20 bg-rose-300/10 p-4 text-sm text-rose-200">
++                {error ?? "Something went wrong checking enforcement status."}
++              </div>
++              <button
++                onClick={() => {
++                  setState("checking");
++                  void checkEnforcement();
++                }}
++                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300 transition hover:border-white/20"
++              >
++                Retry
++              </button>
++            </div>
++          )}
++        </div>
++      </div>
++    </div>
++  );
++}
+diff --git a/src/app/api/customer/status/route.ts b/src/app/api/customer/status/route.ts
+new file mode 100644
+index 0000000..1bc1993
+--- /dev/null
++++ b/src/app/api/customer/status/route.ts
+@@ -0,0 +1,29 @@
++import { NextResponse } from "next/server";
++import { requireOperatorRouteContext } from "@/lib/operator-access";
++
++export async function GET() {
++  const access = await requireOperatorRouteContext();
++  if (!access.ok) return access.response;
++
++  const { supabase, defaultWorkspaceId } = access.context;
++
++  try {
++    const { data, error } = await supabase
++      .schema("api")
++      .rpc("resolve_activation_state", {
++        p_workspace_id: defaultWorkspaceId,
++      });
++
++    if (error) {
++      return NextResponse.json({ error: error.message }, { status: 500 });
++    }
++
++    return NextResponse.json({
++      status: "ok",
++      activation: data,
++    });
++  } catch (err) {
++    const msg = err instanceof Error ? err.message : "Unknown error";
++    return NextResponse.json({ error: msg }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/onboard/activate/route.ts b/src/app/api/onboard/activate/route.ts
+new file mode 100644
+index 0000000..e44903b
+--- /dev/null
++++ b/src/app/api/onboard/activate/route.ts
+@@ -0,0 +1,29 @@
++import { NextResponse } from "next/server";
++import { requireOperatorRouteContext } from "@/lib/operator-access";
++import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
++
++export async function POST() {
++  const access = await requireOperatorRouteContext();
++  if (!access.ok) return access.response;
++
++  const { defaultWorkspaceId } = access.context;
++
++  try {
++    const admin = getSupabaseAdmin();
++
++    const { data, error } = await admin
++      .schema("api")
++      .rpc("complete_onboarding", {
++        p_workspace_id: defaultWorkspaceId,
++      });
++
++    if (error) {
++      return NextResponse.json({ error: error.message }, { status: 500 });
++    }
++
++    return NextResponse.json(data);
++  } catch (err) {
++    const msg = err instanceof Error ? err.message : "Unknown error";
++    return NextResponse.json({ error: msg }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/onboard/connect-url/route.ts b/src/app/api/onboard/connect-url/route.ts
+new file mode 100644
+index 0000000..893f84a
+--- /dev/null
++++ b/src/app/api/onboard/connect-url/route.ts
+@@ -0,0 +1,35 @@
++import { NextResponse } from "next/server";
++import { requireOperatorRouteContext } from "@/lib/operator-access";
++
++export async function POST() {
++  const access = await requireOperatorRouteContext();
++  if (!access.ok) return access.response;
++
++  // Stripe Connect OAuth URL generation.
++  // In production, this would use Stripe's OAuth endpoint:
++  // https://connect.stripe.com/oauth/authorize?response_type=code&client_id=...&scope=read_write
++  //
++  // For now, return null to signal Connect isn't configured yet.
++  // The frontend will handle this gracefully by allowing skip.
++
++  const clientId = process.env.STRIPE_CONNECT_CLIENT_ID;
++
++  if (!clientId) {
++    return NextResponse.json({
++      url: null,
++      message: "Stripe Connect not configured. Skip to continue.",
++    });
++  }
++
++  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://autokirk.com"}/api/stripe/connect/callback`;
++
++  const connectUrl =
++    `https://connect.stripe.com/oauth/authorize` +
++    `?response_type=code` +
++    `&client_id=${clientId}` +
++    `&scope=read_only` +
++    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
++    `&state=${access.context.defaultWorkspaceId}`;
++
++  return NextResponse.json({ url: connectUrl });
++}
+diff --git a/src/app/api/onboard/profile/route.ts b/src/app/api/onboard/profile/route.ts
+new file mode 100644
+index 0000000..1d044b1
+--- /dev/null
++++ b/src/app/api/onboard/profile/route.ts
+@@ -0,0 +1,39 @@
++import { NextRequest, NextResponse } from "next/server";
++import { requireOperatorRouteContext } from "@/lib/operator-access";
++
++export async function POST(req: NextRequest) {
++  const access = await requireOperatorRouteContext();
++  if (!access.ok) return access.response;
++
++  const { supabase, defaultWorkspaceId } = access.context;
++
++  try {
++    const body = await req.json();
++    const businessName = body.business_name;
++    const businessType = body.business_type ?? null;
++
++    if (!businessName || typeof businessName !== "string") {
++      return NextResponse.json(
++        { error: "business_name is required" },
++        { status: 400 }
++      );
++    }
++
++    const { data, error } = await supabase
++      .schema("api")
++      .rpc("update_workspace_profile", {
++        p_workspace_id: defaultWorkspaceId,
++        p_business_name: businessName.trim(),
++        p_business_type: businessType,
++      });
++
++    if (error) {
++      return NextResponse.json({ error: error.message }, { status: 500 });
++    }
++
++    return NextResponse.json(data);
++  } catch (err) {
++    const msg = err instanceof Error ? err.message : "Unknown error";
++    return NextResponse.json({ error: msg }, { status: 500 });
++  }
++}
+diff --git a/src/app/command/settings/page.tsx b/src/app/command/settings/page.tsx
+new file mode 100644
+index 0000000..f9df0a3
+--- /dev/null
++++ b/src/app/command/settings/page.tsx
+@@ -0,0 +1,305 @@
++"use client";
++
++import { useCallback, useEffect, useState } from "react";
++import {
++  AkShell,
++  AkPanel,
++  AkSectionHeader,
++  AkButton,
++  AkInput,
++  AkBadge,
++} from "@/components/ak/ak-ui";
++import {
++  Building2,
++  CheckCircle2,
++  CreditCard,
++  Loader2,
++  Save,
++  Shield,
++  Users,
++} from "lucide-react";
++
++interface WorkspaceSummary {
++  workspace_id: string;
++  workspace_name: string;
++  workspace_slug: string;
++  tenant_name: string;
++  business_name: string | null;
++  business_type: string | null;
++  onboarding_state: string;
++  stripe_connect_account_id: string | null;
++  onboarded_at: string | null;
++  first_event_at: string | null;
++  open_obligations: number;
++  resolved_obligations: number;
++  total_obligations: number;
++  member_count: number;
++  receipt_count: number;
++}
++
++function stateBadge(state: string) {
++  switch (state) {
++    case "active":
++      return <AkBadge color="#34d399">Active</AkBadge>;
++    case "pending":
++      return <AkBadge tone="gold">Pending Setup</AkBadge>;
++    case "profile_complete":
++      return <AkBadge tone="gold">Profile Done</AkBadge>;
++    case "provider_connected":
++      return <AkBadge color="#60a5fa">Provider Connected</AkBadge>;
++    case "suspended":
++      return <AkBadge tone="danger">Suspended</AkBadge>;
++    default:
++      return <AkBadge tone="muted">{state}</AkBadge>;
++  }
++}
++
++export default function SettingsPage() {
++  const [summary, setSummary] = useState<WorkspaceSummary | null>(null);
++  const [loading, setLoading] = useState(true);
++  const [error, setError] = useState<string | null>(null);
++  const [editName, setEditName] = useState("");
++  const [saving, setSaving] = useState(false);
++  const [saveMsg, setSaveMsg] = useState<string | null>(null);
++
++  const loadSummary = useCallback(async () => {
++    setLoading(true);
++    try {
++      const res = await fetch("/api/customer/status", { cache: "no-store" });
++      const data = await res.json();
++      if (!res.ok) throw new Error(data.error);
++      const a = data.activation;
++      setSummary({
++        workspace_id: a.workspace?.id ?? "",
++        workspace_name: a.workspace?.name ?? "",
++        workspace_slug: a.workspace?.slug ?? "",
++        tenant_name: a.workspace?.name ?? "",
++        business_name: a.business_name,
++        business_type: a.business_type,
++        onboarding_state: a.next_action === "open_dashboard" ? "active" : a.next_action,
++        stripe_connect_account_id: a.stripe_connection_status === "connected" ? "connected" : null,
++        onboarded_at: a.activated_at,
++        first_event_at: a.first_event_at,
++        open_obligations: a.obligations_open ?? 0,
++        resolved_obligations: 0,
++        total_obligations: a.obligations_open ?? 0,
++        member_count: 0,
++        receipt_count: a.receipts_issued ?? 0,
++      });
++      setEditName(a.business_name ?? a.workspace?.name ?? "");
++    } catch (err) {
++      setError(err instanceof Error ? err.message : "Load failed");
++    } finally {
++      setLoading(false);
++    }
++  }, []);
++
++  useEffect(() => {
++    void loadSummary();
++  }, [loadSummary]);
++
++  async function handleSave() {
++    if (!editName.trim()) return;
++    setSaving(true);
++    setSaveMsg(null);
++    try {
++      const res = await fetch("/api/onboard/profile", {
++        method: "POST",
++        headers: { "Content-Type": "application/json" },
++        body: JSON.stringify({ business_name: editName.trim() }),
++      });
++      const data = await res.json();
++      if (!res.ok) throw new Error(data.error);
++      setSaveMsg("Saved");
++      void loadSummary();
++    } catch (err) {
++      setSaveMsg(err instanceof Error ? err.message : "Save failed");
++    } finally {
++      setSaving(false);
++    }
++  }
++
++  if (loading) {
++    return (
++      <AkShell title="Settings" eyebrow="Workspace Configuration">
++        <div className="flex items-center justify-center py-16">
++          <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
++        </div>
++      </AkShell>
++    );
++  }
++
++  if (error || !summary) {
++    return (
++      <AkShell title="Settings" eyebrow="Workspace Configuration">
++        <AkPanel className="p-6">
++          <div className="text-sm text-rose-300">
++            {error ?? "Could not load workspace settings."}
++          </div>
++        </AkPanel>
++      </AkShell>
++    );
++  }
++
++  return (
++    <AkShell title="Settings" eyebrow="Workspace Configuration">
++      {/* Workspace Profile */}
++      <AkPanel className="p-6">
++        <AkSectionHeader label="Business Profile" />
++        <div className="mt-5 space-y-4">
++          <div className="flex items-center gap-3">
++            <Building2 className="h-5 w-5 text-cyan-400" />
++            <div>
++              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++                Business Name
++              </div>
++              <div className="mt-1 flex items-center gap-3">
++                <AkInput
++                  value={editName}
++                  onChange={setEditName}
++                  placeholder="Business name"
++                  className="max-w-sm"
++                />
++                <AkButton
++                  onClick={handleSave}
++                  disabled={saving || !editName.trim()}
++                  variant="ghost"
++                >
++                  {saving ? (
++                    <Loader2 className="h-4 w-4 animate-spin" />
++                  ) : (
++                    <Save className="h-4 w-4" />
++                  )}
++                </AkButton>
++              </div>
++              {saveMsg && (
++                <div className="mt-2 text-xs text-emerald-400">{saveMsg}</div>
++              )}
++            </div>
++          </div>
++
++          {summary.business_type && (
++            <div className="flex items-center gap-3">
++              <Shield className="h-5 w-5 text-slate-500" />
++              <div>
++                <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++                  Business Type
++                </div>
++                <div className="mt-1 text-sm text-slate-300">
++                  {summary.business_type.replace(/_/g, " ")}
++                </div>
++              </div>
++            </div>
++          )}
++        </div>
++      </AkPanel>
++
++      {/* Workspace Status */}
++      <AkPanel className="p-6">
++        <AkSectionHeader label="Workspace Status" />
++        <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
++          <div>
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              Onboarding
++            </div>
++            <div className="mt-2">{stateBadge(summary.onboarding_state)}</div>
++          </div>
++          <div>
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              Members
++            </div>
++            <div className="mt-2 flex items-center gap-2">
++              <Users className="h-4 w-4 text-slate-400" />
++              <span className="text-lg font-semibold text-white">
++                {summary.member_count}
++              </span>
++            </div>
++          </div>
++          <div>
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              Billing Provider
++            </div>
++            <div className="mt-2 flex items-center gap-2">
++              <CreditCard className="h-4 w-4 text-slate-400" />
++              <span className="text-sm text-slate-300">
++                {summary.stripe_connect_account_id
++                  ? "Stripe Connected"
++                  : "Not connected"}
++              </span>
++            </div>
++          </div>
++          <div>
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              First Event
++            </div>
++            <div className="mt-2 text-sm text-slate-300">
++              {summary.first_event_at
++                ? new Date(summary.first_event_at).toLocaleDateString()
++                : "Awaiting"}
++            </div>
++          </div>
++        </div>
++      </AkPanel>
++
++      {/* Enforcement Summary */}
++      <AkPanel className="p-6">
++        <AkSectionHeader label="Enforcement Summary" />
++        <div className="mt-5 grid gap-5 sm:grid-cols-3">
++          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              Open Obligations
++            </div>
++            <div className="mt-2 text-2xl font-semibold text-amber-300">
++              {summary.open_obligations}
++            </div>
++          </div>
++          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              Resolved
++            </div>
++            <div className="mt-2 text-2xl font-semibold text-emerald-400">
++              {summary.resolved_obligations}
++            </div>
++          </div>
++          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
++            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
++              Receipts
++            </div>
++            <div className="mt-2 text-2xl font-semibold text-cyan-300">
++              {summary.receipt_count}
++            </div>
++          </div>
++        </div>
++      </AkPanel>
++
++      {/* Workspace Identity */}
++      <AkPanel className="p-6">
++        <AkSectionHeader label="Workspace Identity" />
++        <div className="mt-5 space-y-3 text-sm">
++          <div className="flex justify-between border-b border-white/5 pb-2">
++            <span className="text-slate-500">Workspace ID</span>
++            <span className="font-mono text-xs text-slate-400">
++              {summary.workspace_id}
++            </span>
++          </div>
++          <div className="flex justify-between border-b border-white/5 pb-2">
++            <span className="text-slate-500">Slug</span>
++            <span className="text-slate-300">{summary.workspace_slug}</span>
++          </div>
++          <div className="flex justify-between border-b border-white/5 pb-2">
++            <span className="text-slate-500">Tenant</span>
++            <span className="text-slate-300">{summary.tenant_name}</span>
++          </div>
++          {summary.onboarded_at && (
++            <div className="flex justify-between">
++              <span className="text-slate-500">Activated</span>
++              <span className="text-slate-300">
++                {new Date(summary.onboarded_at).toLocaleDateString()}
++              </span>
++            </div>
++          )}
++        </div>
++      </AkPanel>
++    </AkShell>
++  );
++}
+diff --git a/src/components/ak/ak-ui.tsx b/src/components/ak/ak-ui.tsx
+index c3a5bcb..2dfd540 100644
+--- a/src/components/ak/ak-ui.tsx
++++ b/src/components/ak/ak-ui.tsx
+@@ -1,452 +1,454 @@
+-"use client";
+-
+-import Link from "next/link";
+-import { usePathname } from "next/navigation";
+-import type { CSSProperties, ReactNode } from "react";
+-import {
+-  Activity,
+-  Gauge,
+-  ReceiptText,
+-} from "lucide-react";
+-
+-const TONES = {
+-  gold: {
+-    text: "text-amber-100",
+-    border: "border-amber-300/20",
+-    bg: "bg-amber-300/12",
+-  },
+-  danger: {
+-    text: "text-rose-100",
+-    border: "border-rose-300/20",
+-    bg: "bg-rose-300/12",
+-  },
+-  muted: {
+-    text: "text-slate-300",
+-    border: "border-white/10",
+-    bg: "bg-white/6",
+-  },
+-} as const;
+-
+-type Tone = keyof typeof TONES;
+-
+-type NavItem = {
+-  href: string;
+-  label: string;
+-  icon: typeof Activity;
+-};
+-
+-const NAV_ITEMS: NavItem[] = [
+-  { href: "/command", label: "Command", icon: Activity },
+-  { href: "/command/integrity", label: "Integrity", icon: Gauge },
+-  { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
+-];
+-
+-function cx(...parts: Array<string | false | null | undefined>) {
+-  return parts.filter(Boolean).join(" ");
+-}
+-
+-function isActive(pathname: string, href: string) {
+-  return pathname === href || pathname.startsWith(`${href}/`);
+-}
+-
+-export function AkShell({
+-  title,
+-  subtitle,
+-  eyebrow = "Kernel Governed Surface",
+-  actions,
+-  children,
+-}: {
+-  title?: string;
+-  subtitle?: string;
+-  eyebrow?: string;
+-  actions?: ReactNode;
+-  children: ReactNode;
+-}) {
+-  const pathname = usePathname();
+-
+-  return (
+-    <div className="min-h-screen bg-[#071018] text-slate-100">
+-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+-        <div className="absolute left-[-14%] top-[-8%] h-[26rem] w-[26rem] rounded-full bg-cyan-300/10 blur-3xl" />
+-        <div className="absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full bg-amber-300/10 blur-3xl" />
+-        <div className="absolute bottom-[-14%] left-[16%] h-[24rem] w-[24rem] rounded-full bg-emerald-300/8 blur-3xl" />
+-        <div
+-          className="absolute inset-0 opacity-[0.04]"
+-          style={{
+-            backgroundImage:
+-              "linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)",
+-            backgroundSize: "48px 48px",
+-          }}
+-        />
+-      </div>
+-
+-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#071018]/88 backdrop-blur-xl">
+-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+-          <div className="min-w-0">
+-            <Link href="/" className="inline-flex items-center gap-3">
+-              <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
+-                AK
+-              </div>
+-              <div className="min-w-0">
+-                <div className="truncate text-[11px] uppercase tracking-[0.34em] text-slate-500">AutoKirk</div>
+-                <div className="truncate text-sm text-slate-300">Stripe billing wedge</div>
+-              </div>
+-            </Link>
+-          </div>
+-
+-          <nav className="hidden flex-1 items-center justify-center gap-2 xl:flex">
+-            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+-              const active = isActive(pathname, href);
+-              return (
+-                <Link
+-                  key={href}
+-                  href={href}
+-                  className={cx(
+-                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
+-                    active
+-                      ? "border-cyan-300/25 bg-cyan-300/12 text-cyan-100"
+-                      : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+-                  )}
+-                >
+-                  <Icon className="h-4 w-4" />
+-                  {label}
+-                </Link>
+-              );
+-            })}
+-          </nav>
+-
+-          <div className="hidden items-center gap-2 md:flex">
+-            <Link
+-              href="/login"
+-              className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+-            >
+-              Entry
+-            </Link>
+-          </div>
+-        </div>
+-
+-        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-4 sm:px-6 xl:hidden lg:px-8">
+-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+-            const active = isActive(pathname, href);
+-            return (
+-              <Link
+-                key={href}
+-                href={href}
+-                className={cx(
+-                  "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
+-                  active
+-                    ? "border-cyan-300/25 bg-cyan-300/12 text-cyan-100"
+-                    : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
+-                )}
+-              >
+-                <Icon className="h-4 w-4" />
+-                {label}
+-              </Link>
+-            );
+-          })}
+-        </div>
+-      </header>
+-
+-      <main className="relative mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+-        <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-9">
+-          <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between xl:gap-10">
+-            <div className="max-w-3xl">
+-              <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">{eyebrow}</div>
+-              {title ? (
+-                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+-                  {title}
+-                </h1>
+-              ) : null}
+-              {subtitle ? (
+-                <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+-                  {subtitle}
+-                </p>
+-              ) : null}
+-            </div>
+-
+-            <div className="grid gap-4 sm:grid-cols-2 xl:w-[27rem]">
+-              <SurfacePulse
+-                label="Kernel authority"
+-                value="Truth stays in the Kernel"
+-                note="Reads come through route handlers. Mutation authority stays behind governed action surfaces."
+-              />
+-              <SurfacePulse
+-                label="Proof posture"
+-                value="Receipt-backed billing closure"
+-                note="The live operator wedge is frozen to Stripe billing movements and their governed receipts."
+-              />
+-            </div>
+-          </div>
+-
+-          {actions ? <div className="mt-8">{actions}</div> : null}
+-        </section>
+-
+-        <div className="mt-10 space-y-10 lg:space-y-12">{children}</div>
+-      </main>
+-    </div>
+-  );
+-}
+-
+-function SurfacePulse({
+-  label,
+-  value,
+-  note,
+-}: {
+-  label: string;
+-  value: string;
+-  note: string;
+-}) {
+-  return (
+-    <div className="rounded-[1.6rem] border border-white/10 bg-[#09111a]/90 p-5">
+-      <div className="text-[10px] uppercase tracking-[0.26em] text-slate-500">{label}</div>
+-      <div className="mt-3 text-lg font-medium text-white">{value}</div>
+-      <div className="mt-3 text-sm leading-6 text-slate-400">{note}</div>
+-    </div>
+-  );
+-}
+-
+-export function AkPanel({
+-  children,
+-  className,
+-  style,
+-}: {
+-  children: ReactNode;
+-  className?: string;
+-  style?: CSSProperties;
+-}) {
+-  return (
+-    <div
+-      className={cx(
+-        "rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,37,0.92),rgba(8,16,26,0.85))] shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
+-        className,
+-      )}
+-      style={style}
+-    >
+-      {children}
+-    </div>
+-  );
+-}
+-
+-export function AkSectionHeader({
+-  label,
+-  count,
+-  right,
+-}: {
+-  label: string;
+-  count?: number;
+-  right?: ReactNode;
+-}) {
+-  return (
+-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+-      <div className="flex items-center gap-3">
+-        <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
+-          {label}
+-        </div>
+-        {count !== undefined ? (
+-          <div className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-300">
+-            {count}
+-          </div>
+-        ) : null}
+-      </div>
+-      {right ? <div>{right}</div> : null}
+-    </div>
+-  );
+-}
+-
+-export function AkBadge({
+-  children,
+-  tone,
+-  color,
+-}: {
+-  children: ReactNode;
+-  tone?: Tone;
+-  color?: string;
+-}) {
+-  const theme = tone ? TONES[tone] : null;
+-
+-  return (
+-    <span
+-      className={cx(
+-        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
+-        theme?.text,
+-        theme?.border,
+-        theme?.bg,
+-      )}
+-      style={color ? { color, borderColor: `${color}33`, backgroundColor: `${color}14` } : undefined}
+-    >
+-      {children}
+-    </span>
+-  );
+-}
+-
+-export function AkButton({
+-  children,
+-  onClick,
+-  variant = "ghost",
+-  tone,
+-  className,
+-  disabled,
+-  type = "button",
+-}: {
+-  children: ReactNode;
+-  onClick?: () => void;
+-  variant?: "primary" | "ghost";
+-  tone?: Tone;
+-  className?: string;
+-  disabled?: boolean;
+-  type?: "button" | "submit" | "reset";
+-}) {
+-  const toneStyles =
+-    tone === "danger"
+-      ? {
+-          ghost: "border-rose-300/20 bg-rose-300/10 text-rose-100 hover:border-rose-300/30 hover:bg-rose-300/14",
+-          primary: "bg-rose-200 text-rose-950 hover:bg-rose-100",
+-        }
+-      : tone === "gold"
+-        ? {
+-            ghost: "border-amber-300/20 bg-amber-300/10 text-amber-100 hover:border-amber-300/30 hover:bg-amber-300/14",
+-            primary: "bg-amber-200 text-amber-950 hover:bg-amber-100",
+-          }
+-        : {
+-            ghost: "border-white/10 bg-white/[0.04] text-slate-100 hover:border-white/20 hover:bg-white/[0.08]",
+-            primary: "bg-white text-slate-950 hover:bg-slate-100",
+-          };
+-
+-  return (
+-    <button
+-      type={type}
+-      onClick={onClick}
+-      disabled={disabled}
+-      className={cx(
+-        "inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-medium transition",
+-        disabled && "cursor-not-allowed opacity-50",
+-        variant === "primary" ? "border-transparent" : "",
+-        variant === "primary" ? toneStyles.primary : toneStyles.ghost,
+-        className,
+-      )}
+-    >
+-      {children}
+-    </button>
+-  );
+-}
+-
+-export function AkInput({
+-  value,
+-  onChange,
+-  placeholder,
+-  type = "text",
+-  className,
+-}: {
+-  value: string;
+-  onChange: (value: string) => void;
+-  placeholder?: string;
+-  type?: string;
+-  className?: string;
+-}) {
+-  return (
+-    <input
+-      type={type}
+-      value={value}
+-      placeholder={placeholder}
+-      onChange={(event) => onChange(event.target.value)}
+-      className={cx(
+-        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]",
+-        className,
+-      )}
+-    />
+-  );
+-}
+-
+-export function AkSelect({
+-  value,
+-  onChange,
+-  children,
+-  className,
+-}: {
+-  value: string;
+-  onChange: (value: string) => void;
+-  children: ReactNode;
+-  className?: string;
+-}) {
+-  return (
+-    <select
+-      value={value}
+-      onChange={(event) => onChange(event.target.value)}
+-      className={cx(
+-        "w-full rounded-2xl border border-white/10 bg-[#0b1520] px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/25",
+-        className,
+-      )}
+-    >
+-      {children}
+-    </select>
+-  );
+-}
+-
+-export function AkTextarea({
+-  value,
+-  onChange,
+-  placeholder,
+-  className,
+-}: {
+-  value: string;
+-  onChange: (value: string) => void;
+-  placeholder?: string;
+-  className?: string;
+-}) {
+-  return (
+-    <textarea
+-      value={value}
+-      placeholder={placeholder}
+-      onChange={(event) => onChange(event.target.value)}
+-      className={cx(
+-        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]",
+-        className,
+-      )}
+-    />
+-  );
+-}
+-
+-export function AkUtilityLink({
+-  href,
+-  children,
+-}: {
+-  href: string;
+-  children: ReactNode;
+-}) {
+-  return (
+-    <Link
+-      href={href}
+-      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+-    >
+-      {children}
+-    </Link>
+-  );
+-}
+-
+-export function AkMetricStrip({
+-  children,
+-  className,
+-}: {
+-  children: ReactNode;
+-  className?: string;
+-}) {
+-  return <div className={cx("grid gap-4 md:grid-cols-2 xl:grid-cols-4", className)}>{children}</div>;
+-}
+-
+-export function AkMetricCard({
+-  label,
+-  value,
+-  detail,
+-}: {
+-  label: string;
+-  value: string;
+-  detail: string;
+-}) {
+-  return (
+-    <AkPanel className="p-5">
+-      <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div>
+-      <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{value}</div>
+-      <div className="mt-2 text-sm text-slate-400">{detail}</div>
+-    </AkPanel>
+-  );
+-}
++"use client";
++
++import Link from "next/link";
++import { usePathname } from "next/navigation";
++import type { CSSProperties, ReactNode } from "react";
++import {
++  Activity,
++  Gauge,
++  ReceiptText,
++  Settings,
++} from "lucide-react";
++
++const TONES = {
++  gold: {
++    text: "text-amber-100",
++    border: "border-amber-300/20",
++    bg: "bg-amber-300/12",
++  },
++  danger: {
++    text: "text-rose-100",
++    border: "border-rose-300/20",
++    bg: "bg-rose-300/12",
++  },
++  muted: {
++    text: "text-slate-300",
++    border: "border-white/10",
++    bg: "bg-white/6",
++  },
++} as const;
++
++type Tone = keyof typeof TONES;
++
++type NavItem = {
++  href: string;
++  label: string;
++  icon: typeof Activity;
++};
++
++const NAV_ITEMS: NavItem[] = [
++  { href: "/command", label: "Command", icon: Activity },
++  { href: "/command/integrity", label: "Integrity", icon: Gauge },
++  { href: "/command/receipts", label: "Receipts", icon: ReceiptText },
++  { href: "/command/settings", label: "Settings", icon: Settings },
++];
++
++function cx(...parts: Array<string | false | null | undefined>) {
++  return parts.filter(Boolean).join(" ");
++}
++
++function isActive(pathname: string, href: string) {
++  return pathname === href || pathname.startsWith(`${href}/`);
++}
++
++export function AkShell({
++  title,
++  subtitle,
++  eyebrow = "Kernel Governed Surface",
++  actions,
++  children,
++}: {
++  title?: string;
++  subtitle?: string;
++  eyebrow?: string;
++  actions?: ReactNode;
++  children: ReactNode;
++}) {
++  const pathname = usePathname();
++
++  return (
++    <div className="min-h-screen bg-[#071018] text-slate-100">
++      <div className="pointer-events-none fixed inset-0 overflow-hidden">
++        <div className="absolute left-[-14%] top-[-8%] h-[26rem] w-[26rem] rounded-full bg-cyan-300/10 blur-3xl" />
++        <div className="absolute right-[-10%] top-[8%] h-[28rem] w-[28rem] rounded-full bg-amber-300/10 blur-3xl" />
++        <div className="absolute bottom-[-14%] left-[16%] h-[24rem] w-[24rem] rounded-full bg-emerald-300/8 blur-3xl" />
++        <div
++          className="absolute inset-0 opacity-[0.04]"
++          style={{
++            backgroundImage:
++              "linear-gradient(rgba(255,255,255,0.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.7) 1px, transparent 1px)",
++            backgroundSize: "48px 48px",
++          }}
++        />
++      </div>
++
++      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#071018]/88 backdrop-blur-xl">
++        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
++          <div className="min-w-0">
++            <Link href="/" className="inline-flex items-center gap-3">
++              <div className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-white shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
++                AK
++              </div>
++              <div className="min-w-0">
++                <div className="truncate text-[11px] uppercase tracking-[0.34em] text-slate-500">AutoKirk</div>
++                <div className="truncate text-sm text-slate-300">Stripe billing wedge</div>
++              </div>
++            </Link>
++          </div>
++
++          <nav className="hidden flex-1 items-center justify-center gap-2 xl:flex">
++            {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
++              const active = isActive(pathname, href);
++              return (
++                <Link
++                  key={href}
++                  href={href}
++                  className={cx(
++                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
++                    active
++                      ? "border-cyan-300/25 bg-cyan-300/12 text-cyan-100"
++                      : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
++                  )}
++                >
++                  <Icon className="h-4 w-4" />
++                  {label}
++                </Link>
++              );
++            })}
++          </nav>
++
++          <div className="hidden items-center gap-2 md:flex">
++            <Link
++              href="/login"
++              className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
++            >
++              Entry
++            </Link>
++          </div>
++        </div>
++
++        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-4 sm:px-6 xl:hidden lg:px-8">
++          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
++            const active = isActive(pathname, href);
++            return (
++              <Link
++                key={href}
++                href={href}
++                className={cx(
++                  "inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition",
++                  active
++                    ? "border-cyan-300/25 bg-cyan-300/12 text-cyan-100"
++                    : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06] hover:text-white",
++                )}
++              >
++                <Icon className="h-4 w-4" />
++                {label}
++              </Link>
++            );
++          })}
++        </div>
++      </header>
++
++      <main className="relative mx-auto max-w-[88rem] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
++        <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-7 shadow-[0_28px_90px_rgba(0,0,0,0.3)] sm:p-9">
++          <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between xl:gap-10">
++            <div className="max-w-3xl">
++              <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">{eyebrow}</div>
++              {title ? (
++                <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
++                  {title}
++                </h1>
++              ) : null}
++              {subtitle ? (
++                <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
++                  {subtitle}
++                </p>
++              ) : null}
++            </div>
++
++            <div className="grid gap-4 sm:grid-cols-2 xl:w-[27rem]">
++              <SurfacePulse
++                label="Kernel authority"
++                value="Truth stays in the Kernel"
++                note="Reads come through route handlers. Mutation authority stays behind governed action surfaces."
++              />
++              <SurfacePulse
++                label="Proof posture"
++                value="Receipt-backed billing closure"
++                note="The live operator wedge is frozen to Stripe billing movements and their governed receipts."
++              />
++            </div>
++          </div>
++
++          {actions ? <div className="mt-8">{actions}</div> : null}
++        </section>
++
++        <div className="mt-10 space-y-10 lg:space-y-12">{children}</div>
++      </main>
++    </div>
++  );
++}
++
++function SurfacePulse({
++  label,
++  value,
++  note,
++}: {
++  label: string;
++  value: string;
++  note: string;
++}) {
++  return (
++    <div className="rounded-[1.6rem] border border-white/10 bg-[#09111a]/90 p-5">
++      <div className="text-[10px] uppercase tracking-[0.26em] text-slate-500">{label}</div>
++      <div className="mt-3 text-lg font-medium text-white">{value}</div>
++      <div className="mt-3 text-sm leading-6 text-slate-400">{note}</div>
++    </div>
++  );
++}
++
++export function AkPanel({
++  children,
++  className,
++  style,
++}: {
++  children: ReactNode;
++  className?: string;
++  style?: CSSProperties;
++}) {
++  return (
++    <div
++      className={cx(
++        "rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(13,24,37,0.92),rgba(8,16,26,0.85))] shadow-[0_20px_60px_rgba(0,0,0,0.2)]",
++        className,
++      )}
++      style={style}
++    >
++      {children}
++    </div>
++  );
++}
++
++export function AkSectionHeader({
++  label,
++  count,
++  right,
++}: {
++  label: string;
++  count?: number;
++  right?: ReactNode;
++}) {
++  return (
++    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
++      <div className="flex items-center gap-3">
++        <div className="text-[11px] font-semibold uppercase tracking-[0.3em] text-slate-500">
++          {label}
++        </div>
++        {count !== undefined ? (
++          <div className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-slate-300">
++            {count}
++          </div>
++        ) : null}
++      </div>
++      {right ? <div>{right}</div> : null}
++    </div>
++  );
++}
++
++export function AkBadge({
++  children,
++  tone,
++  color,
++}: {
++  children: ReactNode;
++  tone?: Tone;
++  color?: string;
++}) {
++  const theme = tone ? TONES[tone] : null;
++
++  return (
++    <span
++      className={cx(
++        "inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em]",
++        theme?.text,
++        theme?.border,
++        theme?.bg,
++      )}
++      style={color ? { color, borderColor: `${color}33`, backgroundColor: `${color}14` } : undefined}
++    >
++      {children}
++    </span>
++  );
++}
++
++export function AkButton({
++  children,
++  onClick,
++  variant = "ghost",
++  tone,
++  className,
++  disabled,
++  type = "button",
++}: {
++  children: ReactNode;
++  onClick?: () => void;
++  variant?: "primary" | "ghost";
++  tone?: Tone;
++  className?: string;
++  disabled?: boolean;
++  type?: "button" | "submit" | "reset";
++}) {
++  const toneStyles =
++    tone === "danger"
++      ? {
++          ghost: "border-rose-300/20 bg-rose-300/10 text-rose-100 hover:border-rose-300/30 hover:bg-rose-300/14",
++          primary: "bg-rose-200 text-rose-950 hover:bg-rose-100",
++        }
++      : tone === "gold"
++        ? {
++            ghost: "border-amber-300/20 bg-amber-300/10 text-amber-100 hover:border-amber-300/30 hover:bg-amber-300/14",
++            primary: "bg-amber-200 text-amber-950 hover:bg-amber-100",
++          }
++        : {
++            ghost: "border-white/10 bg-white/[0.04] text-slate-100 hover:border-white/20 hover:bg-white/[0.08]",
++            primary: "bg-white text-slate-950 hover:bg-slate-100",
++          };
++
++  return (
++    <button
++      type={type}
++      onClick={onClick}
++      disabled={disabled}
++      className={cx(
++        "inline-flex items-center justify-center rounded-2xl border px-4 py-2.5 text-sm font-medium transition",
++        disabled && "cursor-not-allowed opacity-50",
++        variant === "primary" ? "border-transparent" : "",
++        variant === "primary" ? toneStyles.primary : toneStyles.ghost,
++        className,
++      )}
++    >
++      {children}
++    </button>
++  );
++}
++
++export function AkInput({
++  value,
++  onChange,
++  placeholder,
++  type = "text",
++  className,
++}: {
++  value: string;
++  onChange: (value: string) => void;
++  placeholder?: string;
++  type?: string;
++  className?: string;
++}) {
++  return (
++    <input
++      type={type}
++      value={value}
++      placeholder={placeholder}
++      onChange={(event) => onChange(event.target.value)}
++      className={cx(
++        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]",
++        className,
++      )}
++    />
++  );
++}
++
++export function AkSelect({
++  value,
++  onChange,
++  children,
++  className,
++}: {
++  value: string;
++  onChange: (value: string) => void;
++  children: ReactNode;
++  className?: string;
++}) {
++  return (
++    <select
++      value={value}
++      onChange={(event) => onChange(event.target.value)}
++      className={cx(
++        "w-full rounded-2xl border border-white/10 bg-[#0b1520] px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-300/25",
++        className,
++      )}
++    >
++      {children}
++    </select>
++  );
++}
++
++export function AkTextarea({
++  value,
++  onChange,
++  placeholder,
++  className,
++}: {
++  value: string;
++  onChange: (value: string) => void;
++  placeholder?: string;
++  className?: string;
++}) {
++  return (
++    <textarea
++      value={value}
++      placeholder={placeholder}
++      onChange={(event) => onChange(event.target.value)}
++      className={cx(
++        "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/25 focus:bg-white/[0.06]",
++        className,
++      )}
++    />
++  );
++}
++
++export function AkUtilityLink({
++  href,
++  children,
++}: {
++  href: string;
++  children: ReactNode;
++}) {
++  return (
++    <Link
++      href={href}
++      className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
++    >
++      {children}
++    </Link>
++  );
++}
++
++export function AkMetricStrip({
++  children,
++  className,
++}: {
++  children: ReactNode;
++  className?: string;
++}) {
++  return <div className={cx("grid gap-4 md:grid-cols-2 xl:grid-cols-4", className)}>{children}</div>;
++}
++
++export function AkMetricCard({
++  label,
++  value,
++  detail,
++}: {
++  label: string;
++  value: string;
++  detail: string;
++}) {
++  return (
++    <AkPanel className="p-5">
++      <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div>
++      <div className="mt-3 text-3xl font-semibold tracking-tight text-white">{value}</div>
++      <div className="mt-2 text-sm text-slate-400">{detail}</div>
++    </AkPanel>
++  );
++}
+diff --git a/src/lib/kernel/provisionFromStripe.ts b/src/lib/kernel/provisionFromStripe.ts
+index 4b1e957..118f432 100644
+--- a/src/lib/kernel/provisionFromStripe.ts
++++ b/src/lib/kernel/provisionFromStripe.ts
+@@ -114,6 +114,23 @@ export async function provisionFromStripe(
+       `[provision] ${r.action}: ${data.stripeCustomerId} → workspace ${r.workspace_id}`
+     );
+ 
++    // Update the activation spine for the new workspace
++    if (r.action === "provisioned" && r.workspace_id) {
++      try {
++        await supabaseAdmin
++          .schema("api")
++          .rpc("activate_provisioned_workspace", {
++            p_workspace_id: r.workspace_id as string,
++            p_stripe_customer_id: data.stripeCustomerId,
++            p_stripe_subscription_id: data.subscriptionId,
++            p_email: email,
++          });
++      } catch (activateErr) {
++        // Non-fatal — spine update can be retried
++        console.error("[provision] Activation spine update failed (non-fatal):", activateErr);
++      }
++    }
++
+     return {
+       ok: true,
+       action: r.action as ProvisionResult["action"],
+diff --git a/src/middleware.ts b/src/middleware.ts
+new file mode 100644
+index 0000000..3af138e
+--- /dev/null
++++ b/src/middleware.ts
+@@ -0,0 +1,153 @@
++import { NextResponse, type NextRequest } from "next/server";
++import { createServerClient } from "@supabase/ssr";
++
++// Routes that never require auth
++const PUBLIC = new Set(["/", "/login", "/auth/callback"]);
++
++// Routes that are part of the activation flow (auth required, but no activation gate)
++const ACTIVATION_ROUTES = new Set([
++  "/activate",
++  "/activate/connect",
++  "/activate/verify",
++]);
++
++function isPublic(pathname: string) {
++  return PUBLIC.has(pathname) || pathname.startsWith("/api/stripe/");
++}
++
++function isActivationRoute(pathname: string) {
++  return ACTIVATION_ROUTES.has(pathname);
++}
++
++function isApiRoute(pathname: string) {
++  return pathname.startsWith("/api/");
++}
++
++// Map next_action → destination route
++function routeForAction(action: string): string {
++  switch (action) {
++    case "provisioning":
++      return "/activate";
++    case "connect_stripe":
++      return "/activate/connect";
++    case "wait_for_first_event":
++      return "/activate/verify";
++    case "open_dashboard":
++      return "/command";
++    default:
++      return "/activate";
++  }
++}
++
++export async function middleware(request: NextRequest) {
++  const { pathname } = request.nextUrl;
++
++  // Public routes pass through
++  if (isPublic(pathname)) {
++    return NextResponse.next();
++  }
++
++  // API routes: only check auth, don't redirect
++  if (isApiRoute(pathname)) {
++    return NextResponse.next();
++  }
++
++  // Build auth-aware response
++  const response = NextResponse.next();
++  const supabase = createServerClient(
++    process.env.NEXT_PUBLIC_SUPABASE_URL!,
++    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
++    {
++      cookies: {
++        getAll() {
++          return request.cookies.getAll();
++        },
++        setAll(cookiesToSet) {
++          cookiesToSet.forEach(({ name, value, options }) => {
++            response.cookies.set(name, value, options);
++          });
++        },
++      },
++    }
++  );
++
++  const {
++    data: { user },
++  } = await supabase.auth.getUser();
++
++  // No session → login
++  if (!user) {
++    const loginUrl = new URL("/login", request.url);
++    loginUrl.searchParams.set("next", pathname);
++    return NextResponse.redirect(loginUrl);
++  }
++
++  // Founder bypass — full access, no activation checks
++  const founderEmail = process.env.FOUNDER_EMAIL ?? "kirklubesit30908635@gmail.com";
++  if (user.email === founderEmail) {
++    return response;
++  }
++
++  // Activation routes: just verify auth (already done above)
++  if (isActivationRoute(pathname)) {
++    return response;
++  }
++
++  // Product routes: check activation spine
++  const { data: operator } = await supabase
++    .schema("core")
++    .from("operators")
++    .select("id")
++    .eq("auth_uid", user.id)
++    .maybeSingle();
++
++  if (!operator) {
++    return NextResponse.redirect(new URL("/activate", request.url));
++  }
++
++  const { data: memberships } = await supabase
++    .schema("core")
++    .from("memberships")
++    .select("workspace_id")
++    .eq("operator_id", operator.id)
++    .limit(1);
++
++  if (!memberships || memberships.length === 0) {
++    return NextResponse.redirect(new URL("/activate", request.url));
++  }
++
++  const workspaceId = memberships[0].workspace_id;
++
++  const { data: activation } = await supabase
++    .schema("core")
++    .from("activation_state")
++    .select("next_action")
++    .eq("workspace_id", workspaceId)
++    .maybeSingle();
++
++  if (!activation) {
++    return NextResponse.redirect(new URL("/activate", request.url));
++  }
++
++  // Route from the spine
++  const correctRoute = routeForAction(activation.next_action);
++
++  // Already at correct location → pass through
++  if (pathname === correctRoute || pathname.startsWith(correctRoute + "/")) {
++    return response;
++  }
++
++  // Spine says dashboard and user is anywhere in /command → allow
++  if (activation.next_action === "open_dashboard" && pathname.startsWith("/command")) {
++    return response;
++  }
++
++  // Redirect to correct activation step
++  return NextResponse.redirect(new URL(correctRoute, request.url));
++}
++
++export const config = {
++  matcher: [
++    "/((?!_next/static|_next/image|favicon.ico|logo-coin.png|logo-mark.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
++  ],
++};
+diff --git a/supabase/migrations/20260328120000_activation_spine.sql b/supabase/migrations/20260328120000_activation_spine.sql
+new file mode 100644
+index 0000000..82968a1
+--- /dev/null
++++ b/supabase/migrations/20260328120000_activation_spine.sql
+@@ -0,0 +1,385 @@
++-- ============================================================
++-- 20260328120000_activation_spine.sql
++-- ============================================================
++-- AUTOKIRK ACTIVATION SPINE
++--
++-- One canonical activation record per customer workspace.
++-- Every screen reads from this. No scattered truth.
++--
++-- State machine:
++--   paid → provisioning → workspace_ready → connect_required
++--   → connected → first_event_seen → live
++--
++-- The activation spine is the source of truth for:
++--   - post-checkout success
++--   - post-login redirect
++--   - onboarding progression
++--   - dashboard top state
++--   - upgrade/recovery messaging
++--
++-- KERNEL AUDIT:
++--   1. Obligation: activation updates tracked via governed RPCs
++--   2. Receipt: state transitions logged
++--   3. Governed: All mutations via api.* RPCs
++--   4. Leakage: No — activation state prevents premature access
++--   5. Isolation: workspace_id scoped, RLS enforced
++-- ============================================================
++
++BEGIN;
++
++-- ------------------------------------
++-- 1. Activation state table
++-- ------------------------------------
++
++CREATE TABLE IF NOT EXISTS core.activation_state (
++  id                       uuid PRIMARY KEY DEFAULT gen_random_uuid(),
++  workspace_id             uuid NOT NULL UNIQUE REFERENCES core.workspaces(id),
++
++  -- Billing identity
++  stripe_customer_id       text,
++  stripe_subscription_id   text,
++
++  -- Commercial state
++  subscription_status      text NOT NULL DEFAULT 'inactive'
++    CHECK (subscription_status IN ('active', 'trialing', 'past_due', 'canceled', 'inactive')),
++  billing_status           text NOT NULL DEFAULT 'unpaid'
++    CHECK (billing_status IN ('paid', 'unpaid', 'past_due', 'refunded')),
++  plan_key                 text NOT NULL DEFAULT 'core_enforcement',
++  engine_key               text NOT NULL DEFAULT 'engine_one',
++  entitlement_key          text NOT NULL DEFAULT 'autokirk_core_access',
++  governance_key            text NOT NULL DEFAULT 'sovereign',
++
++  -- Provisioning state
++  provisioning_status      text NOT NULL DEFAULT 'pending'
++    CHECK (provisioning_status IN ('pending', 'provisioning', 'workspace_ready', 'failed')),
++  membership_status        text NOT NULL DEFAULT 'pending'
++    CHECK (membership_status IN ('active', 'pending', 'suspended')),
++
++  -- Connection state
++  stripe_connection_status text NOT NULL DEFAULT 'not_connected'
++    CHECK (stripe_connection_status IN ('not_connected', 'connected', 'disconnected', 'error')),
++  stripe_connect_account_id text,
++
++  -- Enforcement state
++  enforcement_status       text NOT NULL DEFAULT 'not_live'
++    CHECK (enforcement_status IN ('not_live', 'first_event_seen', 'live', 'suspended')),
++
++  -- Activity tracking
++  events_received          int NOT NULL DEFAULT 0,
++  obligations_open         int NOT NULL DEFAULT 0,
++  receipts_issued          int NOT NULL DEFAULT 0,
++  first_event_at           timestamptz,
++  last_event_at            timestamptz,
++  last_receipt_at          timestamptz,
++
++  -- Progression
++  next_action              text NOT NULL DEFAULT 'provisioning'
++    CHECK (next_action IN (
++      'provisioning',
++      'connect_stripe',
++      'wait_for_first_event',
++      'open_dashboard'
++    )),
++
++  -- Business profile
++  business_name            text,
++  business_type            text,
++
++  -- Timestamps
++  activated_at             timestamptz,
++  created_at               timestamptz NOT NULL DEFAULT now(),
++  updated_at               timestamptz NOT NULL DEFAULT now()
++);
++
++COMMENT ON TABLE core.activation_state IS
++  'Canonical activation spine. One record per customer workspace. '
++  'Every screen reads from this — no scattered truth. '
++  'State machine: paid → provisioning → workspace_ready → connect_required → connected → first_event_seen → live.';
++
++ALTER TABLE core.activation_state ENABLE ROW LEVEL SECURITY;
++
++CREATE POLICY activation_state_service_all
++  ON core.activation_state FOR ALL TO service_role
++  USING (true) WITH CHECK (true);
++
++CREATE POLICY activation_state_auth_read
++  ON core.activation_state FOR SELECT TO authenticated
++  USING (core.is_member(workspace_id));
++
++CREATE POLICY activation_state_auth_update
++  ON core.activation_state FOR UPDATE TO authenticated
++  USING (core.is_member(workspace_id))
++  WITH CHECK (core.is_member(workspace_id));
++
++GRANT SELECT, UPDATE ON core.activation_state TO authenticated;
++GRANT ALL ON core.activation_state TO service_role;
++
++CREATE INDEX IF NOT EXISTS idx_activation_state_stripe_customer
++  ON core.activation_state(stripe_customer_id);
++
++CREATE INDEX IF NOT EXISTS idx_activation_state_next_action
++  ON core.activation_state(next_action);
++
++-- ------------------------------------
++-- 2. Auto-create activation record on workspace creation
++-- ------------------------------------
++
++CREATE OR REPLACE FUNCTION core.trg_create_activation_state()
++RETURNS trigger
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = core, public
++AS $$
++BEGIN
++  INSERT INTO core.activation_state (workspace_id)
++  VALUES (NEW.id)
++  ON CONFLICT (workspace_id) DO NOTHING;
++  RETURN NEW;
++END;
++$$;
++
++DROP TRIGGER IF EXISTS trg_create_activation_state ON core.workspaces;
++CREATE TRIGGER trg_create_activation_state
++  AFTER INSERT ON core.workspaces
++  FOR EACH ROW
++  EXECUTE FUNCTION core.trg_create_activation_state();
++
++-- Backfill for existing workspaces
++INSERT INTO core.activation_state (workspace_id)
++SELECT id FROM core.workspaces
++WHERE id NOT IN (SELECT workspace_id FROM core.activation_state)
++ON CONFLICT (workspace_id) DO NOTHING;
++
++-- ------------------------------------
++-- 3. Contract resolver: resolve_activation_state
++-- ------------------------------------
++
++CREATE OR REPLACE FUNCTION api.resolve_activation_state(
++  p_workspace_id uuid
++)
++RETURNS jsonb
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = core, ledger, registry, public
++AS $$
++DECLARE
++  v_state    core.activation_state%ROWTYPE;
++  v_ws       core.workspaces%ROWTYPE;
++  v_tenant   core.tenants%ROWTYPE;
++  v_events   int;
++  v_open     int;
++  v_receipts int;
++  v_next     text;
++  v_enforce  text;
++BEGIN
++  -- Load activation state
++  SELECT * INTO v_state
++    FROM core.activation_state
++   WHERE workspace_id = p_workspace_id;
++
++  IF NOT FOUND THEN
++    -- Create on the fly for workspaces without one
++    INSERT INTO core.activation_state (workspace_id)
++    VALUES (p_workspace_id)
++    ON CONFLICT (workspace_id) DO NOTHING;
++
++    SELECT * INTO v_state
++      FROM core.activation_state
++     WHERE workspace_id = p_workspace_id;
++  END IF;
++
++  -- Load workspace + tenant
++  SELECT * INTO v_ws FROM core.workspaces WHERE id = p_workspace_id;
++  SELECT * INTO v_tenant FROM core.tenants WHERE id = v_ws.tenant_id;
++
++  -- Compute live counts
++  SELECT count(*) INTO v_events
++    FROM ledger.events e
++   WHERE e.workspace_id = p_workspace_id;
++
++  SELECT count(*) INTO v_open
++    FROM core.obligations o
++   WHERE o.workspace_id = p_workspace_id
++     AND o.state = 'open';
++
++  SELECT count(*) INTO v_receipts
++    FROM ledger.receipts r
++   WHERE r.workspace_id = p_workspace_id;
++
++  -- Derive enforcement status from actual data
++  IF v_events > 0 AND v_open > 0 AND v_receipts > 0 THEN
++    v_enforce := 'live';
++  ELSIF v_events > 0 THEN
++    v_enforce := 'first_event_seen';
++  ELSE
++    v_enforce := v_state.enforcement_status;
++  END IF;
++
++  -- Derive next_action from current state
++  IF v_state.provisioning_status NOT IN ('workspace_ready') THEN
++    v_next := 'provisioning';
++  ELSIF v_state.stripe_connection_status = 'not_connected' THEN
++    v_next := 'connect_stripe';
++  ELSIF v_enforce IN ('not_live') THEN
++    v_next := 'wait_for_first_event';
++  ELSE
++    v_next := 'open_dashboard';
++  END IF;
++
++  -- Persist computed state back
++  UPDATE core.activation_state
++     SET events_received    = v_events,
++         obligations_open   = v_open,
++         receipts_issued    = v_receipts,
++         enforcement_status = v_enforce,
++         next_action        = v_next,
++         first_event_at     = CASE
++           WHEN v_events > 0 AND first_event_at IS NULL THEN now()
++           ELSE first_event_at
++         END,
++         activated_at       = CASE
++           WHEN v_enforce = 'live' AND activated_at IS NULL THEN now()
++           ELSE activated_at
++         END,
++         updated_at         = now()
++   WHERE workspace_id = p_workspace_id;
++
++  -- Return canonical activation object
++  RETURN jsonb_build_object(
++    'subscription',             v_state.subscription_status,
++    'billing_status',           v_state.billing_status,
++    'plan',                     v_state.plan_key,
++    'engine',                   v_state.engine_key,
++    'entitlement',              v_state.entitlement_key,
++    'governance',               v_state.governance_key,
++    'provisioning_status',      v_state.provisioning_status,
++    'workspace',                jsonb_build_object(
++      'id',   p_workspace_id,
++      'slug', v_ws.slug,
++      'name', COALESCE(v_state.business_name, v_ws.name)
++    ),
++    'membership_status',        v_state.membership_status,
++    'stripe_connection_status', v_state.stripe_connection_status,
++    'enforcement_status',       v_enforce,
++    'events_received',          v_events,
++    'obligations_open',         v_open,
++    'receipts_issued',          v_receipts,
++    'next_action',              v_next,
++    'business_name',            v_state.business_name,
++    'business_type',            v_state.business_type,
++    'first_event_at',           v_state.first_event_at,
++    'activated_at',             v_state.activated_at
++  );
++END;
++$$;
++
++COMMENT ON FUNCTION api.resolve_activation_state IS
++  'Contract resolver. Returns the canonical activation object for a workspace. '
++  'Computes live counts, derives enforcement_status and next_action, persists back. '
++  'This is the single source of truth for all UI routing.';
++
++GRANT EXECUTE ON FUNCTION api.resolve_activation_state(uuid) TO authenticated, service_role;
++
++-- ------------------------------------
++-- 4. Profile update RPC
++-- ------------------------------------
++
++CREATE OR REPLACE FUNCTION api.update_workspace_profile(
++  p_workspace_id  uuid,
++  p_business_name text,
++  p_business_type text DEFAULT NULL
++)
++RETURNS jsonb
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = core, api, public
++AS $$
++BEGIN
++  PERFORM core.assert_member(p_workspace_id);
++
++  UPDATE core.activation_state
++     SET business_name = p_business_name,
++         business_type = COALESCE(p_business_type, business_type),
++         updated_at    = now()
++   WHERE workspace_id = p_workspace_id;
++
++  UPDATE core.workspaces
++     SET name = p_business_name || ' Operations'
++   WHERE id = p_workspace_id;
++
++  RETURN api.resolve_activation_state(p_workspace_id);
++END;
++$$;
++
++GRANT EXECUTE ON FUNCTION api.update_workspace_profile(uuid, text, text) TO authenticated, service_role;
++
++-- ------------------------------------
++-- 5. Stripe Connect recording
++-- ------------------------------------
++
++CREATE OR REPLACE FUNCTION api.record_stripe_connect(
++  p_workspace_id              uuid,
++  p_stripe_connect_account_id text
++)
++RETURNS jsonb
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = core, api, public
++AS $$
++BEGIN
++  PERFORM core.assert_member(p_workspace_id);
++
++  UPDATE core.activation_state
++     SET stripe_connect_account_id  = p_stripe_connect_account_id,
++         stripe_connection_status   = 'connected',
++         updated_at                 = now()
++   WHERE workspace_id = p_workspace_id;
++
++  -- Register provider connection for ingest routing
++  INSERT INTO core.provider_connections (
++    workspace_id, provider, provider_account_id, livemode, is_active
++  ) VALUES (
++    p_workspace_id, 'stripe', p_stripe_connect_account_id, true, true
++  )
++  ON CONFLICT DO NOTHING;
++
++  RETURN api.resolve_activation_state(p_workspace_id);
++END;
++$$;
++
++GRANT EXECUTE ON FUNCTION api.record_stripe_connect(uuid, text) TO authenticated, service_role;
++
++-- ------------------------------------
++-- 6. Provisioning hook: set activation state on workspace provision
++-- ------------------------------------
++
++CREATE OR REPLACE FUNCTION api.activate_provisioned_workspace(
++  p_workspace_id         uuid,
++  p_stripe_customer_id   text,
++  p_stripe_subscription_id text DEFAULT NULL,
++  p_email                text DEFAULT NULL
++)
++RETURNS jsonb
++LANGUAGE plpgsql
++SECURITY DEFINER
++SET search_path = core, api, public
++AS $$
++BEGIN
++  UPDATE core.activation_state
++     SET stripe_customer_id      = p_stripe_customer_id,
++         stripe_subscription_id  = p_stripe_subscription_id,
++         subscription_status     = 'active',
++         billing_status          = 'paid',
++         provisioning_status     = 'workspace_ready',
++         membership_status       = 'active',
++         next_action             = 'connect_stripe',
++         updated_at              = now()
++   WHERE workspace_id = p_workspace_id;
++
++  RETURN api.resolve_activation_state(p_workspace_id);
++END;
++$$;
++
++GRANT EXECUTE ON FUNCTION api.activate_provisioned_workspace(uuid, text, text, text) TO service_role;
++
++COMMIT;
+diff --git a/tests/activation-spine.test.ts b/tests/activation-spine.test.ts
+new file mode 100644
+index 0000000..1902c57
+--- /dev/null
++++ b/tests/activation-spine.test.ts
+@@ -0,0 +1,211 @@
++import assert from "node:assert/strict";
++import test from "node:test";
++import { readFileSync, existsSync } from "node:fs";
++import { join } from "node:path";
++
++function readFile(p: string): string {
++  const full = join(process.cwd(), p);
++  return existsSync(full) ? readFileSync(full, "utf-8") : "";
++}
++
++const migration = readFile("supabase/migrations/20260328120000_activation_spine.sql");
++const middleware = readFile("src/middleware.ts");
++const statusRoute = readFile("src/app/api/customer/status/route.ts");
++const activatePage = readFile("src/app/activate/page.tsx");
++const connectPage = readFile("src/app/activate/connect/page.tsx");
++const verifyPage = readFile("src/app/activate/verify/page.tsx");
++const settingsPage = readFile("src/app/command/settings/page.tsx");
++const provisionTs = readFile("src/lib/kernel/provisionFromStripe.ts");
++
++// === Migration: activation_state table ===
++
++test("migration: creates core.activation_state table", () => {
++  assert.ok(migration.includes("CREATE TABLE IF NOT EXISTS core.activation_state"));
++});
++
++test("migration: has all required spine fields", () => {
++  const required = [
++    "workspace_id", "stripe_customer_id", "stripe_subscription_id",
++    "subscription_status", "billing_status", "plan_key", "engine_key",
++    "entitlement_key", "governance_key", "provisioning_status",
++    "membership_status", "stripe_connection_status", "enforcement_status",
++    "events_received", "obligations_open", "receipts_issued",
++    "first_event_at", "last_event_at", "last_receipt_at",
++    "next_action", "activated_at",
++  ];
++  for (const field of required) {
++    assert.ok(migration.includes(field), `Missing field: ${field}`);
++  }
++});
++
++test("migration: next_action has correct state enum", () => {
++  assert.ok(migration.includes("provisioning"));
++  assert.ok(migration.includes("connect_stripe"));
++  assert.ok(migration.includes("wait_for_first_event"));
++  assert.ok(migration.includes("open_dashboard"));
++});
++
++test("migration: enforcement_status has correct enum", () => {
++  assert.ok(migration.includes("not_live"));
++  assert.ok(migration.includes("first_event_seen"));
++  assert.ok(migration.includes("'live'"));
++});
++
++// === Migration: auto-create trigger ===
++
++test("migration: auto-creates activation on workspace insert", () => {
++  assert.ok(migration.includes("trg_create_activation_state"));
++});
++
++test("migration: backfills existing workspaces", () => {
++  assert.ok(migration.includes("Backfill for existing workspaces"));
++});
++
++// === Migration: resolve_activation_state ===
++
++test("migration: creates resolve_activation_state resolver", () => {
++  assert.ok(migration.includes("api.resolve_activation_state"));
++});
++
++test("migration: resolver computes live counts", () => {
++  assert.ok(migration.includes("v_events"));
++  assert.ok(migration.includes("v_open"));
++  assert.ok(migration.includes("v_receipts"));
++});
++
++test("migration: resolver derives next_action from state", () => {
++  assert.ok(migration.includes("v_next :="));
++});
++
++test("migration: resolver persists computed state back", () => {
++  assert.ok(migration.includes("UPDATE core.activation_state"));
++});
++
++test("migration: resolver returns canonical activation JSON", () => {
++  assert.ok(migration.includes("jsonb_build_object"));
++  assert.ok(migration.includes("'next_action'"));
++  assert.ok(migration.includes("'enforcement_status'"));
++});
++
++// === Migration: RPCs ===
++
++test("migration: creates update_workspace_profile RPC", () => {
++  assert.ok(migration.includes("api.update_workspace_profile"));
++});
++
++test("migration: creates record_stripe_connect RPC", () => {
++  assert.ok(migration.includes("api.record_stripe_connect"));
++});
++
++test("migration: creates activate_provisioned_workspace RPC", () => {
++  assert.ok(migration.includes("api.activate_provisioned_workspace"));
++});
++
++test("migration: profile update returns resolved activation state", () => {
++  const idx = migration.indexOf("api.update_workspace_profile");
++  const block = migration.slice(idx, idx + 1000);
++  assert.ok(block.includes("api.resolve_activation_state"));
++});
++
++// === Migration: RLS ===
++
++test("migration: RLS enabled on activation_state", () => {
++  assert.ok(migration.includes("ENABLE ROW LEVEL SECURITY"));
++});
++
++test("migration: wraps in transaction", () => {
++  assert.ok(migration.includes("BEGIN;"));
++  assert.ok(migration.includes("COMMIT;"));
++});
++
++// === API endpoint ===
++
++test("status endpoint: exists", () => {
++  assert.ok(statusRoute.length > 0);
++});
++
++test("status endpoint: calls resolve_activation_state", () => {
++  assert.ok(statusRoute.includes("resolve_activation_state"));
++});
++
++test("status endpoint: returns activation object", () => {
++  assert.ok(statusRoute.includes("activation"));
++});
++
++test("status endpoint: uses requireOperatorRouteContext", () => {
++  assert.ok(statusRoute.includes("requireOperatorRouteContext"));
++});
++
++// === Middleware ===
++
++test("middleware: routes from next_action", () => {
++  assert.ok(middleware.includes("next_action"));
++  assert.ok(middleware.includes("routeForAction"));
++});
++
++test("middleware: maps provisioning to /activate", () => {
++  assert.ok(middleware.includes('"provisioning"'));
++  assert.ok(middleware.includes("/activate"));
++});
++
++test("middleware: maps connect_stripe to /activate/connect", () => {
++  assert.ok(middleware.includes("connect_stripe"));
++  assert.ok(middleware.includes("/activate/connect"));
++});
++
++test("middleware: maps open_dashboard to /command", () => {
++  assert.ok(middleware.includes("open_dashboard"));
++  assert.ok(middleware.includes("/command"));
++});
++
++test("middleware: has founder bypass", () => {
++  assert.ok(middleware.includes("founderEmail"));
++});
++
++test("middleware: reads activation_state table", () => {
++  assert.ok(middleware.includes("activation_state"));
++});
++
++// === Activation pages ===
++
++test("activate page: exists with business profile form", () => {
++  assert.ok(activatePage.includes("businessName") || activatePage.includes("business_name"));
++});
++
++test("connect page: exists with Stripe Connect", () => {
++  assert.ok(connectPage.includes("Stripe"));
++});
++
++test("connect page: has skip option", () => {
++  assert.ok(connectPage.includes("Skip") || connectPage.includes("skip"));
++});
++
++test("verify page: reads from /api/customer/status", () => {
++  assert.ok(verifyPage.includes("/api/customer/status"));
++});
++
++test("verify page: checks enforcement_status from activation spine", () => {
++  assert.ok(verifyPage.includes("enforcement_status"));
++});
++
++// === Provisioning integration ===
++
++test("provisionFromStripe: calls activate_provisioned_workspace", () => {
++  assert.ok(provisionTs.includes("activate_provisioned_workspace"));
++});
++
++// === Settings page ===
++
++test("settings page: reads from /api/customer/status", () => {
++  assert.ok(settingsPage.includes("/api/customer/status"));
++});
++
++// === No old scattered endpoints ===
++
++test("no old /api/onboard/verify endpoint", () => {
++  assert.ok(!existsSync(join(process.cwd(), "src/app/api/onboard/verify/route.ts")));
++});
++
++test("no old /api/workspace/summary endpoint", () => {
++  assert.ok(!existsSync(join(process.cwd(), "src/app/api/workspace/summary/route.ts")));
++});

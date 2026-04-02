@@ -14,11 +14,9 @@ CREATE TABLE ingest.raw_events (
   payload      jsonb       NOT NULL,
   received_at  timestamptz NOT NULL DEFAULT now()
 );
-
 CREATE TRIGGER raw_events_deny_mutation
   BEFORE UPDATE OR DELETE ON ingest.raw_events
   FOR EACH ROW EXECUTE FUNCTION ledger._deny_mutation();
-
 -- Append-only table for raw events that have passed validation
 -- and classification.
 CREATE TABLE ingest.trusted_events (
@@ -29,11 +27,9 @@ CREATE TABLE ingest.trusted_events (
   payload       jsonb       NOT NULL,
   trusted_at    timestamptz NOT NULL DEFAULT now()
 );
-
 CREATE TRIGGER trusted_events_deny_mutation
   BEFORE UPDATE OR DELETE ON ingest.trusted_events
   FOR EACH ROW EXECUTE FUNCTION ledger._deny_mutation();
-
 -- ---------------------------------------------------------------
 -- Ingest ACL: revoke all client access and enable RLS.
 -- No authenticated read path exists in the current kernel.
@@ -41,6 +37,5 @@ CREATE TRIGGER trusted_events_deny_mutation
 -- ---------------------------------------------------------------
 REVOKE ALL ON TABLE ingest.raw_events     FROM anon, authenticated;
 REVOKE ALL ON TABLE ingest.trusted_events FROM anon, authenticated;
-
 ALTER TABLE ingest.raw_events     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ingest.trusted_events ENABLE ROW LEVEL SECURITY;

@@ -1,112 +1,339 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/lib/supabase/supabaseBrowser";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import {
+  Activity,
+  ArrowRight,
+  CreditCard,
+  Gauge,
+  Lock,
+  LogIn,
+  Mail,
+  ReceiptText,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
+import {
+  AkBadge,
+  AkButton,
+  AkInput,
+  AkPanel,
+  AkShell,
+  AkUtilityLink,
+} from "@/components/ak/ak-ui";
+import { OperatorSummaryPanel } from "@/components/operator-summary-panel";
+import {
+  buildUnavailableSummary,
+  type OperatorSummary,
+} from "@/lib/operator-summary";
+import { fetchOperatorSummary } from "@/lib/operator-summary-client";
+import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
+
+const FLOW_STEPS: Array<{ label: string; href?: string }> = [
+  { label: "event" },
+  { label: "obligation", href: "/command" },
+  { label: "closure", href: "/command" },
+  { label: "receipt", href: "/command/receipts" },
+  { label: "signal", href: "/command/integrity" },
+] as const;
+
+const SURFACE_LINKS = [
+  {
+    href: "/command",
+    eyebrow: "Action rail",
+    title: "Command queue",
+    body: "Open the governed queue, resolve the oldest unresolved duty first, and let closure emit proof.",
+    Icon: Activity,
+  },
+  {
+    href: "/command/receipts",
+    eyebrow: "Proof layer",
+    title: "Receipts",
+    body: "Read the receipt record for every finished obligation. If there is no receipt, it did not happen.",
+    Icon: ReceiptText,
+  },
+  {
+    href: "/command/integrity",
+    eyebrow: "Signal layer",
+    title: "Integrity",
+    body: "See whether the system is actually healthy, degraded, or carrying proof lag and hidden pressure.",
+    Icon: Gauge,
+  },
+  {
+    href: "/subscribe",
+    eyebrow: "Access rail",
+    title: "Operator access",
+    body: "Start or renew governed operator access through the Stripe-backed subscription entry point.",
+    Icon: CreditCard,
+  },
+] as const;
+
+const ENTRY_PRINCIPLES = [
+  "The first screen must tell the truth.",
+  "Operators consume one authoritative summary contract.",
+  "Closure is not complete until proof exists.",
+] as const;
+
+function normalizeAppPath(value: string | null | undefined) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) {
+    return "/command";
+  }
+
+  return value;
+}
+
+function FlowRail() {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-300">
+      {FLOW_STEPS.map((step, index) => (
+        <div key={step.label} className="flex items-center gap-2">
+          {step.href ? (
+            <Link
+              href={step.href}
+              className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-slate-200 transition hover:border-white/20 hover:bg-white/[0.08]"
+            >
+              {step.label}
+            </Link>
+          ) : (
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-slate-300">
+              {step.label}
+            </span>
+          )}
+          {index < FLOW_STEPS.length - 1 ? (
+            <ArrowRight className="h-4 w-4 text-slate-600" />
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SurfaceCard({
+  href,
+  eyebrow,
+  title,
+  body,
+  Icon,
+}: (typeof SURFACE_LINKS)[number]) {
+  return (
+    <Link href={href}>
+      <AkPanel className="group h-full p-5 transition hover:border-white/20 hover:bg-white/[0.05]">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{eyebrow}</div>
+          <Icon className="h-4 w-4 text-white/25 transition group-hover:text-white/50" />
+        </div>
+        <div className="mt-4 text-xl font-semibold tracking-tight text-white">{title}</div>
+        <p className="mt-3 text-sm leading-6 text-slate-400">{body}</p>
+        <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-slate-200">
+          Open surface
+          <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+        </div>
+      </AkPanel>
+    </Link>
+  );
+}
 
 export default function LoginPage() {
+  const [supabase] = useState(() => createBrowserSupabaseClient());
+  const [summary, setSummary] = useState<OperatorSummary | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(true);
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [nextPath, setNextPath] = useState("/command");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [queryMessage, setQueryMessage] = useState<string | null>(null);
 
-  // Read ?redirect= param so magic link returns to the originally requested page
-  const redirect =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("redirect") ?? "/command"
-      : "/command";
+  async function loadSummary() {
+    setSummaryLoading(true);
+    try {
+      const nextSummary = await fetchOperatorSummary();
+      setSummary(nextSummary);
+    } catch {
+      setSummary(
+        buildUnavailableSummary("Unable to reach the authoritative operator summary."),
+      );
+    } finally {
+      setSummaryLoading(false);
+    }
+  }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(normalizeAppPath(params.get("redirect") ?? params.get("next")));
+    setQueryMessage(params.get("detail") ?? params.get("error"));
+    void loadSummary();
+  }, []);
 
-    const supabase = createClient();
-    const { error: err } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}${redirect}`,
-      },
-    });
+  async function handleMagicLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAuthSubmitting(true);
+    setAuthMessage(null);
+    setAuthError(null);
 
-    setLoading(false);
-    if (err) {
-      setError(err.message);
-    } else {
-      setSent(true);
+    try {
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+        nextPath,
+      )}`;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: redirectTo },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setAuthMessage("Check your email for the AutoKirk access link.");
+    } catch (error) {
+      setAuthError(
+        error instanceof Error ? error.message : "Unable to send access link.",
+      );
+    } finally {
+      setAuthSubmitting(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-black text-zinc-100 flex items-center justify-center px-6">
-      <div className="pointer-events-none fixed inset-0">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-indigo-700/10 blur-3xl" />
-        <div className="absolute bottom-10 right-10 h-[400px] w-[400px] rounded-full bg-purple-600/8 blur-3xl" />
-      </div>
-
-      <div className="relative w-full max-w-sm">
-        <div className="mb-8">
-          <p className="text-[#caa84a] text-xs tracking-[0.24em] mb-3">
-            AUTOKIRK OPERATOR CONSOLE
-          </p>
-          <h1 className="text-3xl font-semibold text-zinc-100">
-            Operator Access
-          </h1>
-          <p className="mt-2 text-sm text-zinc-400">
-            Enter your email to receive a magic link. No password required.
-          </p>
+    <AkShell
+      title="Operator entry"
+      subtitle="Cross into the governed runtime, read the sealed summary contract, and move from duty to proof without leaving the system's own truth surface."
+      eyebrow="Authoritative Entry Surface"
+      actions={
+        <div className="flex flex-wrap gap-3">
+          <AkUtilityLink href="/command">Command</AkUtilityLink>
+          <AkUtilityLink href="/command/receipts">Receipts</AkUtilityLink>
+          <AkUtilityLink href="/command/integrity">Integrity</AkUtilityLink>
+          <button
+            type="button"
+            onClick={() => void loadSummary()}
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+          >
+            <RefreshCw className={`h-4 w-4 ${summaryLoading ? "animate-spin" : ""}`} />
+            Refresh summary
+          </button>
         </div>
+      }
+    >
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <AkPanel className="p-6 lg:p-7">
+          <div className="flex flex-wrap items-center gap-3">
+            <AkBadge color="#6ee7b7">
+              <span className="inline-flex items-center gap-2">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Governed read surface
+              </span>
+            </AkBadge>
+            <AkBadge tone="muted">Redirect target: {nextPath}</AkBadge>
+          </div>
 
-        <div className="rounded-2xl border border-white/10 bg-black/40 p-6 backdrop-blur">
-          {sent ? (
-            <div className="text-center py-4">
-              <div className="text-[#caa84a] text-2xl mb-3">✓</div>
-              <p className="text-zinc-100 font-semibold">Check your email</p>
-              <p className="mt-2 text-sm text-zinc-400">
-                Magic link sent to <span className="text-zinc-200">{email}</span>.
-                Click the link to access the console.
-              </p>
-              <button
-                onClick={() => { setSent(false); setEmail(""); }}
-                className="mt-4 text-xs text-zinc-500 hover:text-zinc-300 underline"
+          <h2 className="mt-5 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+            The first screen should tell the truth before the operator moves.
+          </h2>
+          <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
+            AutoKirk entry is not a marketing page. It is the crossing point into a governed system where obligations, closure, receipts, and integrity are meant to read as one machine.
+          </p>
+
+          <div className="mt-6">
+            <FlowRail />
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {ENTRY_PRINCIPLES.map((principle) => (
+              <div
+                key={principle}
+                className="rounded-[1.4rem] border border-white/10 bg-[#09111a]/85 px-4 py-4 text-sm leading-6 text-slate-300"
               >
-                Send to a different email
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs tracking-[0.14em] text-zinc-400 mb-2">
-                  EMAIL ADDRESS
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="operator@autokirk.com"
-                  className="w-full rounded-xl bg-zinc-900 border border-white/10 px-4 py-3 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-[#caa84a]/40 transition"
-                />
+                {principle}
               </div>
+            ))}
+          </div>
+        </AkPanel>
 
-              {error && (
-                <p className="text-red-400 text-xs">{error}</p>
-              )}
+        <AkPanel className="p-6 lg:p-7">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/70">
+              <Lock className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                Operator sign-in
+              </div>
+              <div className="mt-1 text-xl font-semibold text-white">
+                Send a secure access link
+              </div>
+            </div>
+          </div>
 
-              <button
-                type="submit"
-                disabled={loading || !email}
-                className="w-full rounded-xl bg-[#caa84a] text-black px-4 py-3 text-sm font-semibold hover:bg-[#d7b65a] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          <p className="mt-4 text-sm leading-7 text-slate-400">
+            Use the work email that owns the operator seat. AutoKirk returns you to the governed runtime after authentication.
+          </p>
+
+          {queryMessage ? (
+            <div className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+              {queryMessage}
+            </div>
+          ) : null}
+
+          <form onSubmit={handleMagicLink} className="mt-5 space-y-4">
+            <label className="block">
+              <span className="mb-2 inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
+                <Mail className="h-3.5 w-3.5" />
+                Work email
+              </span>
+              <AkInput
+                type="email"
+                value={email}
+                onChange={setEmail}
+                placeholder="operator@company.com"
+              />
+            </label>
+
+            {authError ? (
+              <div className="rounded-2xl border border-rose-300/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+                {authError}
+              </div>
+            ) : null}
+
+            {authMessage ? (
+              <div className="rounded-2xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-sm text-emerald-100">
+                {authMessage}
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-3">
+              <AkButton type="submit" variant="primary" disabled={authSubmitting}>
+                <span className="inline-flex items-center gap-2">
+                  <LogIn className="h-4 w-4" />
+                  {authSubmitting ? "Sending access link..." : "Send access link"}
+                </span>
+              </AkButton>
+              <Link
+                href="/subscribe"
+                className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-slate-100 transition hover:border-white/20 hover:bg-white/[0.08]"
               >
-                {loading ? "Sending…" : "Send Magic Link →"}
-              </button>
-            </form>
-          )}
-        </div>
-
-        <p className="mt-6 text-center text-xs text-zinc-600">
-          Authority lives in the Core. UI is routing only.
-        </p>
+                Start operator access
+              </Link>
+            </div>
+          </form>
+        </AkPanel>
       </div>
-    </main>
+
+      {summaryLoading ? (
+        <AkPanel className="p-6 text-sm text-slate-300">
+          Pulling the authoritative operator summary...
+        </AkPanel>
+      ) : summary ? (
+        <OperatorSummaryPanel summary={summary} />
+      ) : null}
+
+      <div className="grid gap-4 xl:grid-cols-4">
+        {SURFACE_LINKS.map((surface) => (
+          <SurfaceCard key={surface.href} {...surface} />
+        ))}
+      </div>
+    </AkShell>
   );
 }

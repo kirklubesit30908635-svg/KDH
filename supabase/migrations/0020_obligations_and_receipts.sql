@@ -8,7 +8,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- 1. core.obligations
 -- ---------------------------------------------------------------
@@ -31,12 +30,9 @@ CREATE TABLE core.obligations (
   source_event_id   uuid,
   workspace_id      uuid
 );
-
 ALTER TABLE core.obligations ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "authenticated_read_obligations"
   ON core.obligations FOR SELECT TO authenticated USING (true);
-
 -- ---------------------------------------------------------------
 -- 2. core.receipts
 -- ---------------------------------------------------------------
@@ -53,12 +49,9 @@ CREATE TABLE core.receipts (
   payload           jsonb,
   workspace_id      uuid
 );
-
 ALTER TABLE core.receipts ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY "authenticated_read_receipts"
   ON core.receipts FOR SELECT TO authenticated USING (true);
-
 -- ---------------------------------------------------------------
 -- 3. Replace skeleton v_next_actions
 -- ---------------------------------------------------------------
@@ -78,9 +71,7 @@ SELECT
   o.economic_ref_id
 FROM core.obligations o
 WHERE o.status = 'open';
-
 GRANT SELECT ON core.v_next_actions TO authenticated, service_role;
-
 -- ---------------------------------------------------------------
 -- 4. Replace skeleton v_receipts
 -- ---------------------------------------------------------------
@@ -97,7 +88,5 @@ SELECT
   r.ledger_event_id,
   r.payload
 FROM core.receipts r;
-
 GRANT SELECT ON core.v_receipts TO authenticated, service_role;
-
 COMMIT;

@@ -6,7 +6,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- =========================================================
 -- 1. Consolidated evidence_refs
 -- Replaces: finding_evidence_refs, recommendation_evidence_refs,
@@ -35,7 +34,6 @@ CREATE TABLE knowledge.evidence_refs (
     (founder_brief_id  IS NOT NULL)::int = 1
   )
 );
-
 CREATE INDEX idx_evidence_refs_finding
   ON knowledge.evidence_refs (finding_id, ord)        WHERE finding_id        IS NOT NULL;
 CREATE INDEX idx_evidence_refs_recommendation
@@ -46,46 +44,37 @@ CREATE INDEX idx_evidence_refs_memory_pattern
   ON knowledge.evidence_refs (memory_pattern_id, ord) WHERE memory_pattern_id IS NOT NULL;
 CREATE INDEX idx_evidence_refs_founder_brief
   ON knowledge.evidence_refs (founder_brief_id, ord)  WHERE founder_brief_id  IS NOT NULL;
-
 ALTER TABLE knowledge.evidence_refs ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY evidence_refs_select ON knowledge.evidence_refs
   FOR SELECT USING (true);
 CREATE POLICY evidence_refs_write  ON knowledge.evidence_refs
   FOR ALL USING (true) WITH CHECK (true);
-
 -- Migrate existing rows from each old table.
 INSERT INTO knowledge.evidence_refs
   (ref_kind, ref_id, ref_meta, ord, created_at, finding_id)
   SELECT ref_kind, ref_id, ref_meta, ord, created_at, finding_id
     FROM knowledge.finding_evidence_refs;
-
 INSERT INTO knowledge.evidence_refs
   (ref_kind, ref_id, ref_meta, ord, created_at, recommendation_id)
   SELECT ref_kind, ref_id, ref_meta, ord, created_at, recommendation_id
     FROM knowledge.recommendation_evidence_refs;
-
 INSERT INTO knowledge.evidence_refs
   (ref_kind, ref_id, ref_meta, ord, created_at, simulation_run_id)
   SELECT ref_kind, ref_id, ref_meta, ord, created_at, simulation_run_id
     FROM knowledge.simulation_evidence_refs;
-
 INSERT INTO knowledge.evidence_refs
   (ref_kind, ref_id, ref_meta, created_at, memory_pattern_id)
   SELECT ref_kind, ref_id, ref_meta, created_at, memory_pattern_id
     FROM knowledge.memory_pattern_support_refs;
-
 INSERT INTO knowledge.evidence_refs
   (ref_kind, ref_id, ref_meta, ord, created_at, founder_brief_id)
   SELECT ref_kind, ref_id, ref_meta, ord, created_at, founder_brief_id
     FROM knowledge.founder_brief_refs;
-
 DROP TABLE knowledge.finding_evidence_refs;
 DROP TABLE knowledge.recommendation_evidence_refs;
 DROP TABLE knowledge.simulation_evidence_refs;
 DROP TABLE knowledge.memory_pattern_support_refs;
 DROP TABLE knowledge.founder_brief_refs;
-
 -- =========================================================
 -- 2. Full-text search indexes
 -- findings: title + summary
@@ -95,11 +84,9 @@ DROP TABLE knowledge.founder_brief_refs;
 CREATE INDEX idx_findings_fts
   ON knowledge.findings
   USING gin(to_tsvector('english', title || ' ' || summary));
-
 CREATE INDEX idx_recommendations_fts
   ON knowledge.recommendations
   USING gin(to_tsvector('english', rationale));
-
 -- =========================================================
 -- 3. Materialized views
 -- Drop existing regular views first, then recreate as
@@ -111,7 +98,6 @@ CREATE INDEX idx_recommendations_fts
 DROP VIEW knowledge.v_open_findings;
 DROP VIEW knowledge.v_ready_recommendations;
 DROP VIEW knowledge.v_learning_loop;
-
 CREATE MATERIALIZED VIEW knowledge.v_open_findings AS
 SELECT
   f.id,
@@ -132,9 +118,7 @@ SELECT
   f.detected_at
 FROM knowledge.findings f
 WHERE f.status IN ('open', 'reviewed', 'proposal_drafted');
-
 CREATE UNIQUE INDEX ON knowledge.v_open_findings (id);
-
 CREATE MATERIALIZED VIEW knowledge.v_ready_recommendations AS
 SELECT
   r.id,
@@ -153,9 +137,7 @@ SELECT
   r.created_at
 FROM knowledge.recommendations r
 WHERE r.status IN ('draft', 'ready');
-
 CREATE UNIQUE INDEX ON knowledge.v_ready_recommendations (id);
-
 CREATE MATERIALIZED VIEW knowledge.v_learning_loop AS
 SELECT
   oc.id,
@@ -174,13 +156,10 @@ SELECT
   oc.compared_at,
   oc.created_at
 FROM knowledge.outcome_comparisons oc;
-
 CREATE UNIQUE INDEX ON knowledge.v_learning_loop (id);
-
 REFRESH MATERIALIZED VIEW knowledge.v_open_findings;
 REFRESH MATERIALIZED VIEW knowledge.v_ready_recommendations;
 REFRESH MATERIALIZED VIEW knowledge.v_learning_loop;
-
 -- =========================================================
 -- 4. Proposal status history
 -- Tracks recommendation status transitions for audit and
@@ -194,17 +173,13 @@ CREATE TABLE knowledge.proposal_status_history (
   changed_at        timestamptz NOT NULL DEFAULT now(),
   changed_by        text
 );
-
 CREATE INDEX idx_proposal_status_history_recommendation
   ON knowledge.proposal_status_history (recommendation_id, changed_at DESC);
-
 ALTER TABLE knowledge.proposal_status_history ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY proposal_status_history_select ON knowledge.proposal_status_history
   FOR SELECT USING (true);
 CREATE POLICY proposal_status_history_write  ON knowledge.proposal_status_history
   FOR ALL USING (true) WITH CHECK (true);
-
 -- =========================================================
 -- 5. Archival
 -- findings_archive holds findings aged out by the function below.
@@ -215,12 +190,9 @@ CREATE POLICY proposal_status_history_write  ON knowledge.proposal_status_histor
 CREATE TABLE knowledge.findings_archive (
   LIKE knowledge.findings INCLUDING ALL
 );
-
 ALTER TABLE knowledge.findings_archive ENABLE ROW LEVEL SECURITY;
-
 CREATE POLICY findings_archive_select ON knowledge.findings_archive
   FOR SELECT USING (true);
-
 -- Moves findings in terminal statuses older than one year into
 -- findings_archive. Intended for scheduled execution (e.g. pg_cron).
 CREATE OR REPLACE FUNCTION knowledge.archive_old_findings()
@@ -237,7 +209,6 @@ BEGIN
      AND created_at < now() - INTERVAL '1 year';
 END;
 $$;
-
 -- Removes memory patterns not seen in over a year.
 -- Intended for scheduled execution (e.g. pg_cron).
 CREATE OR REPLACE FUNCTION knowledge.cleanup_old_memory_patterns()
@@ -248,5 +219,4 @@ BEGIN
    WHERE last_seen_at < now() - INTERVAL '1 year';
 END;
 $$;
-
 COMMIT;

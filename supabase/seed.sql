@@ -1,0 +1,4 @@
+-- Intentionally empty.
+-- Canonical seed data for this repo is embedded in migrations.
+-- This file exists so supabase db reset remains self-contained and
+-- aligned with supabase/config.toml.

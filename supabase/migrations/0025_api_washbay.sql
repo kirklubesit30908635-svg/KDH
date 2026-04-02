@@ -32,7 +32,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- =============================================================
 -- INTERNAL HELPERS (not exposed to authenticated)
 -- =============================================================
@@ -71,7 +70,6 @@ BEGIN
   RETURN v_job;
 END;
 $$;
-
 -- ---------------------------------------------------------------
 -- api._open_obligation
 -- Creates an obligation record and emits obligation_opened receipt.
@@ -137,7 +135,6 @@ BEGIN
   RETURN v_id;
 END;
 $$;
-
 -- ---------------------------------------------------------------
 -- api._close_obligation
 -- Marks an obligation satisfied and records the proof receipt.
@@ -159,7 +156,6 @@ BEGIN
      AND status       = 'open';
 END;
 $$;
-
 -- =============================================================
 -- api.create_job
 -- Creates a job, appends job.created, emits job_created receipt,
@@ -251,7 +247,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- api.assign_operator
 -- Assigns an operator, closes assign_operator obligation.
@@ -301,7 +296,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- api.add_service
 -- Adds a service / addon / retail line item, updates projection totals.
@@ -402,7 +396,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- api.start_job
 -- Transitions job to 'started', emits job_started receipt,
@@ -462,7 +455,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- api.complete_job
 -- Transitions job to 'completed', emits job_completed receipt,
@@ -542,7 +534,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- api.finalize_invoice
 -- Locks invoice amount, emits invoice_issued receipt,
@@ -626,7 +617,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- api.record_payment
 -- Closes the economic loop. Computes variance.
@@ -750,7 +740,6 @@ BEGIN
   );
 END;
 $$;
-
 -- =============================================================
 -- Grants
 -- Public functions: authenticated only
@@ -763,9 +752,7 @@ GRANT EXECUTE ON FUNCTION api.start_job(uuid,uuid)                         TO au
 GRANT EXECUTE ON FUNCTION api.complete_job(uuid,uuid,text)                 TO authenticated;
 GRANT EXECUTE ON FUNCTION api.finalize_invoice(uuid,uuid,bigint)           TO authenticated;
 GRANT EXECUTE ON FUNCTION api.record_payment(uuid,uuid,bigint,text)        TO authenticated;
-
 REVOKE ALL ON FUNCTION api._require_job_status(uuid,uuid,text)             FROM public, authenticated;
 REVOKE ALL ON FUNCTION api._open_obligation(uuid,uuid,text,text,uuid,int)  FROM public, authenticated;
 REVOKE ALL ON FUNCTION api._close_obligation(uuid,uuid,uuid)               FROM public, authenticated;
-
 COMMIT;

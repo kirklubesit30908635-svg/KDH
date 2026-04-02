@@ -29,22 +29,17 @@ CREATE TABLE ingest.stripe_events (
   -- with the same ID from a different account.
   UNIQUE (provider_connection_id, stripe_event_id)
 );
-
 COMMENT ON TABLE ingest.stripe_events IS
   'Append-only Stripe webhook envelope storage. One row per Stripe '
   'event per provider connection. workspace_id is derived from the '
   'provider connection by the kernel — never trusted from input.';
-
 CREATE INDEX idx_ingest_stripe_events_workspace_type
   ON ingest.stripe_events (workspace_id, stripe_type, received_at DESC);
-
 CREATE INDEX idx_ingest_stripe_events_connection
   ON ingest.stripe_events (provider_connection_id, received_at DESC);
-
 CREATE TRIGGER stripe_events_deny_mutation
   BEFORE UPDATE OR DELETE ON ingest.stripe_events
   FOR EACH ROW EXECUTE FUNCTION ledger._deny_mutation();
-
 -- ---------------------------------------------------------------
 -- ACL: No authenticated read or write path.
 -- This is an internal pipeline table only.
@@ -52,5 +47,4 @@ CREATE TRIGGER stripe_events_deny_mutation
 -- sole write path.
 -- ---------------------------------------------------------------
 REVOKE ALL ON TABLE ingest.stripe_events FROM anon, authenticated;
-
 ALTER TABLE ingest.stripe_events ENABLE ROW LEVEL SECURITY;

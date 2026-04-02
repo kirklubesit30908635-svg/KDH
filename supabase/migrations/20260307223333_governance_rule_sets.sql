@@ -7,12 +7,9 @@
 -- =============================================================
 
 begin;
-
 -- pg_jsonschema is available in Supabase and lives in the extensions schema.
 create extension if not exists pg_jsonschema with schema extensions;
-
 create schema if not exists governance;
-
 -- ---------------------------------------------------------------
 -- governance.rule_sets
 -- Catalogue of rule set definitions. Each row declares a named
@@ -29,10 +26,8 @@ create table governance.rule_sets (
   created_at        timestamptz not null default now(),
   check (extensions.jsonschema_is_valid(definition_schema))
 );
-
 comment on table governance.rule_sets is
 'Catalogue of named rule sets. Each rule set declares a domain and a JSON Schema that governs the shape of its versioned rule definitions.';
-
 -- ---------------------------------------------------------------
 -- governance.rule_versions
 -- Append-style versioned definitions for each rule set.
@@ -52,21 +47,16 @@ create table governance.rule_versions (
   unique (rule_set_id, version_label),
   unique (rule_set_id, rule_hash)
 );
-
 comment on table governance.rule_versions is
 'Versioned rule definitions. Each version belongs to a rule_set and carries a content hash to prevent silent re-submission of unchanged rules.';
-
 create index idx_rule_versions_rule_set_status
   on governance.rule_versions (rule_set_id, status, created_at desc);
-
 -- RLS (open placeholders — replace with tenant-membership guards when
 -- workspace_id is added to governance tables).
 alter table governance.rule_sets     enable row level security;
 alter table governance.rule_versions enable row level security;
-
 create policy rule_sets_select     on governance.rule_sets     for select using (true);
 create policy rule_sets_write      on governance.rule_sets     for all    using (true) with check (true);
 create policy rule_versions_select on governance.rule_versions for select using (true);
 create policy rule_versions_write  on governance.rule_versions for all    using (true) with check (true);
-
 commit;

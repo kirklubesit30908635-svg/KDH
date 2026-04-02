@@ -1,4 +1,4 @@
 // Re-export shim — canonical browser client lives at @/lib/supabase/supabaseBrowser
-import { createClient } from "@/lib/supabase/supabaseBrowser";
+import { createBrowserSupabaseClient } from "@/lib/supabase/supabaseBrowser";
 
-export const supabaseBrowser = createClient;
+export const supabaseBrowser = createBrowserSupabaseClient;

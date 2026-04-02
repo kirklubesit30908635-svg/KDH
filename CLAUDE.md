@@ -4,7 +4,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A pure PostgreSQL/Supabase kernel — no application code, only SQL migrations. Everything is schema, tables, triggers, RLS policies, and SECURITY DEFINER functions deployed via the Supabase CLI.
+This is a mixed application + database repository. The canonical database lives under `supabase/` and is still a migration-first Supabase/Postgres kernel, but the repo also contains a Next.js app, server routes, helper libraries, and tests that operationalize kernel truth. Do not assume this repo is SQL-only.
+
+## Active structure
+
+- `supabase/migrations` — authoritative migration chain. Migrations run in filename order, including the timestamped migrations after `0100_ingest.sql`.
+- `supabase/config.toml` — local Supabase configuration. `db.seed.sql_paths` points to `./seed.sql`; that file exists as a no-op placeholder so `supabase db reset` is self-contained.
+- `supabase/archive` — historical `.bak` files preserving superseded bodies of `0019` and `0020`. They are reference artifacts, not part of reset.
+- `src/app` — Next.js pages and route handlers.
+- `src/lib` — Supabase helpers, canonical Stripe ingest, obligation helpers, and projection helpers.
+- `tests` — app/runtime verification, including Stripe-first wedge coverage.
+- `fix_dealership_fn.sql` — quarantined legacy out-of-band SQL that still references `ak_kernel`. It is not part of canonical resetability and must not be applied to current kernel databases.
 
 **Project ID:** `autokirk-kernel` | **DB:** PostgreSQL v17 | **API:** 54321 | **DB port:** 54322 | **Studio:** 54323
 
@@ -14,26 +24,49 @@ A pure PostgreSQL/Supabase kernel — no application code, only SQL migrations. 
 # Start local Supabase stack
 supabase start
 
-# Re-run all migrations from scratch + apply seed.sql
+# Re-run the full migration chain from scratch
 supabase db reset
 
-# Create a new numbered migration file
+# Lint the resulting database for broken SQL references
+supabase db lint
+
+# Create a new migration file
 supabase migration new <name>
 
 # Push migrations to remote (confirm before running)
 supabase db push
+
+# Run the app test suite currently checked into this repo
+npm test
+
+# Run a single test file directly
+npx tsx --test tests/stripe-first-wedge-closure.test.ts
+
+# Run the Next.js dev server
+npm run dev
+
+# Type-check and build the app
+npm run build
+
+# Lint TypeScript/JS
+npm run lint
 
 supabase stop
 ```
 
 Studio is at http://127.0.0.1:54323 when the local stack is running.
 
-There are no test commands — correctness is validated by running `supabase db reset` and verifying migrations apply cleanly.
+The DB validation contract is now:
 
-## Migration file order
+1. `supabase db reset` succeeds from repo contents alone
+2. `supabase db lint` is clean
+3. `npm test` stays green for the checked-in app/runtime path
 
-Migrations run in filename order. The current sequence:
+Reset success alone is not sufficient.
 
+## Migration authority
+
+The live chain currently breaks into these eras:
 | File | Purpose |
 |------|---------|
 | `0001_extensions.sql` | `pgcrypto` extension |
@@ -71,20 +104,28 @@ Migrations run in filename order. The current sequence:
 
 `fix_dealership_fn.sql` in the repo root is a **deprecated** out-of-band fixup script for an external `dealership` schema referencing the legacy `ak_kernel` name. Do **not** apply it — the referenced tables no longer exist.
 
-## Schema Doctrine
+- `0001`–`0007` — kernel bootstrap: extensions, schemas, identity, registry, ledger, canonical API write surface, and baseline ACL/RLS
+- `0008`–`0031` — knowledge, Stripe ingest, jobs/obligations, economic refs, and tenant hierarchy work
+- `0100` — append-only ingest staging
+- `20260307...` onward — governance and signals runtime, founder-console object/obligation pivot, canonical Stripe/service-role changes, projection rebuilds, receipt linking, and stripe-first wedge closure views
 
-Kernel schemas must be institutional and product-agnostic. Allowed schemas:
+Important authority notes:
 
-```
-core, governance, receipts, signals, knowledge, api, ingest, ledger, registry
-```
+- The current files in `supabase/migrations` are the canonical reset chain.
+- `0019_core_grants_and_operator_views.sql` and `0020_obligations_and_receipts.sql` were rewritten in place earlier in the repo's life; `supabase/archive/*.bak` preserves older bodies for audit, not execution.
+- `20260314161901_rebuild_core_for_founder_console.sql` is the major structural pivot in the chain. It drops and recreates `core.objects`, `core.obligations`, related vocabulary tables, and compatibility views.
 
-Product-prefixed schemas are forbidden in the kernel (e.g. `ak_*`, `autokirk_*`). Vertical/industry faces may introduce their own schemas (e.g. `marine`, `dealership`, `service`), but the kernel itself must remain neutral.
+## Canonical live DB surfaces
 
 ## Architecture
 
 ### Multi-tenancy model
 
+`core.tenants` → `core.workspaces` → `core.departments`. `core.operators` are users (soft-linked to `auth.users` via `auth_uid`). `core.memberships` controls workspace access and tenure. Workspace membership remains the main read/write guard for live operator surfaces.
+
+### Hash-chained append-only ledger
+
+`ledger.events` and `ledger.receipts` are immutable chains. `ledger._events_before_insert` and `ledger._receipts_before_insert` assign `seq`, `prev_hash`, and `hash` while advancing mutable head pointers under lock. `_deny_mutation` blocks direct UPDATE/DELETE on append-only tables.
 ```
 core.tenants (id, slug, name)
   └── core.workspaces (id, tenant_id, slug, name)
@@ -108,166 +149,30 @@ Roles: `owner / admin / member / viewer`.
 - Idempotency is workspace-scoped: duplicate `idempotency_key` within the same workspace is silently suppressed (trigger returns early, INSERT never fires).
 - Both tables have `UNIQUE (workspace_id, chain_key, seq)` to prevent seq reuse.
 
-### Write surface: SECURITY DEFINER RPCs only
+### Founder-console obligation model
 
-No client role (`anon`, `authenticated`) may write directly to any kernel table. All writes go through:
+The active obligation surface is the post-rebuild `core.objects` + `core.obligations` model introduced and then fixed in the March 2026 founder-console migrations. Later migrations restore operator projections and add receipt-proof linkage on top of that model.
 
-- `api.append_event(workspace_id, chain_key, event_type, payload, idempotency_key)` → `ledger.events`
-- `api.emit_receipt(workspace_id, event_id, chain_key, receipt_type, payload)` → `ledger.receipts`
+### App-layer architecture
 
-Both call `core.assert_member()` first. Both return `(id, seq, hash)`.
+The Next.js app lives in `src/app/` and communicates with Supabase exclusively through three client helpers:
+- `src/lib/supabase-server.ts` — SSR cookie-based client for route handlers and server components
+- `src/lib/supabaseBrowser.ts` — browser client
+- `src/lib/supabaseAdmin.ts` — service-role client (bypasses RLS; use only for trusted server paths)
 
-### ACL model (0007_rls.sql)
+Every authenticated route handler starts with `requireOperatorRouteContext()` (`src/lib/operator-access.ts`). It resolves the auth session → `core.operators` record → active `core.memberships` and returns a typed context including `defaultWorkspaceId`. Do not inline this auth logic; always use this helper.
 
-- `REVOKE ALL` on every kernel table from `anon` and `authenticated`.
-- Selective `GRANT SELECT` re-opened on: `ledger.events`, `ledger.receipts`, `core.operators`, `core.memberships`, `registry.event_types`, `registry.receipt_types` — required so RLS USING clauses can evaluate.
-- RLS policies:
-  - Ledger tables: `USING (core.is_member(workspace_id))`
-  - `core.operators`: `USING (auth_uid = auth.uid())` (self-read only)
-  - `core.memberships`: `USING (operator_id = core.current_operator_id())`
-  - Registry catalogues: `USING (true)` (static, public)
-- Internal functions (`_deny_mutation`, `_events_before_insert`, `_receipts_before_insert`, `sha256_hex`, `assert_member`) have `REVOKE EXECUTE FROM PUBLIC`. Only `core.current_operator_id()` and `core.is_member()` are re-granted to `authenticated` (needed inside RLS expressions).
+The Stripe ingest pipeline flows: Stripe webhook → `api.ingest_stripe_event` (DB function) → `core.objects` + `core.obligations` rows. The app layer then reads open obligations and routes operator actions through `sealObligation()` (`src/lib/obligation-store.ts`), which calls `api.command_resolve_obligation` and produces a ledger event + receipt pair.
 
-### Provider connections & Stripe ingest (0012–0015)
+`src/lib/kernel/rules.ts` is the typed constraint layer (`CLASS_RULES`). Every `kernel_class` (e.g. `invoice`, `payment`, `operator_access_subscription`) declares exactly which `economic_posture` values and `obligation_type` values are valid. Both DB functions and app code must respect these constraints; `assertValidClassPosture` / `assertValidObligationForClass` are the enforcement helpers.
 
-**Trust anchor: `core.provider_connections`**
+`src/lib/stripe_first_wedge_contract.ts` maps Stripe event types to obligation types. `src/lib/stripe_first_wedge_closure.ts` defines which legacy routes/surfaces have been retired. The test in `tests/stripe-first-wedge-closure.test.ts` enforces both: it verifies that the contract covers all supported event types and that dead files have been physically deleted from the repo. When adding Stripe event support, update the contract file first.
 
-One row per workspace-to-provider-account binding. `UNIQUE (provider, provider_account_id)` — each Stripe account ID maps to exactly one workspace.
+The `/command` surface (`src/app/command/`) is the live operator console. It reads from `core.v_operator_next_actions` and posts to `/api/command/seal` (or `/api/command/touch`) to advance obligations. The `/command/integrity` and `/command/receipts` pages pull from integrity summary views and `core.v_recent_receipts`.
 
-**`api.ingest_stripe_event()` pipeline:**
+### Known drift / caution
 
-1. Resolve `provider_connection` by `(provider_account_id, livemode)` — workspace derived from connection, never trusted from caller.
-2. `core.assert_member(workspace_id)`
-3. Idempotency check: `(provider_connection_id, stripe_event_id)`
-4. Validate `stripe_type` against `registry.event_types`
-5. INSERT `ingest.stripe_events` (envelope storage, append-only)
-6. `api.append_event()` → `ledger.events` (chain_key = stripe_type)
-7. `api.emit_receipt()` → `ledger.receipts` (ack)
-
-`ingest.stripe_events` has no authenticated read path — internal pipeline only.
-
-### Job domain: enforceable economic loop (0023–0027)
-
-#### Tables
-
-**`core.jobs`** — Projection table (event-sourced view, write-protected via trigger)
-
-| Column | Notes |
-|--------|-------|
-| `status` | `created → scheduled → checked_in → started → completed → closed` (also `voided`) |
-| `customer_id`, `asset_id`, `operator_id` | Workspace-scoped FKs |
-| `quoted_cents`, `addon_cents`, `retail_cents`, `discount_cents` | Pre-invoice amounts |
-| `invoice_cents`, `payment_cents` | Financial closure |
-
-**`core.obligations`** — Business-layer action tracking
-
-| Column | Notes |
-|--------|-------|
-| `status` | `open → sealed / satisfied / cancelled / expired / voided` |
-| `obligation_type` | `assign_operator (4hr)`, `confirm_service (8hr)`, `ensure_completion_receipt (12hr)`, `verify_invoice (4hr)`, `verify_payment (24hr)` |
-| `trigger_event_id` | FK to `ledger.events` (causality) |
-| `satisfied_by_receipt_id` | FK to `ledger.receipts` (proof) |
-| `idempotency_key` | `UNIQUE WHERE NOT NULL` |
-
-**`core.receipts`** — Business-layer proof artifacts; bridges `ledger.receipts` → `core.obligations`.
-
-#### API functions (0025_api_washbay.sql)
-
-All SECURITY DEFINER; pattern: assert_member → validate state → append_event → mutate projection → manage obligations → emit_receipt → return status jsonb.
-
-| Function | State Transition | Obligations |
-|----------|-----------------|-------------|
-| `api.create_job()` | → created | opens assign_operator (4hr) + confirm_service (8hr) |
-| `api.assign_operator()` | — | closes assign_operator |
-| `api.add_service()` | — | closes confirm_service; updates amounts |
-| `api.start_job()` | → started | opens ensure_completion_receipt (12hr) |
-| `api.complete_job()` | → completed | closes ensure_completion_receipt; opens verify_invoice (4hr) |
-| `api.finalize_invoice()` | — | locks invoice_cents; opens verify_payment (24hr) |
-| `api.record_payment()` | → closed | closes economic loop; detects leakage |
-
-**Leakage detection:** `expected = invoice_cents OR (quoted + addon + retail - discount)`. If `payment - expected < 0` → emit `signals:leakage.detected` event.
-
-#### View: `core.v_job_summary` (0026)
-
-Flattened read surface including: `expected_cents`, `variance_cents`, `has_leakage`, `open_obligation_count`, `has_obligation_breach`, `receipt_count`, `age_hours`, `cycle_time_hours`, `days_since_completed`.
-
-### Intelligence layer / knowledge schema (0008–0009)
-
-**Doctrine: AI may observe, interpret, simulate, and propose — it may not directly mutate domain reality.**
-
-| Table | Purpose |
-|-------|---------|
-| `knowledge.findings` | Evidence-backed claims (severity, confidence, impact_estimate, risk_if_ignored) |
-| `knowledge.recommendations` | AI-drafted proposals (requires_approval, emitted_proposal_id) |
-| `knowledge.simulation_runs` | Counterfactual/forecast outputs |
-| `knowledge.memory_patterns` | Institutional memory distilled from repeated findings |
-| `knowledge.outcome_comparisons` | Expected vs actual (learning loop) |
-| `knowledge.review_actions` | Human interaction trail |
-| `knowledge.founder_briefs` | Cross-face strategic summaries |
-
-**0009 refinements:**
-- Consolidated five per-type evidence_refs tables → single `knowledge.evidence_refs` (one parent FK per row via CHECK constraint)
-- FTS indexes on `findings (title + summary)` and `recommendations (rationale)`
-- Materialized views: `v_open_findings`, `v_ready_recommendations`, `v_learning_loop`
-- `proposal_status_history` audit trail for recommendation status transitions
-- `findings_archive` for aged-out findings (terminal status, > 1 year old)
-- `archive_old_findings()` and `cleanup_old_memory_patterns()` maintenance functions
-
-All `knowledge` RLS policies currently use `USING (true)` — placeholders to be replaced with proper tenant-membership checks.
-
-### Governance & signals runtime (20260307 migrations)
-
-#### `governance.rule_sets` + `governance.rule_versions`
-
-- `rule_sets`: code, name, description, domain ∈ `{signals, obligations, pricing, collections}`, `definition_schema` (JSON Schema validated by `pg_jsonschema`)
-- `rule_versions`: version_label, status ∈ `{draft, approved, retired}`, rule_definition, rule_hash
-
-#### Signals system
-
-| Table | Purpose |
-|-------|---------|
-| `signals.signal_types` | Catalogue of detectable conditions |
-| `signals.detectors` | SQL function references; `evaluation_mode ∈ {event_driven, scheduled, hybrid}`; `detection_grain ∈ {event, job, invoice, customer, asset, workspace}` |
-| `signals.detector_event_types` | Maps event-driven detectors to triggering `registry.event_types` |
-| `signals.detector_bindings` | Activates detector per workspace under approved rule version; `EXCLUDE` constraint prevents overlapping (workspace, detector) bindings |
-| `signals.runs` | Execution log; `status ∈ {pending, running, succeeded, failed}`; idempotent |
-| `signals.signal_instances` | De-duplicated, lifecycle-managed signals; `lifecycle_status ∈ {open, acknowledged, in_review, resolved, dismissed, superseded}`; `UNIQUE (workspace_id, dedupe_key) WHERE lifecycle_status IN (open, acknowledged, in_review)` |
-
-**`api.run_signal_detector(binding_id, source_event_id?, window?)`:**
-1. Validate binding enabled, detector active
-2. Invoke `implementation_ref` dynamically (returns `SETOF signals.detector_candidate`)
-3. Upsert signal instances: new → INSERT; existing open → UPDATE (reaffirm count, last_seen_at)
-4. Idempotent: duplicate run returns prior output summary
-
-### Ingest pipeline (0100_ingest.sql)
-
-Two-stage append-only process:
-
-1. `ingest.raw_events` — all inbound events from any source
-2. `ingest.trusted_events` — validated/classified events
-
-Both tables: append-only with `_deny_mutation` trigger, `REVOKE ALL` from anon/authenticated, RLS enabled with no permissive policy (default-deny). No authenticated read path — internal pipeline only.
-
-## Registry catalogues
-
-| Category | Count | Families / Notes |
-|----------|-------|-----------------|
-| Kernel event types | 26 | system, auth, workflow, task, agent, tool, ingest, ledger, receipt, notification, audit, integration |
-| Stripe event types | 18 | payment_intent.*, invoice.*, subscription.*, checkout.session.*, charge.* |
-| Job domain event types | 19 | job (8), commercial (9), account (5), forecast (3) — also `signals:leakage.detected` |
-| Kernel receipt types | 4 | ack, nack, error, commit |
-| Job receipt types | 9 | job_created, job_started, job_completed, service_confirmed, invoice_issued, payment_recorded, obligation_opened, obligation_closed, projection_run |
-
-## Key conventions
-
-1. **Workspace scoping** — Every mutation validates workspace membership via `core.assert_member()`.
-2. **Idempotency** — Duplicate keys are suppressed silently; callers may retry safely.
-3. **Atomicity** — BEFORE INSERT triggers lock mutable chain heads with `FOR UPDATE`.
-4. **Causality** — Ledger events are first-class facts; `core.jobs` and other projections are derived.
-5. **No direct writes** — All authenticated writes go through `api.*` SECURITY DEFINER RPCs.
-6. **Proof chain** — `core.receipts` ties `ledger.receipts` to business-layer `core.obligations`.
-7. **Governance** — Rule sets are versioned and JSON Schema-validated before a binding can be activated.
-8. **Intelligence isolation** — The `knowledge` schema observes reality but cannot write to ledger or projection tables.
-9. **Tenure enforcement** — Membership status and date windows are checked inside `core.is_member()`, inherited by all RLS.
-10. **Schema neutrality** — The kernel never uses product-prefixed schemas; vertical faces extend via their own schemas.
-11. **Numbered migrations** — Prefer `NNNN_name.sql` for new kernel migrations. Timestamp-based names (`YYYYMMDDHHMMSS_name.sql`) are used for feature migrations that arrived after the numbered series reached a stable baseline.
+- Broad placeholder RLS still exists in `knowledge`, `governance`, and `signals`; those surfaces remain audit-sensitive.
+- Legacy `ak_*` naming survives in comments, indexes, triggers, and policy names inside `0008_intelligence.sql`. Treat those as drift, not doctrine.
+- `fix_dealership_fn.sql` is historical contamination, not a valid current kernel extension point.
+- Do not resurrect archived washbay RPC assumptions without reviewing the founder-console rebuild, receipt linker, and current projection migrations together.

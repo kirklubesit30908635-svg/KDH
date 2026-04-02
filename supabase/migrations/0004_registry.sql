@@ -11,14 +11,12 @@ CREATE TABLE registry.event_types (
   description text,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
-
 CREATE TABLE registry.receipt_types (
   id          serial      PRIMARY KEY,
   name        text        NOT NULL UNIQUE,
   description text,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
-
 -- ---- Seed: 26 event types across 12 families ----------------
 
 INSERT INTO registry.event_types (family, name, description) VALUES
@@ -59,7 +57,6 @@ INSERT INTO registry.event_types (family, name, description) VALUES
   -- 12. integration
   ('integration',  'integration.connected',       'External integration connected'),
   ('integration',  'integration.synced',          'External integration sync completed');
-
 -- ---- Seed: 4 receipt types ----------------------------------
 
 INSERT INTO registry.receipt_types (name, description) VALUES

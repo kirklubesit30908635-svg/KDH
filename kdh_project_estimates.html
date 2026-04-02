@@ -1,0 +1,311 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-mono, monospace); }
+  .root { padding: 1.5rem 0; }
+  .tier { margin-bottom: 2rem; }
+  .tier-header { display: flex; align-items: center; gap: 10px; margin-bottom: 0.75rem; }
+  .tier-badge { font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .badge-kdh { background: #EEEDFE; color: #3C3489; }
+  .badge-ip { background: #E1F5EE; color: #085041; }
+  .badge-sys { background: #FAEEDA; color: #633806; }
+  .tier-label { font-size: 13px; color: var(--color-text-secondary); }
+  .modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .mod { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color 0.15s; }
+  .mod:hover { border-color: var(--color-border-secondary); }
+  .mod.active { border-color: #7F77DD; border-width: 1.5px; }
+  .mod-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+  .mod-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tag { font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+  .tag-hours { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+  .tag-status { }
+  .status-built { background: #EAF3DE; color: #3B6D11; }
+  .status-partial { background: #FAEEDA; color: #633806; }
+  .status-planned { background: #FCEBEB; color: #A32D2D; }
+  .mod-scope { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 1.5rem 0; }
+  .summary-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .stat { background: var(--color-background-secondary); border-radius: 8px; padding: 12px 14px; }
+  .stat-label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-val { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+  .stat-sub { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+  .detail-panel { background: var(--color-background-secondary); border-radius: 10px; padding: 16px; margin-top: 1.5rem; display: none; }
+  .detail-panel.visible { display: block; }
+  .detail-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 10px; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .detail-item label { font-size: 11px; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 3px; }
+  .detail-item span { font-size: 13px; color: var(--color-text-primary); }
+  .tasks { margin-top: 10px; }
+  .task { font-size: 12px; color: var(--color-text-secondary); padding: 4px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .task:last-child { border: none; }
+  .task::before { content: "→ "; color: #7F77DD; }
+  .fv-section { margin-top: 1.5rem; }
+  .fv-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .fv-row:last-child { border: none; }
+  .fv-label { font-size: 13px; color: var(--color-text-primary); flex: 1; }
+  .fv-bar-wrap { flex: 2; background: var(--color-background-secondary); border-radius: 4px; height: 8px; overflow: hidden; }
+  .fv-bar { height: 8px; border-radius: 4px; }
+  .fv-val { font-size: 13px; font-weight: 500; color: var(--color-text-primary); width: 90px; text-align: right; }
+  h2 { font-size: 16px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 0.5rem; }
+  .tab-row { display: flex; gap: 6px; margin-bottom: 1.5rem; }
+  .tab { font-size: 12px; padding: 5px 14px; border-radius: 6px; border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+  .tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); border-color: var(--color-border-primary); }
+  .view { display: none; }
+  .view.active { display: block; }
+</style>
+
+<div class="root">
+
+  <div class="tab-row">
+    <button class="tab active" onclick="switchTab('scope')">Scope & hours</button>
+    <button class="tab" onclick="switchTab('value')">Future value</button>
+  </div>
+
+  <div id="view-scope" class="view active">
+
+    <div class="summary-row">
+      <div class="stat">
+        <div class="stat-label">Total hours</div>
+        <div class="stat-val">~610</div>
+        <div class="stat-sub">across all layers</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Built</div>
+        <div class="stat-val">~195h</div>
+        <div class="stat-sub">32% complete</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Remaining</div>
+        <div class="stat-val">~415h</div>
+        <div class="stat-sub">to production-ready</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Modules</div>
+        <div class="stat-val">14</div>
+        <div class="stat-sub">across 3 entities</div>
+      </div>
+    </div>
+
+    <div class="tier">
+      <div class="tier-header">
+        <span class="tier-badge badge-kdh">KDH</span>
+        <span class="tier-label">Kirk Digital Holdings — parent governance & infrastructure</span>
+      </div>
+      <div class="modules">
+        <div class="mod active" onclick="selectMod(this, 'kdh1')">
+          <div class="mod-name">Kernel Constitution</div>
+          <div class="mod-meta"><span class="tag tag-hours">~80h</span><span class="tag tag-status status-built">built</span></div>
+          <div class="mod-scope">core.objects, obligations, ledger, RPCs, 8-migration chain</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'kdh2')">
+          <div class="mod-name">Homepage & brand</div>
+          <div class="mod-meta"><span class="tag tag-hours">~20h</span><span class="tag tag-status status-built">built</span></div>
+          <div class="mod-scope">Dark Bloomberg aesthetic, enforcement chain visualization, AI governance flow</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'kdh3')">
+          <div class="mod-name">Founder Control Dashboard</div>
+          <div class="mod-meta"><span class="tag tag-hours">~60h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">FDI scoring, 7-module governance layer, structural integrity panel</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'kdh4')">
+          <div class="mod-name">Weight Engine</div>
+          <div class="mod-meta"><span class="tag tag-hours">~40h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">Integrity scoring v2, aging penalty, speed multiplier, delta log</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier">
+      <div class="tier-header">
+        <span class="tier-badge badge-ip">AK-IP</span>
+        <span class="tier-label">AutoKirk IP Holdings — licensing, IP registry, royalty enforcement</span>
+      </div>
+      <div class="modules">
+        <div class="mod" onclick="selectMod(this, 'ip1')">
+          <div class="mod-name">IP Registry layer</div>
+          <div class="mod-meta"><span class="tag tag-hours">~30h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">ak_governance registry, licensed module tracking, version control</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'ip2')">
+          <div class="mod-name">Licensing surface</div>
+          <div class="mod-meta"><span class="tag tag-hours">~25h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">License issuance, terms enforcement, per-operator entitlements</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'ip3')">
+          <div class="mod-name">Royalty ledger</div>
+          <div class="mod-meta"><span class="tag tag-hours">~20h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">Revenue share tracking, Stripe-connected royalty receipts</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tier">
+      <div class="tier-header">
+        <span class="tier-badge badge-sys">AK-Systems</span>
+        <span class="tier-label">AutoKirk Systems — operator-facing distribution & revenue enforcement</span>
+      </div>
+      <div class="modules">
+        <div class="mod" onclick="selectMod(this, 'sys1')">
+          <div class="mod-name">Subscription gate</div>
+          <div class="mod-meta"><span class="tag tag-hours">~25h</span><span class="tag tag-status status-built">built</span></div>
+          <div class="mod-scope">Stripe sub gate, 6 protected routes, founder bypass, /subscribe page</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'sys2')">
+          <div class="mod-name">Operator Console (OSM)</div>
+          <div class="mod-meta"><span class="tag tag-hours">~70h</span><span class="tag tag-status status-built">built</span></div>
+          <div class="mod-scope">Sales pipeline, service, parts, washbay, HR, governance — OSM deployed</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'sys3')">
+          <div class="mod-name">Command/Policy layer</div>
+          <div class="mod-meta"><span class="tag tag-hours">~35h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">kernel_command_policy_v1 migration, command routing, policy enforcement</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'sys4')">
+          <div class="mod-name">Location filtering fix</div>
+          <div class="mod-meta"><span class="tag tag-hours">~8h</span><span class="tag tag-status status-partial">partial</span></div>
+          <div class="mod-scope">OSM data bleed — move filtering to Supabase query level</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'sys5')">
+          <div class="mod-name">Advertising Face (#004)</div>
+          <div class="mod-meta"><span class="tag tag-hours">~45h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">FRL readiness, ad accountability enforcement, governance receipts</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'sys6')">
+          <div class="mod-name">Schema consolidation</div>
+          <div class="mod-meta"><span class="tag tag-hours">~12h</span><span class="tag tag-status status-partial">partial</span></div>
+          <div class="mod-scope">Resolve dual core.obligations conflict (status/sealed vs state/open/resolved)</div>
+        </div>
+        <div class="mod" onclick="selectMod(this, 'sys7')">
+          <div class="mod-name">Multi-operator rollout</div>
+          <div class="mod-meta"><span class="tag tag-hours">~80h</span><span class="tag tag-status status-planned">planned</span></div>
+          <div class="mod-scope">Onboard operators 2–10, tenant isolation, per-Face config</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="detail-panel" class="detail-panel visible">
+      <div class="detail-title" id="dp-title">Kernel Constitution</div>
+      <div class="detail-grid">
+        <div class="detail-item"><label>Estimate</label><span id="dp-hours">~80 hours</span></div>
+        <div class="detail-item"><label>Status</label><span id="dp-status">Built & verified</span></div>
+        <div class="detail-item"><label>Entity</label><span id="dp-entity">KDH</span></div>
+        <div class="detail-item"><label>Complexity</label><span id="dp-complexity">High</span></div>
+      </div>
+      <div class="tasks" id="dp-tasks"></div>
+    </div>
+
+  </div>
+
+  <div id="view-value" class="view">
+    <div class="summary-row">
+      <div class="stat">
+        <div class="stat-label">Year 1 ARR (3 ops)</div>
+        <div class="stat-val">$108k</div>
+        <div class="stat-sub">at $3k/mo/operator</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Year 2 ARR (10 ops)</div>
+        <div class="stat-val">$360k</div>
+        <div class="stat-sub">scale phase begins</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Year 3 ARR (25 ops)</div>
+        <div class="stat-val">$900k</div>
+        <div class="stat-sub">licensing layer live</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">IP licensing upside</div>
+        <div class="stat-val">+40%</div>
+        <div class="stat-sub">AK-IP royalty layer</div>
+      </div>
+    </div>
+
+    <div class="fv-section">
+      <div class="fv-row">
+        <span class="fv-label">OSM (operator #1) — live</span>
+        <div class="fv-bar-wrap"><div class="fv-bar" style="width:12%; background:#1D9E75;"></div></div>
+        <span class="fv-val">$36k ARR</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-label">Operators 2–5 (marine/auto)</span>
+        <div class="fv-bar-wrap"><div class="fv-bar" style="width:30%; background:#1D9E75;"></div></div>
+        <span class="fv-val">$144k ARR</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-label">Operators 6–10 + Advertising Face</span>
+        <div class="fv-bar-wrap"><div class="fv-bar" style="width:55%; background:#7F77DD;"></div></div>
+        <span class="fv-val">$360k ARR</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-label">AK-IP licensing (3rd-party builds)</span>
+        <div class="fv-bar-wrap"><div class="fv-bar" style="width:70%; background:#7F77DD;"></div></div>
+        <span class="fv-val">$500k ARR</span>
+      </div>
+      <div class="fv-row">
+        <span class="fv-label">Full platform (25 ops + licensing)</span>
+        <div class="fv-bar-wrap"><div class="fv-bar" style="width:100%; background:#534AB7;"></div></div>
+        <span class="fv-val">$1.2M ARR</span>
+      </div>
+    </div>
+
+    <hr class="divider">
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:1rem;">
+      <div>
+        <div style="font-size:13px; font-weight:500; color:var(--color-text-primary); margin-bottom:8px;">Value drivers</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0; border-bottom:0.5px solid var(--color-border-tertiary);">→ Immutable kernel = zero switching cost defense</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0; border-bottom:0.5px solid var(--color-border-tertiary);">→ AK-IP separates build cost from license revenue</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0; border-bottom:0.5px solid var(--color-border-tertiary);">→ Each Face adds ARR without rebuilding kernel</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0;">→ KDH running AutoKirk = credibility proof for sales</div>
+      </div>
+      <div>
+        <div style="font-size:13px; font-weight:500; color:var(--color-text-primary); margin-bottom:8px;">Risks to timeline</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0; border-bottom:0.5px solid var(--color-border-tertiary);">→ Schema conflict blocks Weight Engine delivery</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0; border-bottom:0.5px solid var(--color-border-tertiary);">→ No Command/Policy layer = no policy enforcement sales</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0; border-bottom:0.5px solid var(--color-border-tertiary);">→ OSM data bleed damages multi-operator trust</div>
+        <div class="task" style="font-size:12px; color:var(--color-text-secondary); padding:5px 0;">→ AK-IP needs legal structure before licensing revenue</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const mods = {
+  kdh1: { title: 'Kernel Constitution', hours: '~80 hours', status: 'Built & verified', entity: 'KDH', complexity: 'High', tasks: ['Clean 8-migration chain (0001–0100) verified via db reset', 'core.objects, core.obligations, ledger.events, ledger.receipts', 'RPCs: acknowledge_object, open_obligation, resolve_obligation', 'Schemas: core / registry / ledger / api isolated', 'Stripe webhook wired into kernel pipeline'] },
+  kdh2: { title: 'Homepage & brand', hours: '~20 hours', status: 'Built & deployed', entity: 'KDH', complexity: 'Low', tasks: ['Dark Bloomberg terminal aesthetic', 'Enforcement chain visualization', 'AI governance flow', 'Production-ready at autokirk.com'] },
+  kdh3: { title: 'Founder Control Dashboard', hours: '~60 hours', status: 'Designed, not built', entity: 'KDH', complexity: 'High', tasks: ['Structural Integrity Panel', 'Capital Allocation Panel', 'Founder Dependency Index (FDI) scoring algorithm', 'Competitive Threat Radar', 'Red-Team Console', 'Supabase schema + scoring backend'] },
+  kdh4: { title: 'Weight Engine', hours: '~40 hours', status: 'Designed, blocked on schema conflict', entity: 'KDH', complexity: 'Medium', tasks: ['Integrity Score v2: aging penalty + speed multiplier', 'Score delta log', 'Resolve core.obligations dual-schema conflict first', 'Connect to ledger.events pipeline'] },
+  ip1: { title: 'IP Registry layer', hours: '~30 hours', status: 'Not started', entity: 'AK-IP', complexity: 'Medium', tasks: ['ak_governance registry schema', 'Licensed module tracking per tenant', 'Version-pinned entitlement records', 'Active / eliminated schema registry'] },
+  ip2: { title: 'Licensing surface', hours: '~25 hours', status: 'Not started', entity: 'AK-IP', complexity: 'Medium', tasks: ['License issuance workflow', 'Per-operator entitlement config', 'Terms enforcement via kernel receipts', 'Expiry + renewal handling'] },
+  ip3: { title: 'Royalty ledger', hours: '~20 hours', status: 'Not started', entity: 'AK-IP', complexity: 'Medium', tasks: ['Stripe-connected royalty receipt flow', 'Revenue share calculation per license', 'Ledger-level audit trail', 'Monthly royalty settlement reports'] },
+  sys1: { title: 'Subscription gate', hours: '~25 hours', status: 'Built & deployed', entity: 'AK-Systems', complexity: 'Medium', tasks: ['Middleware enforcement on 6 protected routes', 'Founder email bypass', '/subscribe page + checkout route', 'Stripe webhook handler', '0031_tenant_hierarchy.sql seeded'] },
+  sys2: { title: 'Operator Console (OSM)', hours: '~70 hours', status: 'Built & deployed', entity: 'AK-Systems', complexity: 'High', tasks: ['Sales pipeline', 'Service job management', 'Parts management', 'Washbay scheduling', 'HR tickets', 'Governance workflows', 'OSM is Customer #0001 at multi-location marine'] },
+  sys3: { title: 'Command/Policy layer', hours: '~35 hours', status: 'Migration designed, not built', entity: 'AK-Systems', complexity: 'High', tasks: ['kernel_command_policy_v1 migration', 'Command routing logic', 'Policy enforcement chain', 'Receipt generation per command', 'RLS policy layer'] },
+  sys4: { title: 'Location filtering fix', hours: '~8 hours', status: 'Known bug, fix pattern defined', entity: 'AK-Systems', complexity: 'Low', tasks: ['Move from client-side filter to Supabase query-level scoping', 'Affect: 3 OSM locations bleeding into all operators inboxes', 'Hotfix priority — blocks multi-operator trust'] },
+  sys5: { title: 'Advertising Face (#004)', hours: '~45 hours', status: 'Defined, not started', entity: 'AK-Systems', complexity: 'High', tasks: ['FRL readiness framework', 'Ad accountability enforcement', 'Governance receipts per ad event', 'Operator-facing reporting surface'] },
+  sys6: { title: 'Schema consolidation', hours: '~12 hours', status: 'Active conflict, fix needed', entity: 'AK-Systems', complexity: 'Medium', tasks: ['Resolve dual core.obligations (status/sealed vs state/open/resolved)', 'Audit all downstream RPCs and views', 'Run supabase db push --include-all post-fix', 'Unblocks Weight Engine'] },
+  sys7: { title: 'Multi-operator rollout', hours: '~80 hours', status: 'Not started', entity: 'AK-Systems', complexity: 'High', tasks: ['Onboard operators 2–10', 'Tenant isolation enforcement per operator', 'Per-Face configuration per tenant', 'Onboarding flow + magic link auth per client', 'Billing setup per operator via Stripe'] },
+};
+
+function selectMod(el, key) {
+  document.querySelectorAll('.mod').forEach(m => m.classList.remove('active'));
+  el.classList.add('active');
+  const d = mods[key];
+  document.getElementById('dp-title').textContent = d.title;
+  document.getElementById('dp-hours').textContent = d.hours;
+  document.getElementById('dp-status').textContent = d.status;
+  document.getElementById('dp-entity').textContent = d.entity;
+  document.getElementById('dp-complexity').textContent = d.complexity;
+  const tasksEl = document.getElementById('dp-tasks');
+  tasksEl.innerHTML = d.tasks.map(t => `<div class="task">${t}</div>`).join('');
+  document.getElementById('detail-panel').classList.add('visible');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('view-' + tab).classList.add('active');
+}
+</script>

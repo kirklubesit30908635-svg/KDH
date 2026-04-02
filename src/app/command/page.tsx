@@ -1,306 +1,281 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { NextActionRow, SeverityGroup } from "@/lib/ui-models";
-import { fmtDue, fmtFace, safeStr } from "@/lib/ui-fmt";
-import {
-  AkShell,
-  AkPanel,
-  AkBadge,
-  AkButton,
-  AkSectionHeader,
-} from "@/components/ak/ak-ui";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { OperatorAutopilotPanel } from "@/components/operator-autopilot-panel";
+import { OperatorSummaryPanel } from "@/components/operator-summary-panel";
+import { fetchOperatorAutopilot } from "@/lib/operator-autopilot-client";
+import type { OperatorAutopilot } from "@/lib/operator-autopilot";
+import { fetchOperatorSummary } from "@/lib/operator-summary-client";
+import type { OperatorSummary } from "@/lib/operator-summary";
+import type { NextActionRow } from "@/lib/ui-models";
+import { fmtDue, fmtObligationType, fmtResolutionAction, safeStr } from "@/lib/ui-fmt";
+import { AkBadge, AkButton, AkPanel, AkSectionHeader, AkShell } from "@/components/ak/ak-ui";
 
-type Grouped = Record<SeverityGroup, NextActionRow[]>;
+class ApiError extends Error {
+  status: number;
 
-const GROUPS: { key: SeverityGroup; label: string; tone: "danger" | "gold" | "muted" }[] = [
-  { key: "critical", label: "Critical", tone: "danger" },
-  { key: "at_risk", label: "At Risk", tone: "gold" },
-  { key: "due_today", label: "Due Today", tone: "gold" },
-  { key: "queue", label: "Queue", tone: "muted" },
-];
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
-function groupRows(rows: NextActionRow[]): Grouped {
-  return {
-    critical: rows.filter((r) => r.severity === "critical"),
-    at_risk: rows.filter((r) => r.severity === "at_risk"),
-    due_today: rows.filter((r) => r.severity === "due_today"),
-    queue: rows.filter((r) => r.severity === "queue"),
-  };
+interface ClosureReceipt {
+  receipt_id: string;
+  obligation_id: string;
+  label: string;
+}
+
+function fmtAge(ageHours: number | null): string {
+  if (ageHours == null) return "";
+  if (ageHours < 24) return `${Math.round(ageHours)}h old`;
+  return `${Math.round(ageHours / 24)}d old`;
+}
+
+function riskTone(row: NextActionRow): "danger" | "gold" | "muted" {
+  if (row.is_breach || row.severity === "critical") return "danger";
+  if (row.severity === "at_risk" || row.severity === "due_today") return "gold";
+  return "muted";
 }
 
 export default function CommandPage() {
   const [rows, setRows] = useState<NextActionRow[]>([]);
+  const [summary, setSummary] = useState<OperatorSummary | null>(null);
+  const [autopilot, setAutopilot] = useState<OperatorAutopilot | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [sealingId, setSealingId] = useState<string | null>(null);
-  const [inspecting, setInspecting] = useState<NextActionRow | null>(null);
-
-  const grouped = useMemo(() => groupRows(rows), [rows]);
-  const activeGroups = GROUPS.filter((g) => grouped[g.key].length > 0);
-  const totalOpen = rows.length;
+  const [authLocked, setAuthLocked] = useState(false);
+  const [actingId, setActingId] = useState<string | null>(null);
+  const [closureReceipt, setClosureReceipt] = useState<ClosureReceipt | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setErr(null);
+    setAuthLocked(false);
     try {
-      const res = await fetch("/api/command/feed");
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? `HTTP ${res.status}`);
+      const [summaryRes, autopilotRes, queueRes] = await Promise.allSettled([
+        fetchOperatorSummary(),
+        fetchOperatorAutopilot(),
+        fetch("/api/command/feed", { cache: "no-store" }),
+      ]);
+
+      if (summaryRes.status === "fulfilled") {
+        setSummary(summaryRes.value);
+        setAuthLocked(summaryRes.value.live_state_health === "access_required");
+      } else {
+        setSummary(null);
       }
-      const json = await res.json();
-      setRows((json.rows ?? []) as NextActionRow[]);
+
+      if (autopilotRes.status === "fulfilled") {
+        setAutopilot(autopilotRes.value);
+      } else {
+        setAutopilot(null);
+      }
+
+      if (queueRes.status === "rejected") {
+        throw queueRes.reason;
+      }
+
+      const j = await queueRes.value.json().catch(() => ({}));
+      if (!queueRes.value.ok) {
+        throw new ApiError(queueRes.value.status, j.error ?? `HTTP ${queueRes.value.status}`);
+      }
+      setRows((j.rows ?? []) as NextActionRow[]);
     } catch (e) {
-      setErr(`Command load failed: ${e instanceof Error ? e.message : String(e)}`);
+      if (e instanceof ApiError && e.status === 401) {
+        setAuthLocked(true);
+        setErr(null);
+      } else {
+        setErr(`Load failed: ${e instanceof Error ? e.message : String(e)}`);
+      }
       setRows([]);
+      setAutopilot(null);
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
-  async function handleSeal(obligationId: string) {
-    setSealingId(obligationId);
+  async function handleSeal(row: NextActionRow) {
+    setActingId(row.obligation_id);
     try {
       const res = await fetch("/api/command/seal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ obligation_id: obligationId }),
+        body: JSON.stringify({ obligation_id: row.obligation_id, action: "seal" }),
       });
       const json = await res.json();
       if (!res.ok) {
-        alert(`Seal failed: ${json.error ?? "Unknown error"}`);
+        alert(`Failed: ${json.error ?? "Unknown error"}`);
       } else {
-        setRows((prev) => prev.filter((r) => r.obligation_id !== obligationId));
+        setClosureReceipt({
+          receipt_id: json.receipt_id,
+          obligation_id: row.obligation_id,
+          label: fmtResolutionAction(row.kind),
+        });
+        setRows((prev) => prev.filter((item) => item.obligation_id !== row.obligation_id));
+        await loadData();
       }
     } catch (e) {
-      alert(`Seal failed: ${e instanceof Error ? e.message : String(e)}`);
+      alert(`Failed: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
-      setSealingId(null);
+      setActingId(null);
     }
   }
 
   return (
     <AkShell
       title="Command"
-      subtitle="Open obligations requiring operator action."
+      subtitle="Resolve governed revenue obligations in the billing enforcement domain. Nothing is complete until closure emits a receipt."
+      eyebrow="Billing Enforcement Domain"
     >
+      {summary ? <OperatorSummaryPanel summary={summary} /> : null}
+      {autopilot ? <OperatorAutopilotPanel autopilot={autopilot} /> : null}
+
+      <AkSectionHeader
+        label="Billing queue"
+        count={summary?.needs_action_count ?? rows.length}
+        right={
+          <button
+            onClick={() => void loadData()}
+            className="text-sm text-slate-400 transition hover:text-white"
+          >
+            Refresh
+          </button>
+        }
+      />
+
       {loading && (
-        <div className="flex items-center gap-3 text-sm text-zinc-500">
-          <div className="h-1 w-1 rounded-full bg-[#d6b24a] animate-pulse" />
-          Loading obligations…
+        <div className="flex items-center gap-3 text-sm text-white/35">
+          <div className="h-1 w-1 animate-pulse rounded-full bg-emerald-400" />
+          Loading billing queue…
         </div>
+      )}
+
+      {!loading && authLocked && (
+        <AkPanel className="p-6">
+          <div className="mb-2 text-sm font-extrabold text-white">Sign in to load the billing queue</div>
+          <div className="max-w-xl text-sm text-white/60">
+            This surface only reads the governed billing enforcement domain for an authenticated operator session.
+          </div>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <Link
+              href="/login?redirect=%2Fcommand"
+              className="inline-flex items-center justify-center rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
+            >
+              Sign in
+            </Link>
+            <button
+              onClick={() => void loadData()}
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-extrabold text-white/70 transition hover:border-white/20 hover:text-white"
+            >
+              Retry
+            </button>
+          </div>
+        </AkPanel>
       )}
 
       {!loading && err && (
         <AkPanel className="p-6">
-          <div className="text-sm font-extrabold text-red-400 mb-2">Error</div>
-          <div className="text-sm text-zinc-300">{err}</div>
-          <div className="mt-3 text-xs text-zinc-500">
-            Confirm the view exists and is granted for your current auth role.
-          </div>
+          <div className="mb-2 text-sm font-extrabold text-red-400">Error</div>
+          <div className="text-sm text-white/60">{err}</div>
           <button
-            onClick={loadData}
-            className="mt-4 text-xs font-bold text-[#d6b24a] hover:underline"
+            onClick={() => void loadData()}
+            className="mt-4 text-xs font-bold text-white/60 transition hover:text-white hover:underline"
           >
             Retry →
           </button>
         </AkPanel>
       )}
 
-      {!loading && !err && (
-        <>
-          {/* summary bar */}
-          <div className="mb-8 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl font-extrabold text-zinc-100">{totalOpen}</span>
-              <span className="text-sm text-zinc-500">open obligations</span>
-            </div>
-            <button
-              onClick={loadData}
-              className="text-xs font-bold text-zinc-500 hover:text-[#d6b24a] transition"
-            >
-              Refresh
-            </button>
+      {!loading && !err && !authLocked && rows.length === 0 && (
+        <AkPanel className="p-10 text-center">
+          <div className="mb-3 text-4xl text-white/20">◎</div>
+          <div className="mb-1 text-base font-extrabold text-white">
+            {summary?.live_state_health === "idle" ? "No open obligations" : "No queue rows visible"}
           </div>
-
-          {/* all clear */}
-          {totalOpen === 0 && (
-            <AkPanel className="p-10 text-center">
-              <div className="text-4xl mb-3">✓</div>
-              <div className="text-base font-extrabold text-zinc-100 mb-1">
-                All Clear
-              </div>
-              <div className="text-sm text-zinc-500">
-                No open obligations. Every duty has been sealed.
-              </div>
-            </AkPanel>
-          )}
-
-          {/* active groups only */}
-          {totalOpen > 0 && (
-            <div className="space-y-8">
-              {activeGroups.map((g) => (
-                <section key={g.key}>
-                  <AkSectionHeader label={g.label} count={grouped[g.key].length} />
-
-                  <div className="mt-4 grid gap-4">
-                    {grouped[g.key].map((row) => (
-                      <AkPanel key={row.obligation_id} className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-3 flex-wrap">
-                              <AkBadge tone={g.tone}>{g.label.toUpperCase()}</AkBadge>
-                              <AkBadge tone="muted">{fmtFace(row.face)}</AkBadge>
-                              {row.is_breach && (
-                                <AkBadge tone="danger">BREACH</AkBadge>
-                              )}
-                            </div>
-
-                            <div className="text-base font-extrabold text-zinc-100 leading-snug">
-                              {safeStr(row.title)}
-                            </div>
-
-                            {row.why && (
-                              <div className="mt-1.5 text-sm text-zinc-400">
-                                {row.why}
-                              </div>
-                            )}
-
-                            <div className="mt-3 flex flex-wrap gap-4 text-xs text-zinc-500">
-                              {row.due_at && (
-                                <span>
-                                  Due:{" "}
-                                  <span className="text-zinc-300">
-                                    {fmtDue(row.due_at)}
-                                  </span>
-                                </span>
-                              )}
-                              {row.economic_ref_id && (
-                                <span>
-                                  Ref:{" "}
-                                  <span className="text-zinc-300">
-                                    {safeStr(row.economic_ref_type)}{" "}
-                                    {safeStr(row.economic_ref_id)}
-                                  </span>
-                                </span>
-                              )}
-                              {row.age_hours != null && (
-                                <span>
-                                  Age:{" "}
-                                  <span className="text-zinc-300">
-                                    {Math.round(row.age_hours)}h
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 flex gap-3">
-                          <AkButton
-                            tone="gold"
-                            disabled={sealingId === row.obligation_id}
-                            onClick={() => handleSeal(row.obligation_id)}
-                          >
-                            {sealingId === row.obligation_id
-                              ? "Sealing…"
-                              : "Seal Closure"}
-                          </AkButton>
-                          <AkButton
-                            tone="muted"
-                            onClick={() => setInspecting(row)}
-                          >
-                            Inspect
-                          </AkButton>
-                        </div>
-                      </AkPanel>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
-        </>
+          <div className="text-sm text-white/35">
+            {summary?.status_message ?? "The authoritative summary could not be loaded."}
+          </div>
+          <Link href="/command/receipts" className="mt-4 inline-flex text-sm text-cyan-100 transition hover:text-white">
+            Open proof layer →
+          </Link>
+        </AkPanel>
       )}
 
-      {/* Inspect Drawer */}
-      {inspecting && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setInspecting(null)}
-          />
-          <div className="relative w-full max-w-md bg-[#070707] border-l border-[#2a2516] overflow-y-auto shadow-2xl">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <div className="text-xs font-extrabold tracking-[0.22em] text-zinc-500 mb-1">
-                    OBLIGATION
+      {!loading && !err && !authLocked && rows.length > 0 && (
+        <div className="grid gap-4">
+          {rows.map((row) => {
+            const isActing = actingId === row.obligation_id;
+            const actionLabel = fmtResolutionAction(row.kind);
+
+            return (
+              <AkPanel key={row.obligation_id} className="p-5">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <AkBadge tone={riskTone(row)}>
+                        {row.is_breach ? "Late" : safeStr(row.severity).replace(/_/g, " ")}
+                      </AkBadge>
+                      {row.kind ? <AkBadge tone="muted">{fmtObligationType(row.kind)}</AkBadge> : null}
+                      {row.economic_ref_type ? (
+                        <AkBadge tone="gold">{safeStr(row.economic_ref_type).toUpperCase()}</AkBadge>
+                      ) : null}
+                    </div>
+
+                    <div className="text-base font-extrabold leading-snug text-white">{safeStr(row.title)}</div>
+                    {row.why ? <div className="mt-1.5 text-sm text-white/45">{row.why}</div> : null}
+
+                    <div className="mt-3 flex flex-wrap gap-4 text-xs text-white/35">
+                      {row.due_at ? (
+                        <span>
+                          Due: <span className={row.is_breach ? "font-bold text-red-400" : "text-white/60"}>{fmtDue(row.due_at)}</span>
+                        </span>
+                      ) : null}
+                      {row.age_hours != null ? <span>{fmtAge(row.age_hours)}</span> : null}
+                      {row.economic_ref_id ? (
+                        <span>
+                          Ref: <span className="font-mono text-[11px] text-white/60">{safeStr(row.economic_ref_id)}</span>
+                        </span>
+                      ) : null}
+                    </div>
                   </div>
-                  <h2 className="text-lg font-extrabold text-[#d6b24a]">
-                    Inspect
-                  </h2>
+
+                  <div className="flex shrink-0 items-start">
+                    <AkButton tone="gold" disabled={isActing} onClick={() => void handleSeal(row)}>
+                      {isActing ? "Recording…" : actionLabel}
+                    </AkButton>
+                  </div>
                 </div>
-                <button
-                  onClick={() => setInspecting(null)}
-                  className="rounded-xl border border-[#2a2516] bg-[#0d0d0d] px-3 py-2 text-sm text-zinc-400 hover:text-zinc-100 transition"
-                >
-                  ✕ Close
-                </button>
-              </div>
+              </AkPanel>
+            );
+          })}
+        </div>
+      )}
 
-              <div className="space-y-4 text-sm">
-                {(
-                  [
-                    ["Obligation ID", inspecting.obligation_id],
-                    ["Title", inspecting.title],
-                    ["Why", inspecting.why],
-                    ["Face", fmtFace(inspecting.face)],
-                    ["Severity", inspecting.severity],
-                    ["Due At", fmtDue(inspecting.due_at) ?? "—"],
-                    ["Created At", inspecting.created_at ?? "—"],
-                    [
-                      "Age (hours)",
-                      inspecting.age_hours != null
-                        ? String(Math.round(inspecting.age_hours))
-                        : "—",
-                    ],
-                    ["Breach", inspecting.is_breach ? "YES" : "No"],
-                    ["Economic Ref Type", inspecting.economic_ref_type ?? "—"],
-                    ["Economic Ref ID", inspecting.economic_ref_id ?? "—"],
-                  ] as [string, string | null][]
-                ).map(([label, value]) => (
-                  <AkPanel key={label} className="p-3">
-                    <div className="text-[10px] font-extrabold tracking-widest text-zinc-600 mb-1">
-                      {label.toUpperCase()}
-                    </div>
-                    <div className="text-zinc-200 break-all text-sm">
-                      {value || "—"}
-                    </div>
-                  </AkPanel>
-                ))}
+      {closureReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setClosureReceipt(null)} />
+          <div className="relative w-full max-w-sm">
+            <AkPanel className="p-8 text-center">
+              <div className="mb-4 text-5xl">✓</div>
+              <div className="mb-1 text-xl font-extrabold text-white">Closure receipt emitted</div>
+              <div className="text-sm text-white/55">{closureReceipt.label}</div>
+              <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left">
+                <div className="mb-2 text-[10px] font-extrabold tracking-widest text-white/30">RECEIPT ID</div>
+                <div className="break-all font-mono text-xs text-white/60">{closureReceipt.receipt_id}</div>
               </div>
-
-              <div className="mt-6">
-                <AkButton
-                  tone="gold"
-                  className="w-full"
-                  disabled={sealingId === inspecting.obligation_id}
-                  onClick={() => {
-                    handleSeal(inspecting.obligation_id);
-                    setInspecting(null);
-                  }}
-                >
-                  {sealingId === inspecting.obligation_id
-                    ? "Sealing…"
-                    : "Seal This Obligation"}
-                </AkButton>
-              </div>
-            </div>
+              <button
+                onClick={() => setClosureReceipt(null)}
+                className="mt-6 w-full rounded-xl bg-white px-4 py-3 text-sm font-extrabold text-neutral-950 transition hover:bg-white/90"
+              >
+                Done
+              </button>
+            </AkPanel>
           </div>
         </div>
       )}

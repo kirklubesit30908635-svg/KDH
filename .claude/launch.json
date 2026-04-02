@@ -3,14 +3,15 @@
   "configurations": [
     {
       "name": "Supabase Local (autokirk-kernel)",
-      "runtimeExecutable": "supabase",
-      "runtimeArgs": ["start"],
-      "port": 54321
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "supabase start; tail -f /dev/null"],
+      "port": 54321,
+      "autoPort": false
     },
     {
       "name": "Next.js Dev (autokirk-kernel)",
-      "runtimeExecutable": "C:/Program Files/nodejs/node.exe",
-      "runtimeArgs": ["C:/Users/chase kirk/autokirk-kernel/node_modules/next/dist/bin/next", "dev", "--turbopack"],
+      "runtimeExecutable": "C:/Windows/System32/cmd.exe",
+      "runtimeArgs": ["/c", "npm", "run", "dev"],
       "port": 3000,
       "autoPort": true
     }

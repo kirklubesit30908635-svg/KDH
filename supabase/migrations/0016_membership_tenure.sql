@@ -33,7 +33,6 @@
 -- =============================================================
 
 BEGIN;
-
 -- ---------------------------------------------------------------
 -- 1. Add tenure columns
 -- ---------------------------------------------------------------
@@ -45,7 +44,6 @@ ALTER TABLE core.memberships
   ADD COLUMN updated_at  timestamptz NOT NULL DEFAULT now(),
   ADD CONSTRAINT memberships_active_window_check
     CHECK (active_to IS NULL OR active_to > active_from);
-
 -- ---------------------------------------------------------------
 -- 2. Backfill: existing rows are active from their creation date.
 --    See backfill assumption in header comment above.
@@ -53,7 +51,6 @@ ALTER TABLE core.memberships
 UPDATE core.memberships
    SET active_from = created_at,
        status      = 'active';
-
 -- ---------------------------------------------------------------
 -- 3. Index: matches the exact access path of core.is_member().
 --    Predicate: status = 'active' eliminates suspended/revoked/
@@ -66,14 +63,12 @@ UPDATE core.memberships
 CREATE INDEX idx_memberships_workspace_operator_active
   ON core.memberships (workspace_id, operator_id)
   WHERE status = 'active';
-
 -- ---------------------------------------------------------------
 -- 4. updated_at trigger (core.set_updated_at added in 0012)
 -- ---------------------------------------------------------------
 CREATE TRIGGER memberships_set_updated_at
   BEFORE UPDATE ON core.memberships
   FOR EACH ROW EXECUTE FUNCTION core.set_updated_at();
-
 -- ---------------------------------------------------------------
 -- 5. Update core.is_member() to enforce tenure.
 --    Boundary semantics match header: inclusive lower, exclusive
@@ -94,5 +89,4 @@ LANGUAGE sql STABLE AS $$
        AND (active_to IS NULL OR active_to > now())
   );
 $$;
-
 COMMIT;
