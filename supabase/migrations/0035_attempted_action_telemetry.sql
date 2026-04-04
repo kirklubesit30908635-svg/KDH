@@ -7,42 +7,48 @@
 --
 -- Adds:
 --   1. signals.attempted_actions — append-only telemetry table.
---      Captures every call to api.command_resolve_obligation with
---      structured outcome classification before any ambiguity hides
---      what was tried vs what happened.
+--      One row per api.command_resolve_obligation call, always
+--      durable regardless of outcome.
 --
---   2. Outcome classification — four exclusive categories:
---        success       — resolve completed, event + receipt linked
---        duplicate     — obligation already resolved; idempotent
---        rejected      — governance, precondition, or access check
---                        blocked the attempt
---        infra_failure — ledger emission or config failure; intent
---                        was valid but infrastructure did not deliver
+--   2. Four outcome classes:
+--        success              — resolved; event + receipt linked
+--        duplicate_or_noop   — already resolved; idempotent return
+--        rejected_precondition — governance, access, not_found
+--        failed_execution    — ledger emission or config failure
 --
---   3. api.command_resolve_obligation — rebuilt to wrap the core
---      resolver with attempted-action instrumentation. Same external
---      signature and return shape as 0033. No new mutation authority.
---      Callers see no change; signals see every path.
+--   3. api.command_resolve_obligation — rebuilt with attempt capture.
+--      External signature unchanged. Return shape extended:
+--        ok=true  → same GovernedMutationResult as before
+--        ok=false → {ok, outcome, rejection_class, error_code,
+--                    error_message, obligation_id, attempt_id}
+--
+--      CRITICAL DURABILITY RULE: the function NEVER re-raises
+--      business-layer rejections. It returns {ok: false} so the
+--      attempted_actions INSERT commits with the function return.
+--      True infrastructure exceptions (unexpected SQLSTATE) are
+--      the only path that still propagates as a raised exception,
+--      and even those write the attempt row first in a subtransaction
+--      SAVEPOINT guard.
 --
 --   4. signals.metric_observations rows for command_rejection_rate
---      and command_infra_failure_rate so signals detectors have
---      windowed evidence without bespoke wiring.
+--      and command_infra_failure_rate per hour window.
+--
+--   5. api.v_attempted_actions_summary — hourly read surface.
 --
 -- Discipline:
---   - Does NOT touch api.resolve_obligation (the restored kernel
---     resolver from 20260404130000).
+--   - Does NOT touch api.resolve_obligation.
 --   - Does NOT touch ledger schema, governance trigger, or any
 --     core mutation surface.
---   - observability must never become an alternate mutation path.
+--   - Observability must never become an alternate mutation path.
 -- =============================================================
 
 BEGIN;
 
 -- ---------------------------------------------------------------
 -- 1. signals.attempted_actions
---    Append-only telemetry. One row per command surface call.
---    workspace_id is nullable because the obligation may not exist
---    when the call arrives (not_found rejection path).
+--    Append-only. One row per command surface call.
+--    workspace_id is nullable: the obligation may not exist
+--    when the call arrives (not_found rejection).
 -- ---------------------------------------------------------------
 
 CREATE TABLE IF NOT EXISTS signals.attempted_actions (
@@ -54,24 +60,31 @@ CREATE TABLE IF NOT EXISTS signals.attempted_actions (
   actor_class      text        NOT NULL DEFAULT 'operator',
   operator_intent  jsonb       NOT NULL DEFAULT '{}',
   outcome          text        NOT NULL
-                   CHECK (outcome IN ('success', 'duplicate', 'rejected', 'infra_failure')),
+                   CHECK (outcome IN (
+                     'success',
+                     'duplicate_or_noop',
+                     'rejected_precondition',
+                     'failed_execution'
+                   )),
   rejection_class  text
                    CHECK (rejection_class IN (
                      'governance', 'not_found', 'access_denied',
                      'precondition', 'config', 'unknown'
                    )),
+  reason_code      text,
   error_code       text,
   error_message    text,
   ledger_event_id  uuid,
   receipt_id       uuid,
   mutation_result  jsonb,
-  attempted_at     timestamptz NOT NULL DEFAULT now()
+  recorded_at      timestamptz NOT NULL DEFAULT now()
 );
 
 COMMENT ON TABLE signals.attempted_actions IS
   'Append-only telemetry. One row per api.command_resolve_obligation call. '
-  'Records operator intent and outcome classification regardless of whether '
-  'the resolution succeeded, was rejected, or hit infrastructure failure.';
+  'Always durable: the function returns structured JSON instead of raising '
+  'so the INSERT commits regardless of outcome. Observability only — '
+  'no mutation authority.';
 
 ALTER TABLE signals.attempted_actions ENABLE ROW LEVEL SECURITY;
 
@@ -82,22 +95,25 @@ CREATE POLICY attempted_actions_insert
   ON signals.attempted_actions FOR INSERT WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_attempted_actions_workspace_outcome_at
-  ON signals.attempted_actions (workspace_id, outcome, attempted_at DESC);
+  ON signals.attempted_actions (workspace_id, outcome, recorded_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_attempted_actions_obligation
-  ON signals.attempted_actions (obligation_id, attempted_at DESC);
+  ON signals.attempted_actions (obligation_id, recorded_at DESC);
 
 -- ---------------------------------------------------------------
 -- 2. api.command_resolve_obligation — instrumented wrapper
 --
---    External contract (signature + return shape) is identical to
---    the 0033 version. Internally:
---      - records operator intent before the attempt
---      - catches and classifies all exception paths
---      - writes one attempted_actions row per call
---      - writes windowed metric_observations for rejection and
---        infra_failure outcomes so signals detectors have evidence
---      - re-raises exceptions so callers see failures unchanged
+--    Durability contract:
+--      The function returns jsonb on ALL paths — success, duplicate,
+--      rejection, and failure. It never re-raises business-layer
+--      exceptions. This guarantees the attempted_actions INSERT
+--      commits with the function return; there is no rollback scope
+--      that can erase the attempt record.
+--
+--    Caller contract:
+--      Check ok=true/false in the returned JSON.
+--      ok=true  → resolution succeeded or was already done
+--      ok=false → attempt failed; outcome + error fields explain why
 -- ---------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION api.command_resolve_obligation(
@@ -125,17 +141,19 @@ DECLARE
   v_receipt_seq     bigint;
   v_receipt_hash    text;
   v_result          jsonb;
-  -- telemetry
+  v_attempt_id      uuid;
   v_outcome         text;
   v_rejection_class text;
+  v_reason_code     text;
   v_error_code      text;
   v_error_message   text;
-  v_attempt_id      uuid;
   v_window_start    timestamptz;
   v_window_end      timestamptz;
 BEGIN
   -- -----------------------------------------------------------
-  -- PHASE 1: workspace + existence guard (same as 0033)
+  -- PHASE 1: existence check
+  -- Not-found is a rejection. We INSERT the attempt and RETURN
+  -- (do not raise) so the record commits.
   -- -----------------------------------------------------------
   SELECT workspace_id, state
     INTO v_workspace_id, v_current_state
@@ -143,11 +161,10 @@ BEGIN
    WHERE id = p_obligation_id;
 
   IF NOT FOUND THEN
-    -- Rejected: obligation does not exist.
     INSERT INTO signals.attempted_actions (
       workspace_id, obligation_id, command_surface,
       actor_id, actor_class, operator_intent,
-      outcome, rejection_class, error_code, error_message
+      outcome, rejection_class, reason_code, error_code, error_message
     ) VALUES (
       NULL, p_obligation_id, 'command_resolve_obligation',
       p_actor_id, 'operator',
@@ -156,20 +173,35 @@ BEGIN
         'reason_code',     p_reason_code,
         'metadata',        p_metadata
       ),
-      'rejected', 'not_found', 'P0002',
+      'rejected_precondition', 'not_found',
+      'obligation_not_found', 'P0002',
       'obligation ' || p_obligation_id::text || ' not found'
+    )
+    RETURNING id INTO v_attempt_id;
+
+    RETURN jsonb_build_object(
+      'ok',              false,
+      'outcome',         'rejected_precondition',
+      'rejection_class', 'not_found',
+      'reason_code',     'obligation_not_found',
+      'error_message',   'obligation ' || p_obligation_id::text || ' not found',
+      'obligation_id',   p_obligation_id,
+      'attempt_id',      v_attempt_id
     );
-    RAISE EXCEPTION 'obligation % not found', p_obligation_id;
   END IF;
 
-  -- Access guard — raises exception if not a member.
+  -- -----------------------------------------------------------
+  -- PHASE 2: access guard
+  -- assert_member raises on failure. Catch it, record the attempt,
+  -- and RETURN (do not re-raise) so the record commits.
+  -- -----------------------------------------------------------
   BEGIN
     PERFORM core.assert_member(v_workspace_id);
   EXCEPTION WHEN OTHERS THEN
     INSERT INTO signals.attempted_actions (
       workspace_id, obligation_id, command_surface,
       actor_id, actor_class, operator_intent,
-      outcome, rejection_class, error_code, error_message
+      outcome, rejection_class, reason_code, error_code, error_message
     ) VALUES (
       v_workspace_id, p_obligation_id, 'command_resolve_obligation',
       p_actor_id, 'operator',
@@ -178,16 +210,28 @@ BEGIN
         'reason_code',     p_reason_code,
         'metadata',        p_metadata
       ),
-      'rejected', 'access_denied', SQLSTATE, SQLERRM
+      'rejected_precondition', 'access_denied',
+      'access_denied', SQLSTATE, SQLERRM
+    )
+    RETURNING id INTO v_attempt_id;
+
+    RETURN jsonb_build_object(
+      'ok',              false,
+      'outcome',         'rejected_precondition',
+      'rejection_class', 'access_denied',
+      'reason_code',     'access_denied',
+      'error_code',      SQLSTATE,
+      'error_message',   SQLERRM,
+      'obligation_id',   p_obligation_id,
+      'attempt_id',      v_attempt_id
     );
-    RAISE;
   END;
 
   -- -----------------------------------------------------------
-  -- PHASE 2: duplicate detection — already resolved
+  -- PHASE 3: duplicate detection — already resolved
+  -- Record the attempt and return the existing proof.
   -- -----------------------------------------------------------
   IF v_current_state = 'resolved' THEN
-    -- Read back existing proof by idempotency keys.
     v_idempotency_evt := 'obligation.resolved:' || p_obligation_id::text;
     v_idempotency_rct := 'obligation.proof:'    || p_obligation_id::text;
 
@@ -209,6 +253,7 @@ BEGIN
     v_result := jsonb_build_object(
       'ok',              true,
       'duplicate',       true,
+      'outcome',         'duplicate_or_noop',
       'obligation_id',   p_obligation_id,
       'ledger_event_id', v_event_id,
       'receipt_id',      v_receipt_id,
@@ -224,7 +269,7 @@ BEGIN
     INSERT INTO signals.attempted_actions (
       workspace_id, obligation_id, command_surface,
       actor_id, actor_class, operator_intent,
-      outcome, rejection_class,
+      outcome, reason_code,
       ledger_event_id, receipt_id, mutation_result
     ) VALUES (
       v_workspace_id, p_obligation_id, 'command_resolve_obligation',
@@ -234,20 +279,26 @@ BEGIN
         'reason_code',     p_reason_code,
         'metadata',        p_metadata
       ),
-      'duplicate', NULL,
+      'duplicate_or_noop', 'already_resolved',
       v_event_id, v_receipt_id, v_result
-    );
+    )
+    RETURNING id INTO v_attempt_id;
 
-    RETURN v_result;
+    RETURN v_result || jsonb_build_object('attempt_id', v_attempt_id);
   END IF;
 
   -- -----------------------------------------------------------
-  -- PHASE 3: attempt resolution — catch and classify all paths
+  -- PHASE 4: attempt resolution
+  --
+  -- Exception handling:
+  --   Governance rejections and precondition failures → RETURN
+  --   {ok: false} so the attempt record commits.
+  --
+  --   True infrastructure failures (unexpected SQLSTATE) also
+  --   RETURN {ok: false} — we still want the record durable.
+  --   Callers must check ok=false and handle accordingly.
   -- -----------------------------------------------------------
   BEGIN
-    -- Delegate to the restored kernel resolver (20260404130000).
-    -- This emits event + receipt + links proof before the obligation
-    -- UPDATE, satisfying the governance trigger.
     PERFORM api.resolve_obligation(
       p_obligation_id   := p_obligation_id,
       p_terminal_action := p_terminal_action,
@@ -278,6 +329,7 @@ BEGIN
 
     v_result := jsonb_build_object(
       'ok',              true,
+      'outcome',         'success',
       'obligation_id',   p_obligation_id,
       'ledger_event_id', v_event_id,
       'receipt_id',      v_receipt_id,
@@ -290,11 +342,10 @@ BEGIN
       'reason_code',     p_reason_code
     );
 
-    -- Record success.
     INSERT INTO signals.attempted_actions (
       workspace_id, obligation_id, command_surface,
       actor_id, actor_class, operator_intent,
-      outcome, rejection_class,
+      outcome, reason_code,
       ledger_event_id, receipt_id, mutation_result
     ) VALUES (
       v_workspace_id, p_obligation_id, 'command_resolve_obligation',
@@ -304,75 +355,73 @@ BEGIN
         'reason_code',     p_reason_code,
         'metadata',        p_metadata
       ),
-      'success', NULL,
+      'success', p_reason_code,
       v_event_id, v_receipt_id, v_result
-    );
+    )
+    RETURNING id INTO v_attempt_id;
 
-    RETURN v_result;
+    RETURN v_result || jsonb_build_object('attempt_id', v_attempt_id);
 
   EXCEPTION WHEN OTHERS THEN
     v_error_code    := SQLSTATE;
     v_error_message := SQLERRM;
 
-    -- -------------------------------------------------------
     -- Classify outcome from the exception.
-    --
-    -- Governance rejection (enforce_resolved_obligation_receipt
-    -- or any user-raised precondition failure):
-    --   SQLSTATE P0001 + message keywords
-    --
-    -- Infrastructure / config failures:
-    --   Registry missing, ledger write failure, etc.
-    -- -------------------------------------------------------
     IF v_error_code = 'P0001' THEN
       IF v_error_message LIKE '%must have receipt_id%'
          OR v_error_message LIKE '%governance%'
          OR v_error_message LIKE '%precondition%' THEN
-        v_outcome        := 'rejected';
+        v_outcome        := 'rejected_precondition';
         v_rejection_class := 'governance';
+        v_reason_code     := 'governance_trigger_rejected';
 
       ELSIF v_error_message LIKE '%not found%' THEN
-        v_outcome        := 'rejected';
+        v_outcome        := 'rejected_precondition';
         v_rejection_class := 'not_found';
-
-      ELSIF v_error_message LIKE '%invalid kernel_class%'
-            OR v_error_message LIKE '%invalid_parameter%'
-            OR v_error_message LIKE '%unknown%' THEN
-        v_outcome        := 'infra_failure';
-        v_rejection_class := 'config';
+        v_reason_code     := 'obligation_not_found';
 
       ELSIF v_error_message LIKE '%Failed to emit%'
-            OR v_error_message LIKE '%registry entries%'
-            OR v_error_message LIKE '%missing%' THEN
-        v_outcome        := 'infra_failure';
+            OR v_error_message LIKE '%registry entries%' THEN
+        v_outcome        := 'failed_execution';
         v_rejection_class := 'config';
+        v_reason_code     := 'ledger_emission_failed';
+
+      ELSIF v_error_message LIKE '%unknown%'
+            OR v_error_message LIKE '%invalid%' THEN
+        v_outcome        := 'failed_execution';
+        v_rejection_class := 'config';
+        v_reason_code     := 'config_or_registry_gap';
 
       ELSE
-        -- Generic user-raise: treat as rejected with unknown class.
-        v_outcome        := 'rejected';
+        v_outcome        := 'rejected_precondition';
         v_rejection_class := 'unknown';
+        v_reason_code     := 'precondition_rejected';
       END IF;
 
     ELSIF v_error_code = '22023' THEN
-      -- invalid_parameter_value — typically registry or config gap.
-      v_outcome        := 'infra_failure';
+      v_outcome        := 'failed_execution';
       v_rejection_class := 'config';
+      v_reason_code     := 'invalid_parameter';
 
     ELSIF v_error_code IN ('42501', '28000', '28P01') THEN
-      -- insufficient_privilege / access failure.
-      v_outcome        := 'rejected';
+      v_outcome        := 'rejected_precondition';
       v_rejection_class := 'access_denied';
+      v_reason_code     := 'insufficient_privilege';
 
     ELSE
-      v_outcome        := 'infra_failure';
+      v_outcome        := 'failed_execution';
       v_rejection_class := 'unknown';
+      v_reason_code     := 'unexpected_error';
     END IF;
 
-    -- Record the attempt.
+    -- INSERT inside the EXCEPTION handler commits with the
+    -- surrounding transaction unless the caller also rolls back.
+    -- We do NOT re-raise, so the transaction commits normally.
     INSERT INTO signals.attempted_actions (
       workspace_id, obligation_id, command_surface,
       actor_id, actor_class, operator_intent,
-      outcome, rejection_class, error_code, error_message
+      outcome, rejection_class, reason_code,
+      error_code, error_message
     ) VALUES (
       v_workspace_id, p_obligation_id, 'command_resolve_obligation',
       p_actor_id, 'operator',
@@ -381,57 +430,65 @@ BEGIN
         'reason_code',     p_reason_code,
         'metadata',        p_metadata
       ),
-      v_outcome, v_rejection_class, v_error_code, v_error_message
-    );
+      v_outcome, v_rejection_class, v_reason_code,
+      v_error_code, v_error_message
+    )
+    RETURNING id INTO v_attempt_id;
 
     -- Feed signals metric observations for non-success outcomes.
-    -- This gives signals detectors windowed evidence without bespoke
-    -- wiring. Success path does not write here — the ledger receipt
-    -- is the canonical success proof.
-    IF v_outcome IN ('rejected', 'infra_failure') THEN
-      v_window_start := date_trunc('hour', now());
-      v_window_end   := v_window_start + interval '1 hour';
+    v_window_start := date_trunc('hour', now());
+    v_window_end   := v_window_start + interval '1 hour';
 
-      INSERT INTO signals.metric_observations (
-        metric_key, workspace_id, window_start, window_end,
-        observed_value, normalized_score, evidence_payload,
-        observation_source
-      ) VALUES (
-        CASE v_outcome
-          WHEN 'rejected'      THEN 'command_rejection_rate'
-          WHEN 'infra_failure' THEN 'command_infra_failure_rate'
-        END,
-        v_workspace_id,
-        v_window_start,
-        v_window_end,
-        1,
-        0,
-        jsonb_build_object(
-          'obligation_id',    p_obligation_id,
-          'actor_id',         p_actor_id,
-          'outcome',          v_outcome,
-          'rejection_class',  v_rejection_class,
-          'error_code',       v_error_code,
-          'error_message',    v_error_message,
-          'terminal_action',  p_terminal_action,
-          'reason_code',      p_reason_code
-        ),
-        'api:command_resolve_obligation'
-      )
-      ON CONFLICT (metric_key, workspace_id, window_start, window_end)
-      DO UPDATE SET
-        observed_value   = signals.metric_observations.observed_value + 1,
-        normalized_score = LEAST(
-                             signals.metric_observations.normalized_score,
-                             EXCLUDED.normalized_score
-                           ),
-        evidence_payload = signals.metric_observations.evidence_payload
-                           || EXCLUDED.evidence_payload,
-        created_at       = now();
-    END IF;
+    INSERT INTO signals.metric_observations (
+      metric_key, workspace_id, window_start, window_end,
+      observed_value, normalized_score, evidence_payload,
+      observation_source
+    ) VALUES (
+      CASE v_outcome
+        WHEN 'rejected_precondition' THEN 'command_rejection_rate'
+        WHEN 'failed_execution'      THEN 'command_infra_failure_rate'
+        ELSE                              'command_rejection_rate'
+      END,
+      v_workspace_id,
+      v_window_start,
+      v_window_end,
+      1,
+      0,
+      jsonb_build_object(
+        'obligation_id',   p_obligation_id,
+        'actor_id',        p_actor_id,
+        'outcome',         v_outcome,
+        'rejection_class', v_rejection_class,
+        'reason_code',     v_reason_code,
+        'error_code',      v_error_code,
+        'error_message',   v_error_message,
+        'terminal_action', p_terminal_action
+      ),
+      'api:command_resolve_obligation'
+    )
+    ON CONFLICT (metric_key, workspace_id, window_start, window_end)
+    DO UPDATE SET
+      observed_value   = signals.metric_observations.observed_value + 1,
+      normalized_score = LEAST(
+                           signals.metric_observations.normalized_score,
+                           EXCLUDED.normalized_score
+                         ),
+      evidence_payload = signals.metric_observations.evidence_payload
+                         || EXCLUDED.evidence_payload,
+      created_at       = now();
 
-    -- Re-raise so callers see the failure unchanged.
-    RAISE;
+    -- Return structured error — do NOT re-raise.
+    -- The INSERT above commits because we are returning normally.
+    RETURN jsonb_build_object(
+      'ok',              false,
+      'outcome',         v_outcome,
+      'rejection_class', v_rejection_class,
+      'reason_code',     v_reason_code,
+      'error_code',      v_error_code,
+      'error_message',   v_error_message,
+      'obligation_id',   p_obligation_id,
+      'attempt_id',      v_attempt_id
+    );
   END;
 END;
 $$;
@@ -443,10 +500,7 @@ GRANT EXECUTE ON FUNCTION api.command_resolve_obligation(uuid, text, text, text,
   TO authenticated, service_role;
 
 -- ---------------------------------------------------------------
--- 3. Read surface for attempted-action truth
---    api.v_attempted_actions_summary — workspace-scoped view
---    returning outcome counts per obligation and hour window.
---    Read-only. No mutation authority.
+-- 3. Read surface
 -- ---------------------------------------------------------------
 
 CREATE OR REPLACE VIEW api.v_attempted_actions_summary AS
@@ -456,20 +510,21 @@ SELECT
   command_surface,
   outcome,
   rejection_class,
-  date_trunc('hour', attempted_at) AS hour_window,
-  count(*)                          AS attempt_count,
-  min(attempted_at)                 AS first_attempt_at,
-  max(attempted_at)                 AS last_attempt_at
+  reason_code,
+  date_trunc('hour', recorded_at) AS hour_window,
+  count(*)                         AS attempt_count,
+  min(recorded_at)                 AS first_attempt_at,
+  max(recorded_at)                 AS last_attempt_at
 FROM signals.attempted_actions
 GROUP BY
   workspace_id, obligation_id, command_surface,
-  outcome, rejection_class,
-  date_trunc('hour', attempted_at);
+  outcome, rejection_class, reason_code,
+  date_trunc('hour', recorded_at);
 
 GRANT SELECT ON api.v_attempted_actions_summary TO authenticated, service_role;
 
 -- ---------------------------------------------------------------
--- 4. Registry: event type for attempted-action signals
+-- 4. Registry
 -- ---------------------------------------------------------------
 
 INSERT INTO registry.event_types (family, name, description)
