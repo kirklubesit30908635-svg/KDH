@@ -7,6 +7,17 @@
     ]
   },
   "hooks": {
+    "Setup": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /home/user/KDH && npm install",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
     "Stop": []
   }
 }
