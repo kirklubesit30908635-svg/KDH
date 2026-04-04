@@ -24,6 +24,12 @@ interface GovernedMutationResult {
   resolved_at?: string;
   terminal_action?: string;
   reason_code?: string;
+  // Present on ok=false paths (0035 structured error contract).
+  duplicate?: boolean;
+  outcome?: string;
+  rejection_class?: string;
+  error_message?: string;
+  attempt_id?: string;
 }
 
 interface SealObligationOptions {
@@ -64,7 +70,18 @@ async function runJsonRpc(
     throw new Error(`${fn} returned an invalid payload`);
   }
 
-  return data as GovernedMutationResult;
+  const result = data as GovernedMutationResult;
+
+  // 0035 contract: the DB function returns ok=false for all business-layer
+  // failures instead of raising exceptions. Check ok explicitly — a successful
+  // Supabase transport does NOT mean the obligation was resolved.
+  if (result.ok === false) {
+    const detail = result.error_message ?? result.outcome ?? "unknown failure";
+    const msg = `${fn} returned ok=false [${result.outcome ?? "?"}/${result.rejection_class ?? "?"}]: ${detail}`;
+    throw new Error(msg);
+  }
+
+  return result;
 }
 
 export async function sealObligation(

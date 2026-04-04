@@ -157,8 +157,12 @@ export async function POST(request: NextRequest) {
       }
     );
 
+    // sealObligation throws if result.ok === false (0035 contract).
+    // A duplicate-or-noop is ok=true with duplicate=true — surface it
+    // distinctly so callers know no new mutation occurred.
     return NextResponse.json({
       ok: true,
+      duplicate: result.duplicate === true,
       obligation_id: result.obligation_id,
       ledger_event_id: result.ledger_event_id,
       receipt_id: result.receipt_id,
