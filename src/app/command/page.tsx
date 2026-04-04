@@ -20,6 +20,7 @@ interface ClosureReceipt {
   receipt_id: string;
   obligation_id: string;
   label: string;
+  isDuplicate: boolean;
 }
 
 function fmtAge(ageHours: number | null): string {
@@ -92,14 +93,18 @@ export default function CommandPage() {
         body: JSON.stringify({ obligation_id: row.obligation_id, action: "seal" }),
       });
       const json = await res.json();
-      if (!res.ok) {
-        alert(`Failed: ${json.error ?? "Unknown error"}`);
+      // Gate on json.ok (business truth), not just res.ok (HTTP transport).
+      // res.ok catches transport failures; json.ok is the explicit outcome contract.
+      if (!res.ok || json.ok === false) {
+        alert(`Failed: ${json.error ?? json.error_message ?? "Unknown error"}`);
       } else {
         setClosureReceipt({
           receipt_id: json.receipt_id,
           obligation_id: row.obligation_id,
           label: fmtResolutionAction(row.kind),
+          isDuplicate: json.duplicate === true,
         });
+        // Remove from queue regardless of duplicate — it's already resolved.
         setRows((prev) => prev.filter((item) => item.obligation_id !== row.obligation_id));
       }
     } catch (e) {
@@ -254,11 +259,19 @@ export default function CommandPage() {
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setClosureReceipt(null)} />
           <div className="relative w-full max-w-sm">
             <AkPanel className="p-8 text-center">
-              <div className="mb-4 text-5xl">✓</div>
-              <div className="mb-1 text-xl font-extrabold text-white">Closure receipt emitted</div>
-              <div className="text-sm text-white/55">{closureReceipt.label}</div>
+              <div className="mb-4 text-5xl">{closureReceipt.isDuplicate ? "⟳" : "✓"}</div>
+              <div className="mb-1 text-xl font-extrabold text-white">
+                {closureReceipt.isDuplicate ? "Already resolved" : "Closure receipt emitted"}
+              </div>
+              <div className="text-sm text-white/55">
+                {closureReceipt.isDuplicate
+                  ? "This obligation was already resolved. Existing receipt on file."
+                  : closureReceipt.label}
+              </div>
               <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-left">
-                <div className="mb-2 text-[10px] font-extrabold tracking-widest text-white/30">RECEIPT ID</div>
+                <div className="mb-2 text-[10px] font-extrabold tracking-widest text-white/30">
+                  {closureReceipt.isDuplicate ? "EXISTING RECEIPT ID" : "RECEIPT ID"}
+                </div>
                 <div className="break-all font-mono text-xs text-white/60">{closureReceipt.receipt_id}</div>
               </div>
               <button
