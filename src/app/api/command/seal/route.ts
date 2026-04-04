@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOperatorRouteContext } from "@/lib/operator-access";
-import { sealObligation } from "@/lib/obligation-store";
+import { CommandRpcError, sealObligation } from "@/lib/obligation-store";
 
 type RecordLike = Record<string, unknown>;
 
@@ -175,6 +175,34 @@ export async function POST(request: NextRequest) {
       action,
     });
   } catch (error) {
+    if (error instanceof CommandRpcError) {
+      const { outcome, rejection_class, reason_code, attempt_id } = error;
+
+      // Map business outcome → HTTP status.
+      // Business refusals are not server crashes — give them honest codes.
+      let status: number;
+      if (outcome === "rejected_precondition") {
+        if (reason_code === "obligation_not_found") status = 404;
+        else if (reason_code === "access_denied") status = 403;
+        else status = 409;
+      } else {
+        // failed_execution or any unknown outcome
+        status = 500;
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          outcome,
+          rejection_class,
+          reason_code,
+          attempt_id,
+          error: error.message,
+        },
+        { status }
+      );
+    }
+
     const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json({ error: message }, { status: 500 });
   }

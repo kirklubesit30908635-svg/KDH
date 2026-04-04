@@ -42,6 +42,23 @@ interface RpcError {
   message: string;
 }
 
+export class CommandRpcError extends Error {
+  outcome: string;
+  rejection_class: string | undefined;
+  reason_code: string | undefined;
+  attempt_id: string | undefined;
+
+  constructor(result: GovernedMutationResult) {
+    const detail = result.error_message ?? result.outcome ?? "unknown failure";
+    super(`command_resolve_obligation returned ok=false [${result.outcome ?? "?"}/${result.rejection_class ?? "?"}]: ${detail}`);
+    this.name = "CommandRpcError";
+    this.outcome = result.outcome ?? "failed_execution";
+    this.rejection_class = result.rejection_class;
+    this.reason_code = result.reason_code;
+    this.attempt_id = result.attempt_id;
+  }
+}
+
 interface RpcClient {
   schema(schema: string): {
     rpc(
@@ -76,9 +93,7 @@ async function runJsonRpc(
   // failures instead of raising exceptions. Check ok explicitly — a successful
   // Supabase transport does NOT mean the obligation was resolved.
   if (result.ok === false) {
-    const detail = result.error_message ?? result.outcome ?? "unknown failure";
-    const msg = `${fn} returned ok=false [${result.outcome ?? "?"}/${result.rejection_class ?? "?"}]: ${detail}`;
-    throw new Error(msg);
+    throw new CommandRpcError(result);
   }
 
   return result;
