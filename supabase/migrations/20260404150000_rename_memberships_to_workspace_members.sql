@@ -23,9 +23,25 @@
 BEGIN;
 
 -- ---------------------------------------------------------------
--- 1. Rename the table
+-- Guard: this migration is only meaningful on a live DB that was
+-- created before 0003 was rewritten to use workspace_members
+-- directly. On a fresh reset the table is already workspace_members
+-- and none of these renames are needed. All steps are conditional.
 -- ---------------------------------------------------------------
-ALTER TABLE core.memberships RENAME TO workspace_members;
+
+-- ---------------------------------------------------------------
+-- 1. Rename the table (no-op if core.memberships does not exist)
+-- ---------------------------------------------------------------
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'core' AND table_name = 'memberships'
+  ) THEN
+    ALTER TABLE core.memberships RENAME TO workspace_members;
+  END IF;
+END;
+$$;
 
 -- ---------------------------------------------------------------
 -- 2. Rename constraints and indexes to match
@@ -43,17 +59,39 @@ ALTER INDEX IF EXISTS idx_memberships_workspace_operator_active
   RENAME TO idx_workspace_members_workspace_operator_active;
 
 -- ---------------------------------------------------------------
--- 3. Rename the updated_at trigger
+-- 3. Rename the updated_at trigger (only if old name still exists)
 -- ---------------------------------------------------------------
-ALTER TRIGGER memberships_set_updated_at
-  ON core.workspace_members
-  RENAME TO workspace_members_set_updated_at;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.triggers
+    WHERE trigger_schema = 'core'
+      AND event_object_table = 'workspace_members'
+      AND trigger_name = 'memberships_set_updated_at'
+  ) THEN
+    ALTER TRIGGER memberships_set_updated_at
+      ON core.workspace_members
+      RENAME TO workspace_members_set_updated_at;
+  END IF;
+END;
+$$;
 
 -- ---------------------------------------------------------------
--- 4. Rename the RLS policy
+-- 4. Rename the RLS policy (only if old name still exists)
 -- ---------------------------------------------------------------
-ALTER POLICY memberships_select_own ON core.workspace_members
-  RENAME TO workspace_members_select_own;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'core'
+      AND tablename  = 'workspace_members'
+      AND policyname = 'memberships_select_own'
+  ) THEN
+    ALTER POLICY memberships_select_own ON core.workspace_members
+      RENAME TO workspace_members_select_own;
+  END IF;
+END;
+$$;
 
 -- ---------------------------------------------------------------
 -- 5. Replace core.is_member() to reference workspace_members
