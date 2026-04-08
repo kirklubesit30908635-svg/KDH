@@ -1,7 +1,7 @@
 -- =============================================================
 -- 0003_identity.sql
 -- core schema: tenants, workspaces, departments, operators,
--- memberships, and the identity/membership helper functions.
+-- workspace_members, and the identity/membership helper functions.
 -- =============================================================
 
 -- ---------------------------------------------------------------
@@ -31,7 +31,7 @@ CREATE TABLE core.departments (
   UNIQUE (workspace_id, slug)
 );
 -- ---------------------------------------------------------------
--- Operators and Memberships
+-- Operators and Workspace Members
 -- ---------------------------------------------------------------
 
 CREATE TABLE core.operators (
@@ -41,7 +41,7 @@ CREATE TABLE core.operators (
   handle     text        NOT NULL UNIQUE,
   created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE core.memberships (
+CREATE TABLE core.workspace_members (
   id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   operator_id  uuid        NOT NULL REFERENCES core.operators (id),
   workspace_id uuid        NOT NULL REFERENCES core.workspaces (id),
@@ -72,7 +72,7 @@ RETURNS boolean
 LANGUAGE sql STABLE AS $$
   SELECT EXISTS (
     SELECT 1
-      FROM core.memberships
+      FROM core.workspace_members
      WHERE operator_id  = core.current_operator_id()
        AND workspace_id = p_workspace_id
   );

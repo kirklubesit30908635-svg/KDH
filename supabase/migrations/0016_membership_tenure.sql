@@ -1,6 +1,6 @@
 -- =============================================================
 -- 0016_membership_tenure.sql
--- Add tenure/lifecycle fields to core.memberships.
+-- Add tenure/lifecycle fields to core.workspace_members.
 --
 -- Preserves one canonical membership authority while adding:
 --   - temporal access windows  (active_from, active_to)
@@ -36,19 +36,19 @@ BEGIN;
 -- ---------------------------------------------------------------
 -- 1. Add tenure columns
 -- ---------------------------------------------------------------
-ALTER TABLE core.memberships
+ALTER TABLE core.workspace_members
   ADD COLUMN status      text        NOT NULL DEFAULT 'active'
                          CHECK (status IN ('active', 'suspended', 'revoked', 'expired')),
   ADD COLUMN active_from timestamptz NOT NULL DEFAULT now(),
   ADD COLUMN active_to   timestamptz,
   ADD COLUMN updated_at  timestamptz NOT NULL DEFAULT now(),
-  ADD CONSTRAINT memberships_active_window_check
+  ADD CONSTRAINT workspace_members_active_window_check
     CHECK (active_to IS NULL OR active_to > active_from);
 -- ---------------------------------------------------------------
 -- 2. Backfill: existing rows are active from their creation date.
 --    See backfill assumption in header comment above.
 -- ---------------------------------------------------------------
-UPDATE core.memberships
+UPDATE core.workspace_members
    SET active_from = created_at,
        status      = 'active';
 -- ---------------------------------------------------------------
@@ -60,14 +60,14 @@ UPDATE core.memberships
 --    (it is time-dependent); status = 'active' is the selective
 --    static filter that makes the index useful.
 -- ---------------------------------------------------------------
-CREATE INDEX idx_memberships_workspace_operator_active
-  ON core.memberships (workspace_id, operator_id)
+CREATE INDEX idx_workspace_members_workspace_operator_active
+  ON core.workspace_members (workspace_id, operator_id)
   WHERE status = 'active';
 -- ---------------------------------------------------------------
 -- 4. updated_at trigger (core.set_updated_at added in 0012)
 -- ---------------------------------------------------------------
-CREATE TRIGGER memberships_set_updated_at
-  BEFORE UPDATE ON core.memberships
+CREATE TRIGGER workspace_members_set_updated_at
+  BEFORE UPDATE ON core.workspace_members
   FOR EACH ROW EXECUTE FUNCTION core.set_updated_at();
 -- ---------------------------------------------------------------
 -- 5. Update core.is_member() to enforce tenure.
@@ -81,7 +81,7 @@ RETURNS boolean
 LANGUAGE sql STABLE AS $$
   SELECT EXISTS (
     SELECT 1
-      FROM core.memberships
+      FROM core.workspace_members
      WHERE operator_id  = core.current_operator_id()
        AND workspace_id = p_workspace_id
        AND status       = 'active'

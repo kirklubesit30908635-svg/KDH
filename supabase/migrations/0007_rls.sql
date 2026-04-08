@@ -47,11 +47,11 @@ CREATE POLICY receipts_select_member ON ledger.receipts
 -- ---------------------------------------------------------------
 -- 7c. REVOKE ALL direct table access from client roles
 -- ---------------------------------------------------------------
-REVOKE ALL ON TABLE core.tenants           FROM anon, authenticated;
-REVOKE ALL ON TABLE core.workspaces        FROM anon, authenticated;
-REVOKE ALL ON TABLE core.departments       FROM anon, authenticated;
-REVOKE ALL ON TABLE core.operators         FROM anon, authenticated;
-REVOKE ALL ON TABLE core.memberships       FROM anon, authenticated;
+REVOKE ALL ON TABLE core.tenants            FROM anon, authenticated;
+REVOKE ALL ON TABLE core.workspaces         FROM anon, authenticated;
+REVOKE ALL ON TABLE core.departments        FROM anon, authenticated;
+REVOKE ALL ON TABLE core.operators          FROM anon, authenticated;
+REVOKE ALL ON TABLE core.workspace_members  FROM anon, authenticated;
 REVOKE ALL ON TABLE registry.event_types   FROM anon, authenticated;
 REVOKE ALL ON TABLE registry.receipt_types FROM anon, authenticated;
 REVOKE ALL ON TABLE ledger.chain_heads     FROM anon, authenticated;
@@ -91,9 +91,9 @@ GRANT SELECT ON TABLE core.operators TO authenticated;
 CREATE POLICY operators_select_self ON core.operators
   FOR SELECT TO authenticated
   USING (auth_uid = auth.uid());
-ALTER TABLE core.memberships ENABLE ROW LEVEL SECURITY;
-GRANT SELECT ON TABLE core.memberships TO authenticated;
-CREATE POLICY memberships_select_own ON core.memberships
+ALTER TABLE core.workspace_members ENABLE ROW LEVEL SECURITY;
+GRANT SELECT ON TABLE core.workspace_members TO authenticated;
+CREATE POLICY workspace_members_select_own ON core.workspace_members
   FOR SELECT TO authenticated
   USING (operator_id = core.current_operator_id());
 -- ---------------------------------------------------------------
