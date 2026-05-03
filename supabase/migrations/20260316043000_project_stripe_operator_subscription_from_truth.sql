@@ -57,7 +57,7 @@ begin
      where o.auth_uid::text = v_auth_uid_text
        and exists (
          select 1
-           from core.memberships m
+           from core.workspace_members m
           where m.operator_id = o.id
             and m.workspace_id = v_workspace_id
        );
@@ -88,7 +88,7 @@ begin
      where o.stripe_customer_id = v_customer_id
        and exists (
          select 1
-           from core.memberships m
+           from core.workspace_members m
           where m.operator_id = o.id
             and m.workspace_id = v_workspace_id
        );

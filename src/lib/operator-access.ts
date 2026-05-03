@@ -6,7 +6,7 @@ type OperatorRow = {
   handle: string;
 };
 
-type MembershipRow = {
+type WorkspaceMemberRow = {
   workspace_id: string;
   role: string;
   status?: string | null;
@@ -19,7 +19,7 @@ export type OperatorRouteContext = {
     email?: string | null;
   };
   operator: OperatorRow;
-  memberships: MembershipRow[];
+  memberships: WorkspaceMemberRow[];
   workspaceIds: string[];
   defaultWorkspaceId: string;
 };
@@ -69,7 +69,7 @@ export async function requireOperatorRouteContext(): Promise<
 
   const { data: memberships, error: membershipErr } = await supabase
     .schema("core")
-    .from("memberships")
+    .from("workspace_members")
     .select("workspace_id, role, status")
     .eq("operator_id", operator.id);
 
@@ -80,7 +80,7 @@ export async function requireOperatorRouteContext(): Promise<
     };
   }
 
-  const activeMemberships = ((memberships ?? []) as MembershipRow[]).filter(
+  const activeMemberships = ((memberships ?? []) as WorkspaceMemberRow[]).filter(
     (membership) => !membership.status || membership.status === "active",
   );
   const workspaceIds = activeMemberships.map((membership) => membership.workspace_id);

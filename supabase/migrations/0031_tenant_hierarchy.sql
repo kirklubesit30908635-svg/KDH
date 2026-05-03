@@ -54,7 +54,7 @@ ON CONFLICT (tenant_id, slug) DO NOTHING;
 -- Resolves operator by email via auth.users join.
 -- No-op if operator not yet provisioned (first login creates the row).
 
-INSERT INTO core.memberships (operator_id, workspace_id, role, status)
+INSERT INTO core.workspace_members (operator_id, workspace_id, role, status)
 SELECT
   op.id,
   ws.id,
@@ -66,4 +66,4 @@ CROSS JOIN (
   SELECT id FROM core.workspaces WHERE slug IN ('kdh-ops', 'ak-ops')
 ) ws
 WHERE au.email = 'kirklubesit30908635@gmail.com'
-ON CONFLICT (operator_id, workspace_id) DO NOTHING;
+ON CONFLICT (operator_id, workspace_id) DO NOTHING;  -- core.workspace_members unique constraint
